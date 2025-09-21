@@ -1,0 +1,29 @@
+services:
+  mcserver:
+    build: .
+    image: private-mc-server
+    container_name: private-mc-server
+    ports:
+      - "25565:25565"
+    volumes:
+      - type: volume
+        source: mcserver
+        target: /mcserver
+      - type: bind
+        source: ./deposit-box
+        target: /deposit-box
+    environment:
+      - MINECRAFT_VERSION=${MINECRAFT_VERSION}
+      - OPERATOR_UUID=${OPERATOR_UUID}
+      - OPERATOR_NAME=${OPERATOR_NAME}
+      - OPERATOR_LEVEL=${OPERATOR_LEVEL}
+      - OVERWRITE_EXISTING_SERVER=${OVERWRITE_EXISTING_SERVER}
+      - SERVER_MOTD=${SERVER_MOTD}
+      - MAX_PLAYERS=${MAX_PLAYERS}
+      - DIFFICULTY=${DIFFICULTY}
+      - GAMEMODE=${GAMEMODE}
+      - PVP_ENABLED=${PVP_ENABLED}
+      - ONLINE_MODE=${ONLINE_MODE}
+
+volumes:
+  mcserver:

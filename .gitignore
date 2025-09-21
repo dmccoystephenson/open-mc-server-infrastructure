@@ -1,0 +1,22 @@
+# Environment variables
+.env
+
+# IDE files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Docker volumes
+docker-volumes/
+
+# Backup files
+*.backup
+*.bak
+
+# Logs
+*.log
