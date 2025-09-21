@@ -9,6 +9,21 @@ log() {
     echo "[SERVER-SETUP] $message"
 }
 
+# Function: Validate required environment variables
+validate_environment() {
+    if [ "$OPERATOR_UUID" = "YOUR_UUID_HERE" ] || [ -z "$OPERATOR_UUID" ]; then
+        log "ERROR: OPERATOR_UUID must be set to your actual UUID. Visit https://mcuuid.net/ to get your UUID."
+        exit 1
+    fi
+    
+    if [ "$OPERATOR_NAME" = "YOUR_USERNAME_HERE" ] || [ -z "$OPERATOR_NAME" ]; then
+        log "ERROR: OPERATOR_NAME must be set to your actual Minecraft username."
+        exit 1
+    fi
+    
+    log "Environment validation passed."
+}
+
 # Function: Setup server
 setup_server() {
     if [ -z "$(ls -A "$SERVER_DIR")" ] || [ "$OVERWRITE_EXISTING_SERVER" = "true" ]; then
@@ -116,6 +131,7 @@ start_server() {
 
 # Main Process
 log "Running server setup script..."
+validate_environment
 setup_server
 setup_ops_file
 accept_eula

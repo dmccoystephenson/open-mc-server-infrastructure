@@ -35,6 +35,8 @@ A Docker-based private Minecraft server running the latest version of Minecraft 
    chmod +x up.sh down.sh
    ./up.sh
    ```
+   
+   **Note**: The first build will take 10-15 minutes as it downloads and compiles Spigot from source.
 
 4. **Connect to your server**
    - Server address: `localhost:25565` (or your server's IP)
