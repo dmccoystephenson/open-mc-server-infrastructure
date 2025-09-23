@@ -36,7 +36,7 @@ validate_environment() {
 setup_server() {
     if [ -z "$(ls -A "$SERVER_DIR")" ] || [ "$OVERWRITE_EXISTING_SERVER" = "true" ]; then
         log "Setting up new server..."
-        rm -rf "$SERVER_DIR"/*
+        rm -rf "${SERVER_DIR:?}"/*
         cp "$BUILD_DIR"/spigot-"${MINECRAFT_VERSION}".jar "$SERVER_DIR"/spigot-"${MINECRAFT_VERSION}".jar
         mkdir -p "$SERVER_DIR"/plugins
     else
@@ -139,7 +139,7 @@ EOF
 # Function: Start server
 start_server() {
     log "Starting server..."
-    cd "$SERVER_DIR"
+    cd "$SERVER_DIR" || exit 1
     java -Xmx2G -Xms1G -jar spigot-"${MINECRAFT_VERSION}".jar nogui
 }
 
