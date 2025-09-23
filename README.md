@@ -52,6 +52,8 @@ Copy `sample.env` to `.env` and modify the following settings:
 - `SERVER_MOTD`: Message displayed in the server list
 - `MAX_PLAYERS`: Maximum number of players allowed
 
+**Note**: If `OPERATOR_UUID` and `OPERATOR_NAME` are not properly configured, the server will still start but you'll need to manually add operators using the `op <username>` command in the server console.
+
 ### Server Settings
 - `DIFFICULTY`: Server difficulty (peaceful, easy, normal, hard)
 - `GAMEMODE`: Default game mode (survival, creative, adventure, spectator)

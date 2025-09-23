@@ -11,17 +11,25 @@ log() {
 
 # Function: Validate required environment variables
 validate_environment() {
+    local warnings=false
+    
     if [ "$OPERATOR_UUID" = "YOUR_UUID_HERE" ] || [ -z "$OPERATOR_UUID" ]; then
-        log "ERROR: OPERATOR_UUID must be set to your actual UUID. Visit https://mcuuid.net/ to get your UUID."
-        exit 1
+        log "WARNING: OPERATOR_UUID is not set properly. Consider setting it to your actual UUID from https://mcuuid.net/"
+        log "Server will continue with default operator configuration."
+        warnings=true
     fi
     
     if [ "$OPERATOR_NAME" = "YOUR_USERNAME_HERE" ] || [ -z "$OPERATOR_NAME" ]; then
-        log "ERROR: OPERATOR_NAME must be set to your actual Minecraft username."
-        exit 1
+        log "WARNING: OPERATOR_NAME is not set properly. Consider setting it to your actual Minecraft username."
+        log "Server will continue with default operator configuration."
+        warnings=true
     fi
     
-    log "Environment validation passed."
+    if [ "$warnings" = false ]; then
+        log "Environment validation passed."
+    else
+        log "Server starting with configuration warnings - please check your .env file."
+    fi
 }
 
 # Function: Setup server
@@ -38,8 +46,10 @@ setup_server() {
 
 # Function: Setup ops.json file
 setup_ops_file() {
-    log "Creating ops.json file..."
-    cat <<EOF > "$SERVER_DIR"/ops.json
+    # Only create ops.json if we have valid operator information
+    if [ "$OPERATOR_UUID" != "YOUR_UUID_HERE" ] && [ -n "$OPERATOR_UUID" ] && [ "$OPERATOR_NAME" != "YOUR_USERNAME_HERE" ] && [ -n "$OPERATOR_NAME" ]; then
+        log "Creating ops.json file with operator: ${OPERATOR_NAME}"
+        cat <<EOF > "$SERVER_DIR"/ops.json
 [
   {
     "uuid": "${OPERATOR_UUID}",
@@ -49,6 +59,10 @@ setup_ops_file() {
   }
 ]
 EOF
+    else
+        log "Skipping ops.json creation - operator information not properly configured."
+        log "You can add operators manually using the 'op <username>' command in the server console."
+    fi
 }
 
 # Function: Accept EULA
