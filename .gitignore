@@ -20,3 +20,7 @@ docker-volumes/
 
 # Logs
 *.log
+
+# CI/Testing artifacts
+trivy-results.sarif
+test_validation.sh

@@ -1,0 +1,23 @@
+{
+  "ignorePatterns": [
+    {
+      "pattern": "^https://mcuuid.net/"
+    },
+    {
+      "pattern": "^https://hub.spigotmc.org/"
+    }
+  ],
+  "httpStatusCodes": {
+    "429": "warn"
+  },
+  "timeout": "10s",
+  "retryOn429": true,
+  "retryCount": 3,
+  "fallbackHttpStatusCodes": {
+    "400": "warn",
+    "401": "warn",
+    "403": "warn",
+    "404": "error",
+    "500": "warn"
+  }
+}

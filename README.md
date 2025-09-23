@@ -1,5 +1,7 @@
 # Private Minecraft Server
 
+[![CI Pipeline](https://github.com/dmccoystephenson/private-mc-server/workflows/CI%20Pipeline/badge.svg)](https://github.com/dmccoystephenson/private-mc-server/actions)
+
 A Docker-based private Minecraft server running the latest version of Minecraft (1.21.4) with Spigot for enhanced plugin support and performance.
 
 ## Features
@@ -154,6 +156,37 @@ docker compose build --no-cache
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Development
+
+### CI/CD Pipeline
+
+This repository includes a comprehensive CI pipeline that automatically validates:
+
+- **Shell Script Validation**: Syntax checking and ShellCheck linting for all bash scripts
+- **Docker Configuration**: Validates Dockerfile and Docker Compose configurations
+- **Environment Configuration**: Ensures all required environment variables are properly defined
+- **Security Scanning**: Trivy security scanning for vulnerabilities
+- **Documentation**: Validates README and checks for broken links
+- **Integration Testing**: End-to-end validation of the complete setup
+
+### Running Local CI Checks
+
+Before submitting changes, you can run the same validation checks locally:
+
+```bash
+./scripts/ci-local.sh
+```
+
+This will run basic validation checks that mirror the CI pipeline to catch issues early.
+
+### CI Pipeline Status
+
+The CI pipeline runs on:
+- Every push to `main` and `develop` branches
+- Every pull request to `main`
+
+Check the [Actions tab](https://github.com/dmccoystephenson/private-mc-server/actions) for detailed CI results and logs.
 
 ## Contributing
 
