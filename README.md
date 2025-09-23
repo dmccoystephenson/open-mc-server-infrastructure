@@ -1,6 +1,6 @@
 # Private Minecraft Server
 
-[![CI Pipeline](https://github.com/dmccoystephenson/private-mc-server/workflows/CI%20Pipeline/badge.svg)](https://github.com/dmccoystephenson/private-mc-server/actions)
+[![CI Pipeline](https://github.com/dmccoystephenson/private-mc-server/workflows/CI%20Pipeline/badge.svg?branch=main)](https://github.com/dmccoystephenson/private-mc-server/actions)
 
 A Docker-based private Minecraft server running the latest version of Minecraft (1.21.4) with Spigot for enhanced plugin support and performance.
 

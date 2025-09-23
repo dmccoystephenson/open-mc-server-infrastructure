@@ -5,12 +5,19 @@
     },
     {
       "pattern": "^https://hub.spigotmc.org/"
+    },
+    {
+      "pattern": "^https://github.com/.*/actions$"
+    },
+    {
+      "pattern": "^https://github.com/.*/workflows/"
     }
   ],
   "httpStatusCodes": {
-    "429": "warn"
+    "429": "warn",
+    "403": "warn"
   },
-  "timeout": "10s",
+  "timeout": "15s",
   "retryOn429": true,
   "retryCount": 3,
   "fallbackHttpStatusCodes": {
@@ -18,6 +25,8 @@
     "401": "warn",
     "403": "warn",
     "404": "error",
-    "500": "warn"
-  }
+    "500": "warn",
+    "503": "warn"
+  },
+  "aliveStatusCodes": [200, 206, 301, 302, 307, 308]
 }
