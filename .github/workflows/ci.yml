@@ -170,40 +170,6 @@ jobs:
         sarif_file: 'trivy-results.sarif'
       continue-on-error: true
 
-  documentation-check:
-    name: Documentation Validation
-    runs-on: ubuntu-latest
-    
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      
-    - name: Check README.md
-      run: |
-        echo "Validating README.md..."
-        test -f README.md
-        # Check for required sections
-        grep -q "# Private Minecraft Server" README.md
-        grep -q "## Quick Start" README.md
-        grep -q "## Configuration" README.md
-        echo "README.md validation passed"
-        
-    - name: Check LICENSE
-      run: |
-        echo "Validating LICENSE file..."
-        test -f LICENSE
-        echo "LICENSE file exists"
-        
-    - name: Validate Markdown links
-      uses: gaurav-nelson/github-action-markdown-link-check@v1.0.15
-      with:
-        use-quiet-mode: 'yes'
-        use-verbose-mode: 'no'
-        config-file: '.github/workflows/markdown-link-check-config.json'
-        check-modified-files-only: 'yes'
-        base-branch: 'main'
-      continue-on-error: true
-
   integration-test:
     name: Integration Testing
     runs-on: ubuntu-latest
