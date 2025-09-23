@@ -2,11 +2,11 @@
 
 [![CI Pipeline](https://github.com/dmccoystephenson/private-mc-server/workflows/CI%20Pipeline/badge.svg?branch=main)](https://github.com/dmccoystephenson/private-mc-server/actions)
 
-A Docker-based private Minecraft server running the latest version of Minecraft (1.21.4) with Spigot for enhanced plugin support and performance.
+A Docker-based private Minecraft server running the latest version of Minecraft (1.21.8) with Spigot for enhanced plugin support and performance.
 
 ## Features
 
-- **Latest Minecraft Version**: Running Minecraft 1.21.4 with Spigot
+- **Latest Minecraft Version**: Running Minecraft 1.21.8 with Spigot
 - **Docker Containerized**: Easy deployment and management
 - **Configurable**: Environment-based configuration
 - **Persistent Data**: Server data persists across container restarts
@@ -96,7 +96,7 @@ docker logs -f private-mc-server
 Once connected to the server console, you can run server commands:
 ```bash
 # Inside the container
-docker exec -it private-mc-server java -jar spigot-1.21.4.jar
+docker exec -it private-mc-server java -jar spigot-1.21.8.jar
 # Then use standard Minecraft server commands
 ```
 

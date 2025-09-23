@@ -10,12 +10,12 @@ FROM base as builder
 WORKDIR /mcserver-build
 RUN wget -O BuildTools.jar https://hub.spigotmc.org/jenkins/job/BuildTools/lastSuccessfulBuild/artifact/target/BuildTools.jar
 RUN git config --global --unset core.autocrlf || :
-RUN java -jar BuildTools.jar --rev 1.21.4
+RUN java -jar BuildTools.jar --rev 1.21.8
 
 FROM base as final
 
 # Copy built server from builder stage
-COPY --from=builder /mcserver-build/spigot-1.21.4.jar /mcserver-build/spigot-1.21.4.jar
+COPY --from=builder /mcserver-build/spigot-1.21.8.jar /mcserver-build/spigot-1.21.8.jar
 
 # Copy resources and make post-create.sh executable
 COPY ./resources /resources

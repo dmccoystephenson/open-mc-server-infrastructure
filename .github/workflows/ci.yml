@@ -99,7 +99,7 @@ jobs:
         #!/bin/bash
         
         # Set test environment variables
-        export MINECRAFT_VERSION="1.21.4"
+        export MINECRAFT_VERSION="1.21.8"
         export OPERATOR_UUID="test-uuid-1234"
         export OPERATOR_NAME="TestPlayer"
         export OPERATOR_LEVEL="4"
