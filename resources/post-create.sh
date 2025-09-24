@@ -1,4 +1,5 @@
 #!/bin/bash
+set -euo pipefail
 
 SERVER_DIR="/mcserver"
 BUILD_DIR="/mcserver-build"
