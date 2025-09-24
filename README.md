@@ -121,7 +121,11 @@ The `deposit-box` directory is shared between your host system and the container
 ### Update Minecraft Version
 1. Edit `sample.env` and `.env` to change `MINECRAFT_VERSION`
 2. Set `OVERWRITE_EXISTING_SERVER=true` in `.env` (⚠️ This will reset your world!)
-3. Restart the server: `./down.sh && ./up.sh`
+3. Rebuild the Docker image to generate the new Spigot jar:
+   ```bash
+   ./down.sh
+   docker compose build --no-cache
+   ./up.sh
 
 ### Update Container
 ```bash
