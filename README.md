@@ -82,22 +82,9 @@ or
 docker compose down
 ```
 
-### Server Console Access
-```bash
-docker exec -it private-mc-server /bin/bash
-```
-
 ### Viewing Server Logs
 ```bash
 docker logs -f private-mc-server
-```
-
-### Server Administration
-Once connected to the server console, you can run server commands:
-```bash
-# Inside the container
-docker exec -it private-mc-server java -jar spigot-1.21.8.jar
-# Then use standard Minecraft server commands
 ```
 
 ## File Management
@@ -147,7 +134,7 @@ docker compose build --no-cache
 - Verify the server is running: `docker ps`
 
 ### Performance Issues
-- Adjust memory allocation in `resources/post-create.sh` (modify `-Xmx2G -Xms1G`)
+- Adjust memory allocation in `sample.env` by setting appropriate values
 - Monitor system resources: `docker stats private-mc-server`
 
 ## Security Notes
@@ -171,7 +158,6 @@ This repository includes a comprehensive CI pipeline that automatically validate
 - **Docker Configuration**: Validates Dockerfile and Docker Compose configurations
 - **Environment Configuration**: Ensures all required environment variables are properly defined
 - **Security Scanning**: Trivy security scanning for vulnerabilities
-- **Documentation**: Validates README and checks for broken links
 - **Integration Testing**: End-to-end validation of the complete setup
 
 ### Running Local CI Checks

@@ -49,8 +49,7 @@ shellcheck *.sh resources/*.sh scripts/*.sh
 ### CI Pipeline
 The automated CI pipeline will run additional checks including:
 - Security vulnerability scanning
-- Full Docker build testing
-- Documentation link checking
+- Docker configuration validation
 - Integration testing
 
 ## Submitting Changes
