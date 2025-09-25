@@ -24,4 +24,4 @@ RUN chmod +x /resources/post-create.sh
 # Run server
 WORKDIR /mcserver
 EXPOSE 25565
-ENTRYPOINT ["/resources/post-create.sh"]
+ENTRYPOINT /resources/post-create.sh

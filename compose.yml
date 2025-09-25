@@ -1,9 +1,6 @@
 services:
   mcserver:
-    build:
-      context: .
-      args:
-        MINECRAFT_VERSION: ${MINECRAFT_VERSION}
+    build: .
     image: private-mc-server
     container_name: private-mc-server
     ports:

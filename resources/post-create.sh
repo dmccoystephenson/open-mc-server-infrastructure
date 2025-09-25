@@ -141,7 +141,7 @@ EOF
 start_server() {
     log "Starting server..."
     cd "$SERVER_DIR" || exit 1
-    java ${JAVA_OPTS:--Xmx2G -Xms1G} -jar spigot-"${MINECRAFT_VERSION}".jar nogui
+    java "${JAVA_OPTS:--Xmx2G -Xms1G}" -jar spigot-"${MINECRAFT_VERSION}".jar nogui
 }
 
 # Main Process
