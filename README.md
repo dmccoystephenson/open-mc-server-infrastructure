@@ -82,6 +82,8 @@ or
 docker compose down
 ```
 
+**Note**: The server includes graceful shutdown handling that automatically sends the "stop" command to Minecraft when the container is stopped. This ensures that plugins save their data properly, preventing data loss that could occur with an abrupt termination.
+
 ### Viewing Server Logs
 ```bash
 docker logs -f private-mc-server
