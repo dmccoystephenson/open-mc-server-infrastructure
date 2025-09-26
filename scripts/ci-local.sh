@@ -11,6 +11,7 @@ echo "📝 Checking shell scripts..."
 bash -n up.sh
 bash -n down.sh
 bash -n resources/post-create.sh
+bash -n resources/minecraft-wrapper.sh
 echo "✅ Shell script syntax validation passed"
 
 echo "🐳 Checking Docker configuration..."
@@ -39,6 +40,11 @@ echo "🔐 Checking file permissions..."
 test -x up.sh
 test -x down.sh
 test -x resources/post-create.sh
+test -x resources/minecraft-wrapper.sh
 echo "✅ File permissions validation passed"
+
+echo "🧪 Testing graceful shutdown functionality..."
+./scripts/test-graceful-shutdown.sh
+echo "✅ Graceful shutdown test passed"
 
 echo "🎉 All local CI checks passed!"

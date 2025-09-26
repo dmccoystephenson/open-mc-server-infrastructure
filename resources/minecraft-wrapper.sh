@@ -1,6 +1,6 @@
 #!/bin/bash
 # Minecraft Server Wrapper - Handles graceful shutdown for plugin data preservation
-# Based on proven patterns from itzg/mc-server-runner
+# Based on proven patterns from docker-mc-lifecycle.sh
 set -euo pipefail
 
 # Function: Log with timestamp - ensure visibility in Docker logs
@@ -13,7 +13,7 @@ SERVER_JAR="$1"
 SERVER_DIR="$2" 
 JAVA_OPTS="$3"
 PID=""
-STDIN_PIPE=""
+INPUT_FIFO="$SERVER_DIR/server_input"
 
 # Function: Graceful shutdown  
 graceful_shutdown() {
@@ -22,45 +22,30 @@ graceful_shutdown() {
     if [ -n "$PID" ] && kill -0 "$PID" 2>/dev/null; then
         log "Sending 'stop' command to Minecraft server..."
         
-        # Send stop command through the stdin pipe
-        if [ -n "$STDIN_PIPE" ]; then
-            echo "stop" > "$STDIN_PIPE" 2>/dev/null || {
-                log "Failed to send stop command via pipe, sending SIGTERM..."
-                kill -TERM "$PID"
-            }
-        else
-            log "No stdin pipe available, sending SIGTERM..."
+        # Send stop command to the server via the FIFO
+        echo "stop" > "$INPUT_FIFO" 2>/dev/null || {
+            log "Failed to send stop command via FIFO, sending SIGTERM..."
             kill -TERM "$PID"
-        fi
+        }
         
-        # Wait for server to shutdown gracefully (up to 30 seconds)
-        local count=0
-        while [ $count -lt 30 ] && kill -0 "$PID" 2>/dev/null; do
-            sleep 1
-            count=$((count + 1))
-            log "Waiting for server shutdown... ($count/30)"
-        done
+        # Wait for the server to shut down gracefully
+        log "Waiting for server to shutdown gracefully..."
+        wait "$PID" 2>/dev/null || true
         
-        # Force kill if still running
-        if kill -0 "$PID" 2>/dev/null; then
-            log "Server didn't shutdown gracefully, forcing termination..."
-            kill -KILL "$PID"
-        else
-            log "Server shutdown gracefully."
-        fi
+        log "Server shutdown completed."
     else
         log "No server process found or already terminated."
     fi
     
-    # Clean up the pipe
-    [ -p "$STDIN_PIPE" ] && rm -f "$STDIN_PIPE"
+    # Clean up FIFO
+    [ -p "$INPUT_FIFO" ] && rm -f "$INPUT_FIFO"
     
     exit 0
 }
 
 # Function: Cleanup on exit
 cleanup() {
-    [ -p "$STDIN_PIPE" ] && rm -f "$STDIN_PIPE"
+    [ -p "$INPUT_FIFO" ] && rm -f "$INPUT_FIFO"
 }
 
 # Set up signal handlers
@@ -78,38 +63,33 @@ cd "$SERVER_DIR" || {
     exit 1
 }
 
-# Create a named pipe for server input
-STDIN_PIPE="$SERVER_DIR/server_stdin"
-[ -p "$STDIN_PIPE" ] && rm -f "$STDIN_PIPE"
-mkfifo "$STDIN_PIPE"
+# Create a named pipe (FIFO) for passing commands to the server
+[ -p "$INPUT_FIFO" ] && rm -f "$INPUT_FIFO"
+mkfifo "$INPUT_FIFO"
 
-# Keep the pipe open in the background
+# Keep the FIFO open by running a background process that feeds it
+# This ensures the server doesn't block on stdin
 {
+    # Keep the FIFO open - the server will read from it
     while true; do
-        sleep 3600  # Keep pipe open
+        sleep 3600  # Keep process alive to maintain FIFO
     done
-} > "$STDIN_PIPE" &
-PIPE_KEEPER_PID=$!
+} > "$INPUT_FIFO" &
+FIFO_KEEPER_PID=$!
 
-# Start Minecraft server with stdin from the named pipe
+# Start the Minecraft server and attach stdin to the named pipe
 log "Starting Minecraft server..."
-java $JAVA_OPTS -jar "$SERVER_JAR" nogui < "$STDIN_PIPE" &
+java $JAVA_OPTS -jar "$SERVER_JAR" nogui < "$INPUT_FIFO" &
 PID=$!
 
 log "Minecraft server started with PID: $PID"
 
-# Wait for the server process to finish using a loop that allows signal handling
-log "Waiting for server process..."
-while kill -0 "$PID" 2>/dev/null; do
-    sleep 1
-done
-
-# Get exit code
-wait "$PID" 2>/dev/null
+# Wait until the server process finishes or a termination signal is received
+wait "$PID"
 EXIT_CODE=$?
 
-# Clean up pipe keeper
-kill $PIPE_KEEPER_PID 2>/dev/null || true
+# Clean up FIFO keeper
+kill "$FIFO_KEEPER_PID" 2>/dev/null || true
 
 log "Minecraft server process exited with code: $EXIT_CODE"
 exit $EXIT_CODE
