@@ -9,14 +9,20 @@ log() {
 
 # Variables
 SERVER_JAR="$1"
-SERVER_DIR="$2"
+SERVER_DIR="$2" 
 JAVA_OPTS="$3"
 PID=""
+PIPE_KEEPER_PID=""
 INPUT_PIPE="$SERVER_DIR/server_input"
 
 # Function: Graceful shutdown
 graceful_shutdown() {
     log "Received shutdown signal, initiating graceful server stop..."
+    
+    # Clean up pipe keeper first
+    if [ -n "$PIPE_KEEPER_PID" ] && kill -0 "$PIPE_KEEPER_PID" 2>/dev/null; then
+        kill $PIPE_KEEPER_PID 2>/dev/null || true
+    fi
     
     if [ -n "$PID" ] && kill -0 "$PID" 2>/dev/null; then
         log "Sending 'stop' command to Minecraft server..."
@@ -59,6 +65,9 @@ graceful_shutdown() {
 
 # Function: Cleanup on exit
 cleanup() {
+    # Clean up pipe keeper if it exists
+    [ -n "${PIPE_KEEPER_PID:-}" ] && kill $PIPE_KEEPER_PID 2>/dev/null || true
+    # Clean up named pipe
     [ -p "$INPUT_PIPE" ] && rm -f "$INPUT_PIPE"
 }
 
@@ -77,8 +86,19 @@ cd "$SERVER_DIR" || {
     exit 1
 }
 
-# Create named pipe for server input
+# Create named pipe for server input (remove if exists)
+[ -p "$INPUT_PIPE" ] && rm -f "$INPUT_PIPE"
 mkfifo "$INPUT_PIPE"
+
+# Keep the pipe open by running a background process that feeds it
+# This prevents the server from blocking on stdin
+{
+    # Keep pipe open and forward any commands
+    while true; do
+        sleep 1
+    done
+} > "$INPUT_PIPE" &
+PIPE_KEEPER_PID=$!
 
 # Start server with input from named pipe
 log "Starting server with input pipe..."
@@ -87,9 +107,18 @@ PID=$!
 
 log "Minecraft server started with PID: $PID"
 
-# Wait for the server process to finish
-wait "$PID"
+# Wait for the server process to finish, but check for signals periodically
+log "Waiting for server process..."
+while kill -0 "$PID" 2>/dev/null; do
+    sleep 1
+done
+
+# Get exit code after server finishes
+wait "$PID" 2>/dev/null
 EXIT_CODE=$?
+
+# Clean up pipe keeper
+kill $PIPE_KEEPER_PID 2>/dev/null || true
 
 log "Minecraft server process exited with code: $EXIT_CODE"
 exit $EXIT_CODE
