@@ -16,6 +16,7 @@ PID=""
 INPUT_FIFO="$SERVER_DIR/server_input"
 
 # Function: Graceful shutdown  
+# shellcheck disable=SC2317  # Function called via signal trap
 graceful_shutdown() {
     log "Received shutdown signal, initiating graceful server stop..."
     
@@ -32,7 +33,7 @@ graceful_shutdown() {
         log "Waiting for server to shutdown gracefully..."
         wait "$PID" 2>/dev/null || true
         
-        log "Server shutdown completed."
+        log "Server shutdown gracefully"
     else
         log "No server process found or already terminated."
     fi
@@ -44,6 +45,7 @@ graceful_shutdown() {
 }
 
 # Function: Cleanup on exit
+# shellcheck disable=SC2317  # Function called via signal trap
 cleanup() {
     [ -p "$INPUT_FIFO" ] && rm -f "$INPUT_FIFO"
 }
@@ -79,7 +81,7 @@ FIFO_KEEPER_PID=$!
 
 # Start the Minecraft server and attach stdin to the named pipe
 log "Starting Minecraft server..."
-java $JAVA_OPTS -jar "$SERVER_JAR" nogui < "$INPUT_FIFO" &
+java "$JAVA_OPTS" -jar "$SERVER_JAR" nogui < "$INPUT_FIFO" &
 PID=$!
 
 log "Minecraft server started with PID: $PID"
