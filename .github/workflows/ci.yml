@@ -26,13 +26,17 @@ jobs:
         bash -n up.sh
         bash -n down.sh
         bash -n resources/post-create.sh
+        bash -n resources/minecraft-wrapper.sh
         
     - name: Run ShellCheck
       run: |
         echo "Running ShellCheck on all shell scripts..."
-        shellcheck up.sh down.sh resources/post-create.sh
+        shellcheck up.sh down.sh resources/post-create.sh resources/minecraft-wrapper.sh
         if [ -f scripts/ci-local.sh ]; then
           shellcheck scripts/ci-local.sh
+        fi
+        if [ -f scripts/test-graceful-shutdown.sh ]; then
+          shellcheck scripts/test-graceful-shutdown.sh
         fi
 
   validate-docker:
@@ -203,7 +207,20 @@ jobs:
         test -x up.sh
         test -x down.sh
         test -x resources/post-create.sh
+        test -x resources/minecraft-wrapper.sh
         if [ -f scripts/ci-local.sh ]; then
           test -x scripts/ci-local.sh
         fi
+        if [ -f scripts/test-graceful-shutdown.sh ]; then
+          test -x scripts/test-graceful-shutdown.sh
+        fi
         echo "File permissions validation passed"
+        
+    - name: Test graceful shutdown functionality
+      run: |
+        echo "Testing graceful shutdown mechanism..."
+        if [ -f scripts/test-graceful-shutdown.sh ]; then
+          ./scripts/test-graceful-shutdown.sh
+        else
+          echo "Graceful shutdown test not found, skipping..."
+        fi

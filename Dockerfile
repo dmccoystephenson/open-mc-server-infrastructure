@@ -17,9 +17,9 @@ FROM base as final
 # Copy built server from builder stage
 COPY --from=builder /mcserver-build/spigot-1.21.8.jar /mcserver-build/spigot-1.21.8.jar
 
-# Copy resources and make post-create.sh executable
+# Copy resources and make scripts executable
 COPY ./resources /resources
-RUN chmod +x /resources/post-create.sh
+RUN chmod +x /resources/post-create.sh /resources/minecraft-wrapper.sh
 
 # Run server
 WORKDIR /mcserver
