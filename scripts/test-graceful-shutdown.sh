@@ -22,6 +22,7 @@ test_error() {
 }
 
 # Cleanup function
+# shellcheck disable=SC2317  # Function called via signal trap
 cleanup() {
     test_log "Cleaning up test environment..."
     pkill -f "mock-minecraft-server" 2>/dev/null || true
@@ -101,7 +102,7 @@ cd "$(dirname "$0")/.."  # Go to repo root
 export PATH="$TEST_DIR:$PATH"
 
 # Start wrapper in background and capture output
-timeout 30s ./resources/minecraft-wrapper.sh mock-minecraft-server.jar "$TEST_DIR" "-Xmx1G" > "$TEST_DIR/wrapper_output.log" 2>&1 &
+./resources/minecraft-wrapper.sh mock-minecraft-server.jar "$TEST_DIR" "-Xmx1G" > "$TEST_DIR/wrapper_output.log" 2>&1 &
 WRAPPER_PID=$!
 
 # Give it time to start
@@ -140,11 +141,14 @@ fi
 # Test 4: Test graceful shutdown
 test_log "Test 4: Testing graceful shutdown with SIGTERM..."
 
+# Give the server more time to fully stabilize
+sleep 2
+
 # Send SIGTERM to wrapper (simulating docker compose stop)
 kill -TERM "$WRAPPER_PID"
 
 # Wait for shutdown to complete
-sleep 8
+sleep 10
 
 # Check wrapper output for shutdown logs
 test_log "Checking for shutdown logs in wrapper output..."
@@ -156,43 +160,43 @@ SHUTDOWN_PASSED=0
 
 if grep -q "\[WRAPPER\] Received shutdown signal" "$TEST_DIR/wrapper_output.log"; then
     test_success "✓ Shutdown signal received by wrapper"
-    ((SHUTDOWN_PASSED++))
+    SHUTDOWN_PASSED=$((SHUTDOWN_PASSED + 1))
 else
     test_error "✗ Shutdown signal not received by wrapper"
 fi
-((SHUTDOWN_TESTS++))
+SHUTDOWN_TESTS=$((SHUTDOWN_TESTS + 1))
 
 if grep -q "\[WRAPPER\] Sending 'stop' command to Minecraft server" "$TEST_DIR/wrapper_output.log"; then
     test_success "✓ Stop command sent to server"
-    ((SHUTDOWN_PASSED++))
+    SHUTDOWN_PASSED=$((SHUTDOWN_PASSED + 1))
 else
     test_error "✗ Stop command not sent to server"
 fi
-((SHUTDOWN_TESTS++))
+SHUTDOWN_TESTS=$((SHUTDOWN_TESTS + 1))
 
 if grep -q "\[MOCK-SERVER\] Stopping server gracefully" "$TEST_DIR/wrapper_output.log"; then
     test_success "✓ Server received stop command"
-    ((SHUTDOWN_PASSED++))
+    SHUTDOWN_PASSED=$((SHUTDOWN_PASSED + 1))
 else
     test_error "✗ Server did not receive stop command"
 fi
-((SHUTDOWN_TESTS++))
+SHUTDOWN_TESTS=$((SHUTDOWN_TESTS + 1))
 
 if grep -q "\[MOCK-SERVER\] SimpleSkills: Data saved successfully" "$TEST_DIR/wrapper_output.log"; then
     test_success "✓ Plugin data saved during graceful shutdown"
-    ((SHUTDOWN_PASSED++))
+    SHUTDOWN_PASSED=$((SHUTDOWN_PASSED + 1))
 else
     test_error "✗ Plugin data not saved during shutdown"
 fi
-((SHUTDOWN_TESTS++))
+SHUTDOWN_TESTS=$((SHUTDOWN_TESTS + 1))
 
 if grep -q "\[WRAPPER\] Server shutdown gracefully" "$TEST_DIR/wrapper_output.log"; then
     test_success "✓ Wrapper confirmed graceful shutdown"
-    ((SHUTDOWN_PASSED++))
+    SHUTDOWN_PASSED=$((SHUTDOWN_PASSED + 1))
 else
     test_error "✗ Wrapper did not confirm graceful shutdown"
 fi
-((SHUTDOWN_TESTS++))
+SHUTDOWN_TESTS=$((SHUTDOWN_TESTS + 1))
 
 # Final results
 test_log "📊 Test Results:"

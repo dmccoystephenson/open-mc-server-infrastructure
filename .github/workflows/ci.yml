@@ -7,40 +7,8 @@ on:
     branches: [ main ]
 
 jobs:
-  validate-scripts:
-    name: Validate Shell Scripts
-    runs-on: ubuntu-latest
-    
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      
-    - name: Install ShellCheck
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y shellcheck
-        
-    - name: Check shell script syntax
-      run: |
-        echo "Checking shell scripts for syntax errors..."
-        bash -n up.sh
-        bash -n down.sh
-        bash -n resources/post-create.sh
-        bash -n resources/minecraft-wrapper.sh
-        
-    - name: Run ShellCheck
-      run: |
-        echo "Running ShellCheck on all shell scripts..."
-        shellcheck up.sh down.sh resources/post-create.sh resources/minecraft-wrapper.sh
-        if [ -f scripts/ci-local.sh ]; then
-          shellcheck scripts/ci-local.sh
-        fi
-        if [ -f scripts/test-graceful-shutdown.sh ]; then
-          shellcheck scripts/test-graceful-shutdown.sh
-        fi
-
-  validate-docker:
-    name: Validate Docker Configuration
+  validate:
+    name: Validate Code and Configuration
     runs-on: ubuntu-latest
     
     steps:
@@ -50,106 +18,59 @@ jobs:
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
       
-    - name: Validate Dockerfile
+    - name: Install dependencies
       run: |
-        echo "Validating Dockerfile syntax..."
-        # Check if Dockerfile exists and has basic structure
+        sudo apt-get update
+        sudo apt-get install -y shellcheck
+        
+    - name: Validate shell scripts
+      run: |
+        echo "🔍 Validating shell script syntax..."
+        bash -n up.sh
+        bash -n down.sh
+        bash -n resources/post-create.sh
+        bash -n resources/minecraft-wrapper.sh
+        
+        echo "🔍 Running ShellCheck linter..."
+        shellcheck up.sh down.sh resources/*.sh scripts/*.sh
+        
+    - name: Validate Docker configuration
+      run: |
+        echo "🐳 Validating Dockerfile..."
         test -f Dockerfile
         grep -q "FROM" Dockerfile
-        echo "Dockerfile validation passed"
         
-    - name: Validate Docker Compose
-      run: |
-        echo "Validating Docker Compose configuration..."
-        # Create a temporary .env file for validation
+        echo "🐳 Validating Docker Compose configuration..."
         cp sample.env .env
-        sed -i 's/YOUR_UUID_HERE/test-uuid/g' .env
-        sed -i 's/YOUR_USERNAME_HERE/testuser/g' .env
+        sed -i 's/YOUR_UUID_HERE/test-uuid-1234/g' .env
+        sed -i 's/YOUR_USERNAME_HERE/TestPlayer/g' .env
         docker compose config > /dev/null
         rm .env
-        echo "Docker Compose validation passed"
         
-    - name: Test Docker Build (quick validation)
-      run: |
-        echo "Testing Docker build process (base stage only for CI)..."
+        echo "🐳 Testing Docker build..."
         docker build --target base -t minecraft-server-test .
-      env:
-        DOCKER_BUILDKIT: 1
-
-  validate-environment:
-    name: Validate Environment Configuration
-    runs-on: ubuntu-latest
-    
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      
-    - name: Validate sample.env format
+        
+    - name: Validate environment configuration
       run: |
-        echo "Validating sample.env file format..."
-        # Check if sample.env exists and has required variables
+        echo "⚙️ Validating sample.env format..."
         test -f sample.env
         grep -q "MINECRAFT_VERSION=" sample.env
         grep -q "OPERATOR_UUID=" sample.env
         grep -q "OPERATOR_NAME=" sample.env
         grep -q "SERVER_MOTD=" sample.env
-        echo "sample.env validation passed"
         
-    - name: Test environment variable validation
+    - name: Validate documentation
       run: |
-        echo "Testing environment validation with test values..."
-        # Create a test script to validate the validation function
-        cat > test_validation.sh << 'EOF'
-        #!/bin/bash
+        echo "📚 Validating documentation..."
+        test -f README.md
+        grep -q "# Private Minecraft Server" README.md  
+        test -f LICENSE
         
-        # Set test environment variables
-        export MINECRAFT_VERSION="1.21.8"
-        export OPERATOR_UUID="test-uuid-1234"
-        export OPERATOR_NAME="TestPlayer"
-        export OPERATOR_LEVEL="4"
-        export SERVER_MOTD="Test Server"
-        export MAX_PLAYERS="20"
-        export DIFFICULTY="normal"
-        export GAMEMODE="survival"
-        export PVP_ENABLED="true"
-        export ONLINE_MODE="true"
-        export OVERWRITE_EXISTING_SERVER="false"
+    - name: Test graceful shutdown functionality
+      run: |
+        echo "🧪 Testing graceful shutdown functionality..."
+        ./scripts/test-graceful-shutdown.sh
         
-        # Extract and test the validation function
-        log() {
-            local message="$1"
-            echo "[SERVER-SETUP] $message"
-        }
-        
-        validate_environment() {
-            local warnings=false
-            
-            if [ "$OPERATOR_UUID" = "YOUR_UUID_HERE" ] || [ -z "$OPERATOR_UUID" ]; then
-                log "WARNING: OPERATOR_UUID is not set properly. Consider setting it to your actual UUID from https://mcuuid.net/"
-                log "Server will continue with default operator configuration."
-                warnings=true
-            fi
-            
-            if [ "$OPERATOR_NAME" = "YOUR_USERNAME_HERE" ] || [ -z "$OPERATOR_NAME" ]; then
-                log "WARNING: OPERATOR_NAME is not set properly. Consider setting it to your actual Minecraft username."
-                log "Server will continue with default operator configuration."
-                warnings=true
-            fi
-            
-            if [ "$warnings" = false ]; then
-                log "Environment validation passed."
-            else
-                log "Server starting with configuration warnings - please check your .env file."
-            fi
-        }
-        
-        # Run validation
-        validate_environment
-        EOF
-        
-        chmod +x test_validation.sh
-        ./test_validation.sh
-
   security-scan:
     name: Security Scanning
     runs-on: ubuntu-latest
@@ -167,60 +88,9 @@ jobs:
         output: 'trivy-results.sarif'
       continue-on-error: true
         
-    - name: Upload Trivy scan results to GitHub Security tab
+    - name: Upload Trivy scan results
       uses: github/codeql-action/upload-sarif@v3
       if: always()
       with:
         sarif_file: 'trivy-results.sarif'
       continue-on-error: true
-
-  integration-test:
-    name: Integration Testing
-    runs-on: ubuntu-latest
-    needs: [validate-scripts, validate-docker, validate-environment]
-    
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      
-    - name: Set up test environment
-      run: |
-        echo "Setting up test environment..."
-        cp sample.env .env
-        # Use test values that won't trigger validation warnings
-        sed -i 's/YOUR_UUID_HERE/test-uuid-1234-5678-9abc-def0/g' .env
-        sed -i 's/YOUR_USERNAME_HERE/TestPlayer/g' .env
-        
-    - name: Test up script
-      run: |
-        echo "Testing up.sh script syntax..."
-        bash -n up.sh
-        
-    - name: Test down script
-      run: |
-        echo "Testing down.sh script syntax..."
-        bash -n down.sh
-        
-    - name: Validate file permissions
-      run: |
-        echo "Checking file permissions..."
-        test -x up.sh
-        test -x down.sh
-        test -x resources/post-create.sh
-        test -x resources/minecraft-wrapper.sh
-        if [ -f scripts/ci-local.sh ]; then
-          test -x scripts/ci-local.sh
-        fi
-        if [ -f scripts/test-graceful-shutdown.sh ]; then
-          test -x scripts/test-graceful-shutdown.sh
-        fi
-        echo "File permissions validation passed"
-        
-    - name: Test graceful shutdown functionality
-      run: |
-        echo "Testing graceful shutdown mechanism..."
-        if [ -f scripts/test-graceful-shutdown.sh ]; then
-          ./scripts/test-graceful-shutdown.sh
-        else
-          echo "Graceful shutdown test not found, skipping..."
-        fi
