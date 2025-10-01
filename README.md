@@ -114,6 +114,8 @@ docker compose down
 docker logs -f private-mc-server
 ```
 
+**Note**: Replace `private-mc-server` with your `CONTAINER_NAME` value if you've customized it.
+
 ## File Management
 
 ### Backup Server Data
@@ -121,11 +123,15 @@ docker logs -f private-mc-server
 docker cp private-mc-server:/mcserver ./backup/
 ```
 
+**Note**: Replace `private-mc-server` with your `CONTAINER_NAME` value if you've customized it.
+
 ### Restore Server Data
 ```bash
 docker cp ./backup/ private-mc-server:/mcserver
 docker compose restart
 ```
+
+**Note**: Replace `private-mc-server` with your `CONTAINER_NAME` value if you've customized it.
 
 ### Deposit Box
 The `deposit-box` directory is shared between your host system and the container at `/deposit-box`. Use it to transfer files to/from the server.
@@ -173,18 +179,18 @@ docker compose build --no-cache
 ## Troubleshooting
 
 ### Server Won't Start
-- Check Docker logs: `docker logs private-mc-server`
+- Check Docker logs: `docker logs private-mc-server` (use your `CONTAINER_NAME` value)
 - Ensure all required environment variables are set
 - Verify Docker and Docker Compose are installed
 
 ### Can't Connect to Server
-- Ensure port 25565 is open/forwarded
+- Ensure port 25565 is open/forwarded (or your custom `HOST_PORT` value)
 - Check if `ONLINE_MODE` setting matches your client type
 - Verify the server is running: `docker ps`
 
 ### Performance Issues
 - Adjust memory allocation in `sample.env` by setting appropriate values
-- Monitor system resources: `docker stats private-mc-server`
+- Monitor system resources: `docker stats private-mc-server` (use your `CONTAINER_NAME` value)
 
 ## Security Notes
 
