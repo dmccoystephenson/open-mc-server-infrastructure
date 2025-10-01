@@ -47,7 +47,8 @@ get_current_version() {
 
 # Function to create backup
 create_backup() {
-    local backup_dir="./backups/backup-$(date +%Y%m%d-%H%M%S)"
+    local backup_dir
+    backup_dir="./backups/backup-$(date +%Y%m%d-%H%M%S)"
     
     log_info "Creating backup at: $backup_dir"
     mkdir -p "$backup_dir"
@@ -64,7 +65,8 @@ create_backup() {
     
     # Verify backup was created
     if [ -f "$backup_dir/mcserver-backup.tar.gz" ]; then
-        local backup_size=$(du -h "$backup_dir/mcserver-backup.tar.gz" | cut -f1)
+        local backup_size
+        backup_size=$(du -h "$backup_dir/mcserver-backup.tar.gz" | cut -f1)
         log_success "Backup created successfully: $backup_dir/mcserver-backup.tar.gz ($backup_size)"
         echo "$backup_dir"
         return 0
@@ -114,7 +116,7 @@ main() {
     echo ""
     
     # Prompt for new version
-    read -p "Enter the new Minecraft version (e.g., 1.21.9): " new_version
+    read -r -p "Enter the new Minecraft version (e.g., 1.21.9): " new_version
     
     if [ -z "$new_version" ]; then
         log_error "No version specified. Aborting."
@@ -124,7 +126,7 @@ main() {
     # Confirm upgrade
     echo ""
     log_warning "This will upgrade your server from $current_version to $new_version"
-    read -p "Do you want to continue? (yes/no): " confirm
+    read -r -p "Do you want to continue? (yes/no): " confirm
     
     if [ "$confirm" != "yes" ] && [ "$confirm" != "y" ]; then
         log_info "Upgrade cancelled."
@@ -148,7 +150,8 @@ main() {
     # Step 2: Create backup
     log_info "Step 2/6: Creating backup..."
     backup_dir=$(create_backup)
-    if [ $? -ne 0 ]; then
+    backup_result=$?
+    if [ "$backup_result" -ne 0 ]; then
         log_error "Backup failed! Aborting upgrade."
         exit 1
     fi
@@ -166,7 +169,7 @@ main() {
         echo "  $line"
     done
     
-    if [ ${PIPESTATUS[0]} -eq 0 ]; then
+    if [ "${PIPESTATUS[0]}" -eq 0 ]; then
         log_success "Docker image rebuilt successfully"
     else
         log_error "Docker build failed!"

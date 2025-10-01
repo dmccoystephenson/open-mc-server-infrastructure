@@ -54,7 +54,8 @@ setup_server() {
             
             # Check if there are old version JARs to remove
             if ls "$SERVER_DIR"/spigot-*.jar >/dev/null 2>&1; then
-                local old_jars=$(ls "$SERVER_DIR"/spigot-*.jar 2>/dev/null | xargs -n1 basename)
+                local old_jars
+                old_jars=$(find "$SERVER_DIR" -name "spigot-*.jar" -exec basename {} \;)
                 log "Removing old JAR(s): $old_jars"
                 rm -f "$SERVER_DIR"/spigot-*.jar
             fi
