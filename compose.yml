@@ -5,9 +5,11 @@ services:
       args:
         - MINECRAFT_VERSION=${MINECRAFT_VERSION}
     image: private-mc-server
+    restart: always
     container_name: private-mc-server
     ports:
       - "25565:25565"
+      - "8100:8100"
     volumes:
       - type: volume
         source: mcserver
