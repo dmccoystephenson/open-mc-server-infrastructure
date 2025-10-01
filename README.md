@@ -107,13 +107,30 @@ The `deposit-box` directory is shared between your host system and the container
 
 ## Updating
 
+### Automated Upgrade Script
+
+The easiest way to upgrade your Minecraft server to a new version:
+
+```bash
+./upgrade.sh
+```
+
+This script automates the entire upgrade process:
+- Stops the server gracefully
+- Creates a timestamped backup automatically
+- Prompts for the new version
+- Updates configuration
+- Rebuilds with the new version
+- Starts the server
+
 ### Upgrade to a New Minecraft Version
 
 For a comprehensive, step-by-step guide to upgrading your Minecraft server to a newer version with proper backup and rollback procedures, see the **[Upgrade Guide](UPGRADE-GUIDE.md)**.
 
 The upgrade guide covers:
+- Automated upgrade script usage (recommended)
+- Manual step-by-step upgrade process
 - Pre-upgrade backup procedures
-- Step-by-step upgrade process with server JAR replacement
 - Rollback and restoration procedures
 - Post-upgrade verification steps
 - Troubleshooting common upgrade issues

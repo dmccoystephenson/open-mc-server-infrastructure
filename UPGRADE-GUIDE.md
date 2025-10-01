@@ -29,6 +29,43 @@ This guide provides a comprehensive process for upgrading your Minecraft server 
 
 ## Upgrade Process
 
+### Automated Upgrade (Recommended)
+
+For a streamlined upgrade experience, use the automated upgrade script that handles all steps:
+
+```bash
+./upgrade.sh
+```
+
+The script will:
+1. ✅ Stop the server gracefully
+2. ✅ Create a timestamped backup automatically
+3. ✅ Prompt for the new Minecraft version
+4. ✅ Update the `.env` file
+5. ✅ Rebuild the Docker image with the new version
+6. ✅ Start the server and show initial logs
+
+**Benefits:**
+- Single command execution
+- Automatic backup management
+- Interactive prompts with confirmation
+- Progress feedback at each step
+- Summary with backup location
+
+**Example usage:**
+```bash
+./upgrade.sh
+# When prompted, enter the new version (e.g., 1.21.9)
+# Confirm the upgrade when asked
+# Script handles the rest automatically
+```
+
+If you prefer manual control or need to understand each step, continue with the manual process below.
+
+---
+
+### Manual Upgrade Process
+
 ### Step 1: Stop the Server
 
 First, gracefully stop the Minecraft server to ensure all data is properly saved:
