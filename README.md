@@ -107,16 +107,21 @@ The `deposit-box` directory is shared between your host system and the container
 
 ## Updating
 
-### Update Minecraft Version
-1. Edit `sample.env` and `.env` to change `MINECRAFT_VERSION`
-2. Set `OVERWRITE_EXISTING_SERVER=true` in `.env` (⚠️ This will reset your world!)
-3. Rebuild the Docker image to generate the new Spigot jar:
-   ```bash
-   ./down.sh
-   docker compose build --no-cache
-   ./up.sh
+### Upgrade to a New Minecraft Version
 
-### Update Container
+For a comprehensive, step-by-step guide to upgrading your Minecraft server to a newer version with proper backup and rollback procedures, see the **[Upgrade Guide](UPGRADE-GUIDE.md)**.
+
+The upgrade guide covers:
+- Pre-upgrade backup procedures
+- Step-by-step upgrade process with server JAR replacement
+- Rollback and restoration procedures
+- Post-upgrade verification steps
+- Troubleshooting common upgrade issues
+
+### Quick Update (Without Version Change)
+
+To update the container without changing the Minecraft version:
+
 ```bash
 ./down.sh
 docker compose build --no-cache
