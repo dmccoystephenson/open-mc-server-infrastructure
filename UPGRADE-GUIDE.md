@@ -132,29 +132,9 @@ MINECRAFT_VERSION=1.21.9
 
 **Note**: The version must match an available Spigot build. Check [Spigot BuildTools](https://www.spigotmc.org/wiki/buildtools/) for supported versions.
 
-### Step 4: Update the Dockerfile
+**Important**: The Dockerfile now uses a build argument that automatically reads the `MINECRAFT_VERSION` from your `.env` file, so you only need to update the version in one place!
 
-⚠️ **Important**: The Dockerfile hardcodes the Minecraft version in multiple places. You must update it to match your `.env` file.
-
-Edit the `Dockerfile`:
-
-```bash
-nano Dockerfile
-# or
-vim Dockerfile
-```
-
-Update the version in the following lines:
-
-```dockerfile
-# In the builder stage:
-RUN java -jar BuildTools.jar --rev 1.21.9  # Update this version
-
-# In the final stage:
-COPY --from=builder /mcserver-build/spigot-1.21.9.jar /mcserver-build/spigot-1.21.9.jar  # Update this version
-```
-
-### Step 5: Rebuild Docker Image
+### Step 4: Rebuild Docker Image
 
 Rebuild the Docker image with the new Minecraft version. This process will:
 - Download and compile the new Spigot version
@@ -167,7 +147,7 @@ docker compose build --no-cache
 
 **Note**: The `--no-cache` flag ensures a clean build without using old cached layers.
 
-### Step 6: Replace Server JAR in Persistent Volume
+### Step 5: Replace Server JAR in Persistent Volume
 
 The new server JAR needs to be placed in the persistent volume. The `post-create.sh` script handles this automatically based on the `OVERWRITE_EXISTING_SERVER` setting.
 
@@ -201,7 +181,7 @@ echo "OVERWRITE_EXISTING_SERVER=true" >> .env
 sed -i 's/OVERWRITE_EXISTING_SERVER=true/OVERWRITE_EXISTING_SERVER=false/' .env
 ```
 
-### Step 7: Start and Monitor the Server
+### Step 6: Start and Monitor the Server
 
 Start the server and monitor the logs to ensure successful startup:
 
