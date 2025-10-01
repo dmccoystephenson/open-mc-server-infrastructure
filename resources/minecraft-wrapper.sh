@@ -81,7 +81,8 @@ FIFO_KEEPER_PID=$!
 
 # Start the Minecraft server and attach stdin to the named pipe
 log "Starting Minecraft server..."
-java "$JAVA_OPTS" -jar "$SERVER_JAR" nogui < "$INPUT_FIFO" &
+# shellcheck disable=SC2086  # Word splitting is intentional for JAVA_OPTS
+java $JAVA_OPTS -jar "$SERVER_JAR" nogui < "$INPUT_FIFO" &
 PID=$!
 
 log "Minecraft server started with PID: $PID"
