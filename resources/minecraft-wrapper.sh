@@ -81,7 +81,7 @@ FIFO_KEEPER_PID=$!
 
 # Start the Minecraft server and attach stdin to the named pipe
 log "Starting Minecraft server..."
-java "$JAVA_OPTS" -jar "$SERVER_JAR" nogui < "$INPUT_FIFO" &
+java $JAVA_OPTS -jar "$SERVER_JAR" nogui < "$INPUT_FIFO" &
 PID=$!
 
 log "Minecraft server started with PID: $PID"
