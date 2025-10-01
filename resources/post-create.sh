@@ -45,17 +45,23 @@ setup_server() {
         
         # Check if we need to update the server JAR for a version upgrade
         local new_jar="$BUILD_DIR/spigot-${MINECRAFT_VERSION}.jar"
-        local current_jar="$SERVER_DIR/spigot-${MINECRAFT_VERSION}.jar"
+        local expected_jar="$SERVER_DIR/spigot-${MINECRAFT_VERSION}.jar"
         
-        if [ ! -f "$current_jar" ]; then
+        # Check if the expected JAR for this version exists
+        if [ ! -f "$expected_jar" ]; then
+            # The expected JAR doesn't exist, so we need to upgrade
             log "Detected version change - updating server JAR to ${MINECRAFT_VERSION}..."
             
-            # Remove old version JARs
-            rm -f "$SERVER_DIR"/spigot-*.jar
+            # Check if there are old version JARs to remove
+            if ls "$SERVER_DIR"/spigot-*.jar >/dev/null 2>&1; then
+                local old_jars=$(ls "$SERVER_DIR"/spigot-*.jar 2>/dev/null | xargs -n1 basename)
+                log "Removing old JAR(s): $old_jars"
+                rm -f "$SERVER_DIR"/spigot-*.jar
+            fi
             
             # Copy new version JAR
-            cp "$new_jar" "$current_jar"
-            log "Server JAR updated successfully."
+            cp "$new_jar" "$expected_jar"
+            log "Server JAR updated successfully to version ${MINECRAFT_VERSION}."
         else
             log "Server JAR is up to date (version ${MINECRAFT_VERSION})."
         fi
