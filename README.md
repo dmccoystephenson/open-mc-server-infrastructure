@@ -62,6 +62,31 @@ Copy `sample.env` to `.env` and modify the following settings:
 - `PVP_ENABLED`: Enable/disable player vs player combat
 - `ONLINE_MODE`: Enable Mojang authentication (set to false for offline/cracked servers)
 
+### Docker Configuration (for Parallel Servers)
+
+These settings allow you to run multiple server instances in parallel without conflicts:
+
+- `CONTAINER_NAME`: Docker container name (default: `private-mc-server`)
+- `HOST_PORT`: Host port for Minecraft server (default: `25565`)
+- `HOST_RCON_PORT`: Host port for RCON (default: `8100`)
+- `VOLUME_NAME`: Docker volume name for persistent data (default: `mcserver`)
+
+**Running Parallel Development Servers**: To run multiple servers simultaneously (e.g., for testing different configurations), create separate `.env` files with different values for these settings and use `docker compose --env-file <env-file>` to start each server.
+
+Example for a second server:
+```bash
+# Create a separate env file for the second server
+cp sample.env .env.dev2
+# Edit .env.dev2 and change:
+# - CONTAINER_NAME=private-mc-server-dev2
+# - HOST_PORT=25566
+# - HOST_RCON_PORT=8101
+# - VOLUME_NAME=mcserver-dev2
+
+# Start the second server
+docker compose --env-file .env.dev2 up -d --build
+```
+
 ## Management
 
 ### Starting the Server

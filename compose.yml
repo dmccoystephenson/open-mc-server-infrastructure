@@ -6,17 +6,13 @@ services:
         - MINECRAFT_VERSION=${MINECRAFT_VERSION}
     image: private-mc-server
     restart: always
-    container_name: private-mc-server
+    container_name: ${CONTAINER_NAME:-private-mc-server}
     ports:
-      - "25565:25565"
-      - "8100:8100"
+      - "${HOST_PORT:-25565}:25565"
+      - "${HOST_RCON_PORT:-8100}:8100"
     volumes:
-      - type: volume
-        source: mcserver
-        target: /mcserver
-      - type: bind
-        source: ./deposit-box
-        target: /deposit-box
+      - mcserver:/mcserver
+      - ./deposit-box:/deposit-box
     environment:
       - MINECRAFT_VERSION=${MINECRAFT_VERSION}
       - OPERATOR_UUID=${OPERATOR_UUID}
@@ -32,3 +28,5 @@ services:
 
 volumes:
   mcserver:
+    name: ${VOLUME_NAME:-mcserver}
+    external: false
