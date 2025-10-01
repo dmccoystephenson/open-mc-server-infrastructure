@@ -42,6 +42,23 @@ setup_server() {
         mkdir -p "$SERVER_DIR"/plugins
     else
         log "Server is already set up."
+        
+        # Check if we need to update the server JAR for a version upgrade
+        local new_jar="$BUILD_DIR/spigot-${MINECRAFT_VERSION}.jar"
+        local current_jar="$SERVER_DIR/spigot-${MINECRAFT_VERSION}.jar"
+        
+        if [ ! -f "$current_jar" ]; then
+            log "Detected version change - updating server JAR to ${MINECRAFT_VERSION}..."
+            
+            # Remove old version JARs
+            rm -f "$SERVER_DIR"/spigot-*.jar
+            
+            # Copy new version JAR
+            cp "$new_jar" "$current_jar"
+            log "Server JAR updated successfully."
+        else
+            log "Server JAR is up to date (version ${MINECRAFT_VERSION})."
+        fi
     fi
 }
 
