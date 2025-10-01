@@ -7,7 +7,7 @@ RUN DEBIAN_FRONTEND=noninteractive apt install -y wget git openjdk-21-jdk openjd
 FROM base as builder
 
 # Accept Minecraft version as build argument
-ARG MINECRAFT_VERSION=1.21.8
+ARG MINECRAFT_VERSION=1.21.9
 
 # Build server
 WORKDIR /mcserver-build
@@ -18,7 +18,7 @@ RUN java -jar BuildTools.jar --rev ${MINECRAFT_VERSION}
 FROM base as final
 
 # Accept Minecraft version as build argument
-ARG MINECRAFT_VERSION=1.21.8
+ARG MINECRAFT_VERSION=1.21.9
 
 # Copy built server from builder stage
 COPY --from=builder /mcserver-build/spigot-${MINECRAFT_VERSION}.jar /mcserver-build/spigot-${MINECRAFT_VERSION}.jar
