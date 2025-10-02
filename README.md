@@ -153,6 +153,12 @@ This script automates the entire upgrade process:
 - Updates configuration
 - Rebuilds with the new version
 - Starts the server
+- Verifies successful server startup
+
+**New features:**
+- Use `./upgrade.sh --dry-run <version>` to preview the upgrade plan without making changes
+- Automatic server startup verification
+- Automatic rollback support with `./rollback.sh` if issues occur
 
 ### Upgrade to a New Minecraft Version
 
