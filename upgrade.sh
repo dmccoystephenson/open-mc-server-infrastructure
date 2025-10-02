@@ -204,6 +204,20 @@ main() {
                 dry_run_mode=true
                 shift
                 ;;
+            --help|-h)
+                echo "Usage: $0 [OPTIONS] [VERSION]"
+                echo ""
+                echo "Options:"
+                echo "  --dry-run [VERSION]  Display upgrade plan without executing"
+                echo "  --help, -h           Show this help message"
+                echo ""
+                echo "Examples:"
+                echo "  $0                   # Interactive upgrade"
+                echo "  $0 1.21.10           # Upgrade to version 1.21.10"
+                echo "  $0 --dry-run 1.21.10 # Preview upgrade to 1.21.10"
+                echo ""
+                exit 0
+                ;;
             *)
                 new_version="$1"
                 shift

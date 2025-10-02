@@ -135,6 +135,35 @@ restore_backup() {
 
 # Main rollback process
 main() {
+    # Parse command line arguments
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+            --help|-h)
+                echo "Usage: $0 [OPTIONS]"
+                echo ""
+                echo "Rollback the Minecraft server to a previous backup."
+                echo ""
+                echo "Options:"
+                echo "  --help, -h    Show this help message"
+                echo ""
+                echo "This script will:"
+                echo "  1. List available backups"
+                echo "  2. Prompt you to select a backup to restore"
+                echo "  3. Stop the server"
+                echo "  4. Restore from the selected backup"
+                echo "  5. Rebuild with the previous version"
+                echo "  6. Start the server"
+                echo ""
+                exit 0
+                ;;
+            *)
+                echo "Unknown option: $1"
+                echo "Use --help for usage information"
+                exit 1
+                ;;
+        esac
+    done
+    
     echo "=========================================="
     echo "  Minecraft Server Rollback Script"
     echo "=========================================="
@@ -285,5 +314,5 @@ main() {
     echo ""
 }
 
-# Run main function
-main
+# Run main function with all arguments
+main "$@"
