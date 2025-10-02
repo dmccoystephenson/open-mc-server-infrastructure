@@ -62,6 +62,31 @@ Copy `sample.env` to `.env` and modify the following settings:
 - `PVP_ENABLED`: Enable/disable player vs player combat
 - `ONLINE_MODE`: Enable Mojang authentication (set to false for offline/cracked servers)
 
+### Docker Configuration (for Parallel Servers)
+
+These settings allow you to run multiple server instances in parallel without conflicts:
+
+- `CONTAINER_NAME`: Docker container name (default: `private-mc-server`)
+- `HOST_PORT`: Host port for Minecraft server (default: `25565`)
+- `HOST_RCON_PORT`: Host port for RCON (default: `8100`)
+- `VOLUME_NAME`: Docker volume name for persistent data (default: `mcserver`)
+
+**Running Parallel Development Servers**: To run multiple servers simultaneously (e.g., for testing different configurations), create separate `.env` files with different values for these settings and use `docker compose --env-file <env-file>` to start each server.
+
+Example for a second server:
+```bash
+# Create a separate env file for the second server
+cp sample.env .env.dev2
+# Edit .env.dev2 and change:
+# - CONTAINER_NAME=private-mc-server-dev2
+# - HOST_PORT=25566
+# - HOST_RCON_PORT=8101
+# - VOLUME_NAME=mcserver-dev2
+
+# Start the second server
+docker compose --env-file .env.dev2 up -d --build
+```
+
 ## Management
 
 ### Starting the Server
@@ -89,6 +114,8 @@ docker compose down
 docker logs -f private-mc-server
 ```
 
+**Note**: Replace `private-mc-server` with your `CONTAINER_NAME` value if you've customized it.
+
 ## File Management
 
 ### Backup Server Data
@@ -96,11 +123,15 @@ docker logs -f private-mc-server
 docker cp private-mc-server:/mcserver ./backup/
 ```
 
+**Note**: Replace `private-mc-server` with your `CONTAINER_NAME` value if you've customized it.
+
 ### Restore Server Data
 ```bash
 docker cp ./backup/ private-mc-server:/mcserver
 docker compose restart
 ```
+
+**Note**: Replace `private-mc-server` with your `CONTAINER_NAME` value if you've customized it.
 
 ### Deposit Box
 The `deposit-box` directory is shared between your host system and the container at `/deposit-box`. Use it to transfer files to/from the server.
@@ -148,18 +179,18 @@ docker compose build --no-cache
 ## Troubleshooting
 
 ### Server Won't Start
-- Check Docker logs: `docker logs private-mc-server`
+- Check Docker logs: `docker logs private-mc-server` (use your `CONTAINER_NAME` value)
 - Ensure all required environment variables are set
 - Verify Docker and Docker Compose are installed
 
 ### Can't Connect to Server
-- Ensure port 25565 is open/forwarded
+- Ensure port 25565 is open/forwarded (or your custom `HOST_PORT` value)
 - Check if `ONLINE_MODE` setting matches your client type
 - Verify the server is running: `docker ps`
 
 ### Performance Issues
 - Adjust memory allocation in `sample.env` by setting appropriate values
-- Monitor system resources: `docker stats private-mc-server`
+- Monitor system resources: `docker stats private-mc-server` (use your `CONTAINER_NAME` value)
 
 ## Security Notes
 

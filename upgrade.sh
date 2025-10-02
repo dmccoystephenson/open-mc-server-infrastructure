@@ -31,9 +31,21 @@ log_error() {
     echo -e "${RED}[ERROR]${NC} $1"
 }
 
+# Function to load env value
+get_env_value() {
+    local key=$1
+    local default=$2
+    if [ -f .env ]; then
+        grep "^${key}=" .env | cut -d'=' -f2 || echo "$default"
+    else
+        echo "$default"
+    fi
+}
+
 # Function to check if server is running
 is_server_running() {
-    docker ps --format '{{.Names}}' | grep -q "^private-mc-server$"
+    local container_name=$(get_env_value "CONTAINER_NAME" "private-mc-server")
+    docker ps --format '{{.Names}}' | grep -q "^${container_name}$"
 }
 
 # Function to get current version from .env
@@ -50,12 +62,14 @@ create_backup() {
     local backup_dir
     backup_dir="./backups/backup-$(date +%Y%m%d-%H%M%S)"
     
+    local volume_name=$(get_env_value "VOLUME_NAME" "mcserver")
+    
     log_info "Creating backup at: $backup_dir"
     mkdir -p "$backup_dir"
     
     # Use docker run to create a tarball backup from the volume
     docker run --rm \
-        -v mcserver:/mcserver:ro \
+        -v "${volume_name}:/mcserver:ro" \
         -v "$(pwd)/$backup_dir":/backup \
         ubuntu \
         tar czf /backup/mcserver-backup.tar.gz -C /mcserver . 2>/dev/null || {
@@ -189,11 +203,13 @@ main() {
     log_info "Waiting for server to initialize..."
     sleep 5
     
+    local container_name=$(get_env_value "CONTAINER_NAME" "private-mc-server")
+    
     # Show recent logs
     echo ""
     log_info "Recent server logs:"
     echo "----------------------------------------"
-    docker logs private-mc-server --tail 20 2>&1 || log_warning "Could not retrieve logs"
+    docker logs "$container_name" --tail 20 2>&1 || log_warning "Could not retrieve logs"
     echo "----------------------------------------"
     echo ""
     
@@ -207,8 +223,9 @@ main() {
     echo "  - New version: $new_version"
     echo "  - Backup location: $backup_dir"
     echo ""
+    local container_name=$(get_env_value "CONTAINER_NAME" "private-mc-server")
     log_info "Next steps:"
-    echo "  1. Monitor logs: docker logs -f private-mc-server"
+    echo "  1. Monitor logs: docker logs -f $container_name"
     echo "  2. Connect to the server and verify everything works"
     echo "  3. Check that plugins are compatible with the new version"
     echo ""
