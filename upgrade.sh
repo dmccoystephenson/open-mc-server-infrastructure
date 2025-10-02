@@ -57,6 +57,52 @@ get_current_version() {
     fi
 }
 
+# Function to get volume disk usage
+get_volume_usage() {
+    local volume_name=$(get_env_value "VOLUME_NAME" "mcserver")
+    
+    # Check if volume exists
+    if ! docker volume inspect "$volume_name" &>/dev/null; then
+        echo "N/A (volume does not exist)"
+        return
+    fi
+    
+    # Get disk usage of the volume
+    local usage=$(docker run --rm -v "${volume_name}:/mcserver:ro" ubuntu du -sh /mcserver 2>/dev/null | cut -f1 || echo "N/A")
+    echo "$usage"
+}
+
+# Function to perform dry-run
+dry_run() {
+    local new_version=$1
+    local current_version=$(get_current_version)
+    local backup_dir="./backups/backup-$(date +%Y%m%d-%H%M%S)"
+    local volume_usage=$(get_volume_usage)
+    
+    echo "=========================================="
+    echo "  Upgrade Dry Run"
+    echo "=========================================="
+    echo ""
+    log_info "Upgrade Plan:"
+    echo ""
+    echo "  Current Version:        $current_version"
+    echo "  Target Version:         $new_version"
+    echo "  Current Disk Usage:     $volume_usage"
+    echo "  Planned Backup Location: $backup_dir"
+    echo ""
+    log_info "Steps that will be performed:"
+    echo "  1. Stop the server"
+    echo "  2. Create backup at $backup_dir"
+    echo "  3. Update MINECRAFT_VERSION in .env to $new_version"
+    echo "  4. Rebuild Docker image (10-15 minutes)"
+    echo "  5. Start the server"
+    echo "  6. Verify server startup"
+    echo ""
+    log_info "To proceed with the upgrade, run:"
+    echo "  ./upgrade.sh"
+    echo ""
+}
+
 # Function to create backup
 create_backup() {
     local backup_dir
@@ -109,8 +155,62 @@ update_env_version() {
     fi
 }
 
+# Function to verify server startup
+verify_server_startup() {
+    local container_name=$(get_env_value "CONTAINER_NAME" "private-mc-server")
+    local max_wait=120  # Wait up to 2 minutes
+    local wait_time=0
+    local check_interval=5
+    
+    log_info "Verifying server startup..."
+    
+    while [ $wait_time -lt $max_wait ]; do
+        # Check if container is still running
+        if ! docker ps --format '{{.Names}}' | grep -q "^${container_name}$"; then
+            log_error "Container stopped unexpectedly!"
+            return 1
+        fi
+        
+        # Check logs for successful startup indicator
+        if docker logs "$container_name" 2>&1 | grep -q "Done ([0-9]*\.[0-9]*s)! For help, type \"help\""; then
+            log_success "Server started successfully!"
+            return 0
+        fi
+        
+        # Check for critical errors
+        if docker logs "$container_name" 2>&1 | grep -qE "(Error|Exception|Failed to start|Could not load)" | grep -v "warnings"; then
+            log_warning "Potential errors detected in logs. Please review."
+        fi
+        
+        sleep $check_interval
+        wait_time=$((wait_time + check_interval))
+        log_info "Waiting for server startup... ($wait_time/${max_wait}s)"
+    done
+    
+    log_warning "Server startup verification timed out after ${max_wait}s"
+    log_info "Please check logs manually: docker logs -f $container_name"
+    return 1
+}
+
 # Main upgrade process
 main() {
+    # Parse command line arguments
+    local dry_run_mode=false
+    local new_version=""
+    
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+            --dry-run)
+                dry_run_mode=true
+                shift
+                ;;
+            *)
+                new_version="$1"
+                shift
+                ;;
+        esac
+    done
+    
     echo "=========================================="
     echo "  Minecraft Server Upgrade Script"
     echo "=========================================="
@@ -129,12 +229,20 @@ main() {
     log_info "Current Minecraft version: $current_version"
     echo ""
     
-    # Prompt for new version
-    read -r -p "Enter the new Minecraft version (e.g., 1.21.9): " new_version
+    # Prompt for new version if not provided
+    if [ -z "$new_version" ]; then
+        read -r -p "Enter the new Minecraft version (e.g., 1.21.9): " new_version
+    fi
     
     if [ -z "$new_version" ]; then
         log_error "No version specified. Aborting."
         exit 1
+    fi
+    
+    # If dry-run mode, show plan and exit
+    if [ "$dry_run_mode" = true ]; then
+        dry_run "$new_version"
+        exit 0
     fi
     
     # Confirm upgrade
@@ -169,6 +277,10 @@ main() {
         log_error "Backup failed! Aborting upgrade."
         exit 1
     fi
+    
+    # Save the .env file to the backup directory for rollback purposes
+    cp .env "$backup_dir/.env.backup" 2>/dev/null || true
+    
     echo ""
     
     # Step 3: Update version in .env
@@ -198,10 +310,17 @@ main() {
     log_success "Server started"
     echo ""
     
-    # Step 6: Monitor startup
-    log_info "Step 6/6: Monitoring server startup..."
-    log_info "Waiting for server to initialize..."
-    sleep 5
+    # Step 6: Monitor startup and verify
+    log_info "Step 6/6: Verifying server startup..."
+    if verify_server_startup; then
+        echo ""
+    else
+        log_error "Server startup verification failed!"
+        log_warning "Please check the logs manually: docker logs -f $(get_env_value 'CONTAINER_NAME' 'private-mc-server')"
+        log_warning "Your backup is available at: $backup_dir"
+        log_info "To rollback, use: ./rollback.sh"
+        exit 1
+    fi
     
     local container_name=$(get_env_value "CONTAINER_NAME" "private-mc-server")
     
@@ -230,10 +349,10 @@ main() {
     echo "  3. Check that plugins are compatible with the new version"
     echo ""
     log_info "If you encounter issues:"
-    echo "  - See the rollback procedure in UPGRADE-GUIDE.md"
+    echo "  - Run: ./rollback.sh"
     echo "  - Your backup is available at: $backup_dir"
     echo ""
 }
 
-# Run main function
-main
+# Run main function with all arguments
+main "$@"
