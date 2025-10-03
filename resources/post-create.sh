@@ -86,6 +86,7 @@ install_default_plugins() {
     IFS=',' read -ra PLUGIN_URLS <<< "$DEFAULT_PLUGINS"
     local success_count=0
     local fail_count=0
+    local skip_count=0
     
     for url in "${PLUGIN_URLS[@]}"; do
         # Trim whitespace
@@ -100,6 +101,13 @@ install_default_plugins() {
         local filename
         filename=$(basename "$url")
         
+        # Check if plugin already exists
+        if [ -f "$SERVER_DIR/plugins/$filename" ]; then
+            log "Plugin already exists: $filename (skipping download)"
+            skip_count=$((skip_count + 1))
+            continue
+        fi
+        
         log "Downloading plugin: $filename from $url"
         
         # Download the plugin
@@ -112,8 +120,8 @@ install_default_plugins() {
         fi
     done
     
-    if [ $success_count -gt 0 ]; then
-        log "Plugin installation completed: $success_count succeeded, $fail_count failed"
+    if [ $success_count -gt 0 ] || [ $skip_count -gt 0 ]; then
+        log "Plugin installation completed: $success_count downloaded, $skip_count already present, $fail_count failed"
     else
         log "No plugins were successfully installed."
     fi

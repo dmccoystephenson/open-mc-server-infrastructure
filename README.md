@@ -71,11 +71,9 @@ Copy `sample.env` to `.env` and modify the following settings:
 DEFAULT_PLUGINS=https://example.com/plugin1.jar,https://example.com/plugin2.jar
 ```
 
-The server will automatically download and install these plugins to the `plugins` directory during setup. If a plugin download fails, the server will log a warning but continue with the remaining plugins.
+The server will automatically download and install these plugins to the `plugins` directory during setup. Plugins that already exist will be skipped (not re-downloaded). If a plugin download fails, the server will log a warning but continue with the remaining plugins.
 
-**Note**: Plugins are only downloaded during server setup. To update plugins, you can either:
-- Use the `deposit-box` directory to manually copy plugin JARs
-- Set `OVERWRITE_EXISTING_SERVER=true` to trigger a fresh setup (⚠️ this will delete your world)
+**Note**: To update an existing plugin, remove the old version from the plugins directory first, then restart the server.
 
 ### Docker Configuration (for Parallel Servers)
 
