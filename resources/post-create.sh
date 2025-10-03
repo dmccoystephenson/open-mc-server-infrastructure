@@ -69,6 +69,56 @@ setup_server() {
     fi
 }
 
+# Function: Install default plugins
+install_default_plugins() {
+    # Check if DEFAULT_PLUGINS is defined and not empty
+    if [ -z "${DEFAULT_PLUGINS:-}" ]; then
+        log "No default plugins configured."
+        return 0
+    fi
+    
+    log "Installing default plugins..."
+    
+    # Ensure plugins directory exists
+    mkdir -p "$SERVER_DIR"/plugins
+    
+    # Split the comma-separated list and download each plugin
+    IFS=',' read -ra PLUGIN_URLS <<< "$DEFAULT_PLUGINS"
+    local success_count=0
+    local fail_count=0
+    
+    for url in "${PLUGIN_URLS[@]}"; do
+        # Trim whitespace
+        url=$(echo "$url" | xargs)
+        
+        # Skip empty entries
+        if [ -z "$url" ]; then
+            continue
+        fi
+        
+        # Extract filename from URL
+        local filename
+        filename=$(basename "$url")
+        
+        log "Downloading plugin: $filename from $url"
+        
+        # Download the plugin
+        if wget -q -O "$SERVER_DIR/plugins/$filename" "$url"; then
+            log "Successfully downloaded: $filename"
+            success_count=$((success_count + 1))
+        else
+            log "WARNING: Failed to download plugin from $url"
+            fail_count=$((fail_count + 1))
+        fi
+    done
+    
+    if [ $success_count -gt 0 ]; then
+        log "Plugin installation completed: $success_count succeeded, $fail_count failed"
+    else
+        log "No plugins were successfully installed."
+    fi
+}
+
 # Function: Setup ops.json file
 setup_ops_file() {
     # Only create ops.json if we have valid operator information
@@ -174,6 +224,7 @@ start_server() {
 log "Running server setup script..."
 validate_environment
 setup_server
+install_default_plugins
 setup_ops_file
 accept_eula
 create_server_properties
