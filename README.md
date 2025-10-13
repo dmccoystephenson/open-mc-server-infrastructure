@@ -11,6 +11,7 @@ A Docker-based private Minecraft server running the latest version of Minecraft 
 - **Configurable**: Environment-based configuration
 - **Persistent Data**: Server data persists across container restarts
 - **Easy Management**: Simple scripts for starting and stopping the server
+- **Email Alerts**: Automatic notifications when server is overloaded (see [EMAIL-ALERTS.md](EMAIL-ALERTS.md))
 
 ## Prerequisites
 
@@ -99,6 +100,8 @@ Configure email alerts to be notified when the server is overloaded:
 - `SMTP_FROM`: From address for alert emails (optional)
 
 **Note**: The server will automatically monitor for "Can't keep up!" messages and send email alerts. Alerts have a 5-minute cooldown to prevent spam. If SMTP settings are not provided, the system will attempt to use the default mail configuration.
+
+📧 **For detailed setup instructions and troubleshooting, see [EMAIL-ALERTS.md](EMAIL-ALERTS.md)**
 
 ## Management
 
