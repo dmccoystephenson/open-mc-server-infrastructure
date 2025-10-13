@@ -25,6 +25,12 @@ services:
       - GAMEMODE=${GAMEMODE}
       - PVP_ENABLED=${PVP_ENABLED}
       - ONLINE_MODE=${ONLINE_MODE}
+      - ALERT_EMAIL=${ALERT_EMAIL}
+      - SMTP_HOST=${SMTP_HOST}
+      - SMTP_PORT=${SMTP_PORT}
+      - SMTP_USER=${SMTP_USER}
+      - SMTP_PASSWORD=${SMTP_PASSWORD}
+      - SMTP_FROM=${SMTP_FROM}
 
 volumes:
   mcserver:
