@@ -2,7 +2,7 @@ FROM ubuntu as base
 
 # Install dependencies
 RUN apt update
-RUN DEBIAN_FRONTEND=noninteractive apt install -y wget git openjdk-21-jdk openjdk-21-jre
+RUN DEBIAN_FRONTEND=noninteractive apt install -y wget git openjdk-21-jdk openjdk-21-jre mailutils
 
 FROM base as builder
 
@@ -25,7 +25,7 @@ COPY --from=builder /mcserver-build/spigot-${MINECRAFT_VERSION}.jar /mcserver-bu
 
 # Copy resources and make scripts executable
 COPY ./resources /resources
-RUN chmod +x /resources/post-create.sh /resources/minecraft-wrapper.sh
+RUN chmod +x /resources/post-create.sh /resources/minecraft-wrapper.sh /resources/monitor-overload.sh
 
 # Run server
 WORKDIR /mcserver

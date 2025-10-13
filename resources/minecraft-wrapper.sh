@@ -13,12 +13,19 @@ SERVER_JAR="$1"
 SERVER_DIR="$2" 
 JAVA_OPTS="$3"
 PID=""
+MONITOR_PID=""
 INPUT_FIFO="$SERVER_DIR/server_input"
 
 # Function: Graceful shutdown  
 # shellcheck disable=SC2317  # Function called via signal trap
 graceful_shutdown() {
     log "Received shutdown signal, initiating graceful server stop..."
+    
+    # Stop the monitor if it's running
+    if [ -n "$MONITOR_PID" ] && kill -0 "$MONITOR_PID" 2>/dev/null; then
+        log "Stopping overload monitor..."
+        kill -TERM "$MONITOR_PID" 2>/dev/null || true
+    fi
     
     if [ -n "$PID" ] && kill -0 "$PID" 2>/dev/null; then
         log "Sending 'stop' command to Minecraft server..."
@@ -87,9 +94,26 @@ PID=$!
 
 log "Minecraft server started with PID: $PID"
 
+# Start overload monitoring if ALERT_EMAIL is configured
+if [ -n "${ALERT_EMAIL:-}" ]; then
+    log "Starting overload monitor..."
+    /resources/monitor-overload.sh "$SERVER_DIR" &
+    MONITOR_PID=$!
+    log "Overload monitor started with PID: $MONITOR_PID"
+else
+    log "ALERT_EMAIL not configured, skipping overload monitoring"
+fi
+
 # Wait until the server process finishes or a termination signal is received
 wait "$PID"
 EXIT_CODE=$?
+
+# Clean up monitor if running
+if [ -n "$MONITOR_PID" ] && kill -0 "$MONITOR_PID" 2>/dev/null; then
+    log "Stopping overload monitor..."
+    kill -TERM "$MONITOR_PID" 2>/dev/null || true
+    wait "$MONITOR_PID" 2>/dev/null || true
+fi
 
 # Clean up FIFO keeper
 kill "$FIFO_KEEPER_PID" 2>/dev/null || true
