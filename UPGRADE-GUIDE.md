@@ -55,7 +55,7 @@ The script will:
 **Example usage:**
 ```bash
 ./upgrade.sh
-# When prompted, enter the new version (e.g., 1.21.9)
+# When prompted, enter the new version (e.g., 1.21.10)
 # Confirm the upgrade when asked
 # Script handles the rest automatically
 ```
@@ -161,10 +161,10 @@ Update the `MINECRAFT_VERSION` variable:
 
 ```bash
 # Change from (example):
-MINECRAFT_VERSION=1.21.8
+MINECRAFT_VERSION=1.21.9
 
 # To your target version (example):
-MINECRAFT_VERSION=1.21.9
+MINECRAFT_VERSION=1.21.10
 ```
 
 **Note**: The version must match an available Spigot build. Check [Spigot BuildTools](https://www.spigotmc.org/wiki/buildtools/) for supported versions.
