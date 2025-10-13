@@ -130,7 +130,7 @@ main() {
     echo ""
     
     # Prompt for new version
-    read -r -p "Enter the new Minecraft version (e.g., 1.21.9): " new_version
+    read -r -p "Enter the new Minecraft version (e.g., 1.21.10): " new_version
     
     if [ -z "$new_version" ]; then
         log_error "No version specified. Aborting."
