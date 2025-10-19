@@ -20,13 +20,23 @@ public class ServerController {
     }
     
     @GetMapping("/")
-    public String index(Model model) {
+    public String index() {
+        return "redirect:/public";
+    }
+    
+    @GetMapping("/public")
+    public String publicPage(Model model) {
         RconService.ServerStatus status = rconService.getServerStatus();
         model.addAttribute("status", status);
         model.addAttribute("dynmapUrl", serverConfig.getDynmapUrl());
         model.addAttribute("bluemapUrl", serverConfig.getBluemapUrl());
         model.addAttribute("refreshIntervalMs", serverConfig.getRefreshIntervalMs());
-        return "index";
+        return "public";
+    }
+    
+    @GetMapping("/admin")
+    public String adminPage() {
+        return "admin";
     }
     
     @PostMapping("/api/command")

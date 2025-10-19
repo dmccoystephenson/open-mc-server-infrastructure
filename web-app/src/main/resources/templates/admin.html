@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Console - Minecraft Server Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .nav {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        
+        .nav a {
+            color: white;
+            text-decoration: none;
+            padding: 10px 20px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            margin: 0 5px;
+            transition: background 0.3s ease;
+        }
+        
+        .nav a:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+        
+        .nav a.active {
+            background: rgba(255, 255, 255, 0.4);
+            font-weight: 600;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        .card h2 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 1.5em;
+        }
+        
+        .btn {
+            display: inline-block;
+            padding: 12px 24px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            border: none;
+            cursor: pointer;
+            font-size: 1em;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+        
+        .command-form {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        .command-input {
+            padding: 12px;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            font-size: 1em;
+            transition: border-color 0.3s ease;
+        }
+        
+        .command-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .command-row {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .command-row .command-input {
+            flex: 1;
+        }
+        
+        .command-output {
+            margin-top: 15px;
+            padding: 15px;
+            background: #f9fafb;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            min-height: 60px;
+            display: none;
+        }
+        
+        .command-output.show {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎮 Minecraft Server Dashboard</h1>
+            <p>Admin Console</p>
+        </div>
+        
+        <div class="nav">
+            <a href="/public">Public</a>
+            <a href="/admin" class="active">Admin</a>
+        </div>
+        
+        <div class="card">
+            <h2>Admin Console</h2>
+            <p style="color: #6b7280; margin-bottom: 15px;">Send commands to the server using RCON</p>
+            <form class="command-form" onsubmit="sendCommand(event)">
+                <input type="text" 
+                       id="usernameInput" 
+                       class="command-input" 
+                       placeholder="Admin username" 
+                       required>
+                <input type="password" 
+                       id="passwordInput" 
+                       class="command-input" 
+                       placeholder="Admin password" 
+                       required>
+                <div class="command-row">
+                    <input type="text" 
+                           id="commandInput" 
+                           class="command-input" 
+                           placeholder="Enter server command (e.g., list, say Hello)" 
+                           required>
+                    <button type="submit" class="btn btn-primary">Send</button>
+                </div>
+            </form>
+            <div id="commandOutput" class="command-output"></div>
+        </div>
+    </div>
+    
+    <script>
+        async function sendCommand(event) {
+            event.preventDefault();
+            
+            const usernameInput = document.getElementById('usernameInput');
+            const passwordInput = document.getElementById('passwordInput');
+            const commandInput = document.getElementById('commandInput');
+            const output = document.getElementById('commandOutput');
+            
+            const username = usernameInput.value.trim();
+            const password = passwordInput.value.trim();
+            const command = commandInput.value.trim();
+            
+            if (!username || !password || !command) return;
+            
+            output.textContent = 'Sending command...';
+            output.classList.add('show');
+            
+            try {
+                const response = await fetch('/api/command', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ 
+                        username: username,
+                        password: password,
+                        command: command 
+                    })
+                });
+                
+                const data = await response.json();
+                output.textContent = '> ' + command + '\n\n' + data.result;
+            } catch (error) {
+                output.textContent = 'Error: ' + error.message;
+            }
+        }
+    </script>
+</body>
+</html>

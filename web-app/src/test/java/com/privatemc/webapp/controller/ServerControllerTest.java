@@ -49,16 +49,32 @@ class ServerControllerTest {
     }
 
     @Test
-    @DisplayName("Should return index page on GET /")
-    void shouldReturnIndexPageOnGetRoot() throws Exception {
+    @DisplayName("Should redirect to /public on GET /")
+    void shouldRedirectToPublicOnGetRoot() throws Exception {
+        mockMvc.perform(get("/"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/public"));
+    }
+
+    @Test
+    @DisplayName("Should return public page on GET /public")
+    void shouldReturnPublicPageOnGetPublic() throws Exception {
         when(rconService.getServerStatus()).thenReturn(mockStatus);
 
-        mockMvc.perform(get("/"))
+        mockMvc.perform(get("/public"))
                 .andExpect(status().isOk())
-                .andExpect(view().name("index"))
+                .andExpect(view().name("public"))
                 .andExpect(model().attributeExists("status"))
                 .andExpect(model().attributeExists("dynmapUrl"))
                 .andExpect(model().attributeExists("bluemapUrl"));
+    }
+
+    @Test
+    @DisplayName("Should return admin page on GET /admin")
+    void shouldReturnAdminPageOnGetAdmin() throws Exception {
+        mockMvc.perform(get("/admin"))
+                .andExpect(status().isOk())
+                .andExpect(view().name("admin"));
     }
 
     @Test
