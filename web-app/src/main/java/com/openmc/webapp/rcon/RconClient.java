@@ -1,4 +1,4 @@
-package com.privatemc.webapp.rcon;
+package com.openmc.webapp.rcon;
 
 import java.io.*;
 import java.net.Socket;

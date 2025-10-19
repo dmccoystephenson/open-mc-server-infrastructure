@@ -1,4 +1,4 @@
-package com.privatemc.webapp;
+package com.openmc.webapp;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.DisplayName;

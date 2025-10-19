@@ -45,7 +45,7 @@ get_env_value() {
 # Function to check if server is running
 is_server_running() {
     local container_name
-    container_name=$(get_env_value "CONTAINER_NAME" "private-mc-server")
+    container_name=$(get_env_value "CONTAINER_NAME" "open-mc-server")
     docker ps --format '{{.Names}}' | grep -q "^${container_name}$"
 }
 
@@ -190,7 +190,7 @@ main() {
     sleep 5
     
     local container_name
-    container_name=$(get_env_value "CONTAINER_NAME" "private-mc-server")
+    container_name=$(get_env_value "CONTAINER_NAME" "open-mc-server")
     
     # Show recent logs
     echo ""
@@ -211,7 +211,7 @@ main() {
     echo "  - Backup location: $backup_dir"
     echo ""
     local container_name
-    container_name=$(get_env_value "CONTAINER_NAME" "private-mc-server")
+    container_name=$(get_env_value "CONTAINER_NAME" "open-mc-server")
     log_info "Next steps:"
     echo "  1. Monitor logs: docker logs -f $container_name"
     echo "  2. Connect to the server and verify everything works"

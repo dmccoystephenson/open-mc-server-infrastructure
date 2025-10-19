@@ -1,4 +1,4 @@
-package com.privatemc.webapp.rcon;
+package com.openmc.webapp.rcon;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.DisplayName;

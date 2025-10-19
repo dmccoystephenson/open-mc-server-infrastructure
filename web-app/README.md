@@ -28,7 +28,7 @@ The application is designed to be built before Docker image creation:
 ./gradlew build
 
 # Build the Docker image
-docker build -t private-mc-server-webapp .
+docker build -t open-mc-server-webapp .
 ```
 
 Or use the provided docker-compose which handles this automatically.

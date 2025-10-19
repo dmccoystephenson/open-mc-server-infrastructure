@@ -1,7 +1,7 @@
-package com.privatemc.webapp.service;
+package com.openmc.webapp.service;
 
-import com.privatemc.webapp.config.ServerConfig;
-import com.privatemc.webapp.rcon.RconClient;
+import com.openmc.webapp.config.ServerConfig;
+import com.openmc.webapp.rcon.RconClient;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;

@@ -1,4 +1,4 @@
-package com.privatemc.webapp.config;
+package com.openmc.webapp.config;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;

@@ -4,9 +4,9 @@ services:
       context: .
       args:
         - MINECRAFT_VERSION=${MINECRAFT_VERSION}
-    image: private-mc-server
+    image: open-mc-server
     restart: always
-    container_name: ${CONTAINER_NAME:-private-mc-server}
+    container_name: ${CONTAINER_NAME:-open-mc-server}
     ports:
       - "${HOST_PORT:-25565}:25565"
       - "${HOST_RCON_PORT:-25575}:25575"
@@ -31,9 +31,9 @@ services:
   webapp:
     build:
       context: ./web-app
-    image: private-mc-server-webapp
+    image: open-mc-server-webapp
     restart: always
-    container_name: ${WEB_CONTAINER_NAME:-private-mc-webapp}
+    container_name: ${WEB_CONTAINER_NAME:-open-mc-webapp}
     expose:
       - "8080"
     depends_on:
@@ -53,9 +53,9 @@ services:
   nginx:
     build:
       context: ./nginx
-    image: private-mc-server-nginx
+    image: open-mc-server-nginx
     restart: always
-    container_name: ${NGINX_CONTAINER_NAME:-private-mc-nginx}
+    container_name: ${NGINX_CONTAINER_NAME:-open-mc-nginx}
     ports:
       - "${WEB_HTTP_PORT:-8080}:80"
       - "${WEB_HTTPS_PORT:-8443}:443"

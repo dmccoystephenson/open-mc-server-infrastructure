@@ -1,6 +1,6 @@
-package com.privatemc.webapp.service;
+package com.openmc.webapp.service;
 
-import com.privatemc.webapp.config.ServerConfig;
+import com.openmc.webapp.config.ServerConfig;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.DisplayName;
