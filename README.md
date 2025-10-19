@@ -8,9 +8,11 @@ A Docker-based private Minecraft server running the latest version of Minecraft 
 
 - **Latest Minecraft Version**: Running Minecraft 1.21.10 with Spigot
 - **Docker Containerized**: Easy deployment and management
+- **Web Dashboard**: Built-in Spring Boot web application for server management
 - **Configurable**: Environment-based configuration
 - **Persistent Data**: Server data persists across container restarts
 - **Easy Management**: Simple scripts for starting and stopping the server
+- **RCON Support**: Send commands to the server remotely via web interface
 
 ## Prerequisites
 
@@ -32,7 +34,13 @@ A Docker-based private Minecraft server running the latest version of Minecraft 
    # Edit .env with your settings (see Configuration section)
    ```
 
-3. **Start the server**
+3. **Build the web application**
+   ```bash
+   chmod +x build-webapp.sh
+   ./build-webapp.sh
+   ```
+
+4. **Start the server**
    ```bash
    chmod +x up.sh down.sh
    ./up.sh
@@ -40,9 +48,20 @@ A Docker-based private Minecraft server running the latest version of Minecraft 
    
    **Note**: The first build will take 10-15 minutes as it downloads and compiles Spigot from source.
 
-4. **Connect to your server**
+5. **Connect to your server**
    - Server address: `localhost:25565` (or your server's IP)
+   - Web Dashboard: `http://localhost:8080` (or your server's IP with port 8080)
    - The server will take a few minutes to build on first run
+
+## Web Dashboard
+
+The server includes a built-in web dashboard that provides:
+
+- **Server Status**: Real-time view of server status, player count, and MOTD
+- **Admin Console**: Send commands to the server using RCON
+- **External Links**: Quick access to Dynmap, BlueMap, and other services
+
+Access the dashboard at `http://localhost:8080` (or your configured `WEB_PORT`).
 
 ## Configuration
 
@@ -68,8 +87,21 @@ These settings allow you to run multiple server instances in parallel without co
 
 - `CONTAINER_NAME`: Docker container name (default: `private-mc-server`)
 - `HOST_PORT`: Host port for Minecraft server (default: `25565`)
-- `HOST_RCON_PORT`: Host port for RCON (default: `8100`)
+- `HOST_RCON_PORT`: Host port for RCON (default: `25575`)
+- `HOST_BLUEMAP_PORT`: Host port for BlueMap (default: `8100`)
 - `VOLUME_NAME`: Docker volume name for persistent data (default: `mcserver`)
+
+### Web Dashboard Configuration
+
+- `WEB_CONTAINER_NAME`: Web application container name (default: `private-mc-webapp`)
+- `WEB_PORT`: Web application port (default: `8080`)
+- `RCON_PASSWORD`: Password for RCON authentication (default: `minecraft`)
+- `ADMIN_USERNAME`: Username for admin console authentication (default: `admin`)
+- `ADMIN_PASSWORD`: Password for admin console authentication (default: `admin`)
+- `DYNMAP_URL`: URL to Dynmap web interface (optional)
+- `BLUEMAP_URL`: URL to BlueMap web interface (optional)
+
+**Note**: The RCON password must match between the server and web application for admin commands to work. Change the admin username and password from defaults in production for security.
 
 **Running Parallel Development Servers**: To run multiple servers simultaneously (e.g., for testing different configurations), create separate `.env` files with different values for these settings and use `docker compose --env-file <env-file>` to start each server.
 
@@ -80,8 +112,11 @@ cp sample.env .env.dev2
 # Edit .env.dev2 and change:
 # - CONTAINER_NAME=private-mc-server-dev2
 # - HOST_PORT=25566
-# - HOST_RCON_PORT=8101
+# - HOST_RCON_PORT=25576
+# - HOST_BLUEMAP_PORT=8101
 # - VOLUME_NAME=mcserver-dev2
+# - WEB_CONTAINER_NAME=private-mc-webapp-dev2
+# - WEB_PORT=8081
 
 # Start the second server
 docker compose --env-file .env.dev2 up -d --build

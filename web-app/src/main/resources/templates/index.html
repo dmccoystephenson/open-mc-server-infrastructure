@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minecraft Server Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        .card h2 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 1.5em;
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        
+        .status-online {
+            background-color: #22c55e;
+            box-shadow: 0 0 8px rgba(34, 197, 94, 0.5);
+        }
+        
+        .status-offline {
+            background-color: #ef4444;
+            box-shadow: 0 0 8px rgba(239, 68, 68, 0.5);
+        }
+        
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        
+        .info-row:last-child {
+            border-bottom: none;
+        }
+        
+        .info-label {
+            font-weight: 600;
+            color: #6b7280;
+        }
+        
+        .info-value {
+            color: #111827;
+        }
+        
+        .links {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+        
+        .btn {
+            display: inline-block;
+            padding: 12px 24px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            border: none;
+            cursor: pointer;
+            font-size: 1em;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn-secondary {
+            background: #f3f4f6;
+            color: #374151;
+        }
+        
+        .btn-secondary:hover {
+            background: #e5e7eb;
+        }
+        
+        .command-form {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        .command-input {
+            flex: 1;
+            padding: 12px;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            font-size: 1em;
+            transition: border-color 0.3s ease;
+        }
+        
+        .command-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .command-output {
+            margin-top: 15px;
+            padding: 15px;
+            background: #f9fafb;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            min-height: 60px;
+            display: none;
+        }
+        
+        .command-output.show {
+            display: block;
+        }
+        
+        .empty-link {
+            color: #9ca3af;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎮 Minecraft Server Dashboard</h1>
+            <p>Server Management & Information</p>
+        </div>
+        
+        <div class="card">
+            <h2>Server Status</h2>
+            <div class="info-row">
+                <span class="info-label">Status</span>
+                <span class="info-value">
+                    <span th:class="${status.online} ? 'status-indicator status-online' : 'status-indicator status-offline'"></span>
+                    <span th:text="${status.online} ? 'Online' : 'Offline'">Online</span>
+                </span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">MOTD</span>
+                <span class="info-value" th:text="${status.motd}">A Private Minecraft Server</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Max Players</span>
+                <span class="info-value" th:text="${status.maxPlayers}">20</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Current Players</span>
+                <span class="info-value" th:text="${status.playerList}">Loading...</span>
+            </div>
+        </div>
+        
+        <div class="card">
+            <h2>External Services</h2>
+            <div class="links">
+                <a th:if="${dynmapUrl != null && !dynmapUrl.isEmpty()}" 
+                   th:href="${dynmapUrl}" 
+                   class="btn btn-primary" 
+                   target="_blank">
+                    🗺️ Dynmap
+                </a>
+                <span th:if="${dynmapUrl == null || dynmapUrl.isEmpty()}" class="empty-link">
+                    🗺️ Dynmap (Not configured)
+                </span>
+                
+                <a th:if="${bluemapUrl != null && !bluemapUrl.isEmpty()}" 
+                   th:href="${bluemapUrl}" 
+                   class="btn btn-primary" 
+                   target="_blank">
+                    🌐 BlueMap
+                </a>
+                <span th:if="${bluemapUrl == null || bluemapUrl.isEmpty()}" class="empty-link">
+                    🌐 BlueMap (Not configured)
+                </span>
+            </div>
+        </div>
+        
+        <div class="card">
+            <h2>Admin Console</h2>
+            <p style="color: #6b7280; margin-bottom: 15px;">Send commands to the server using RCON</p>
+            <form class="command-form" onsubmit="sendCommand(event)">
+                <input type="text" 
+                       id="usernameInput" 
+                       class="command-input" 
+                       placeholder="Admin username" 
+                       required
+                       style="margin-bottom: 10px;">
+                <input type="password" 
+                       id="passwordInput" 
+                       class="command-input" 
+                       placeholder="Admin password" 
+                       required
+                       style="margin-bottom: 10px;">
+                <input type="text" 
+                       id="commandInput" 
+                       class="command-input" 
+                       placeholder="Enter server command (e.g., list, say Hello)" 
+                       required>
+                <button type="submit" class="btn btn-primary">Send</button>
+            </form>
+            <div id="commandOutput" class="command-output"></div>
+        </div>
+    </div>
+    
+    <script>
+        async function sendCommand(event) {
+            event.preventDefault();
+            
+            const usernameInput = document.getElementById('usernameInput');
+            const passwordInput = document.getElementById('passwordInput');
+            const commandInput = document.getElementById('commandInput');
+            const output = document.getElementById('commandOutput');
+            
+            const username = usernameInput.value.trim();
+            const password = passwordInput.value.trim();
+            const command = commandInput.value.trim();
+            
+            if (!username || !password || !command) return;
+            
+            output.textContent = 'Sending command...';
+            output.classList.add('show');
+            
+            try {
+                const response = await fetch('/api/command', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ 
+                        username: username,
+                        password: password,
+                        command: command 
+                    })
+                });
+                
+                const data = await response.json();
+                output.textContent = '> ' + command + '\n\n' + data.result;
+            } catch (error) {
+                output.textContent = 'Error: ' + error.message;
+            }
+        }
+        
+        // Auto-refresh status every 30 seconds
+        setInterval(async () => {
+            try {
+                const response = await fetch('/api/status');
+                const status = await response.json();
+                location.reload();
+            } catch (error) {
+                console.error('Failed to refresh status:', error);
+            }
+        }, 30000);
+    </script>
+</body>
+</html>
