@@ -16,6 +16,7 @@ public class ServerConfig {
     private String bluemapUrl = "";
     private String adminUsername = "admin";
     private String adminPassword = "admin";
+    private long refreshIntervalMs = 1800000; // Default: 30 minutes
     
     // Getters and setters
     public String getHost() {
@@ -88,5 +89,13 @@ public class ServerConfig {
     
     public void setAdminPassword(String adminPassword) {
         this.adminPassword = adminPassword;
+    }
+    
+    public long getRefreshIntervalMs() {
+        return refreshIntervalMs;
+    }
+    
+    public void setRefreshIntervalMs(long refreshIntervalMs) {
+        this.refreshIntervalMs = refreshIntervalMs;
     }
 }

@@ -25,6 +25,7 @@ public class ServerController {
         model.addAttribute("status", status);
         model.addAttribute("dynmapUrl", serverConfig.getDynmapUrl());
         model.addAttribute("bluemapUrl", serverConfig.getBluemapUrl());
+        model.addAttribute("refreshIntervalMs", serverConfig.getRefreshIntervalMs());
         return "index";
     }
     

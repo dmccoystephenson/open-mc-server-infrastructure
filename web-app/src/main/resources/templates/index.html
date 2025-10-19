@@ -286,7 +286,8 @@
             }
         }
         
-        // Auto-refresh status every 30 seconds
+        // Auto-refresh status
+        const refreshInterval = /*[[${refreshIntervalMs}]]*/ 1800000;
         setInterval(async () => {
             try {
                 const response = await fetch('/api/status');
@@ -295,7 +296,7 @@
             } catch (error) {
                 console.error('Failed to refresh status:', error);
             }
-        }, 30000);
+        }, refreshInterval);
     </script>
 </body>
 </html>
