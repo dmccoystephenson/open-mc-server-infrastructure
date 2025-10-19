@@ -50,8 +50,9 @@ A Docker-based private Minecraft server running the latest version of Minecraft 
 
 5. **Connect to your server**
    - Server address: `localhost:25565` (or your server's IP)
-   - Web Dashboard: `http://localhost:8080` (or your server's IP with port 8080)
+   - Web Dashboard: `https://localhost:8443` (or your server's IP with port 8443)
    - The server will take a few minutes to build on first run
+   - **Note**: You'll see a security warning for the self-signed certificate. This is expected for development. See the Security section for production setup.
 
 ## Web Dashboard
 
@@ -60,8 +61,25 @@ The server includes a built-in web dashboard that provides:
 - **Server Status**: Real-time view of server status, player count, and MOTD
 - **Admin Console**: Send commands to the server using RCON
 - **External Links**: Quick access to Dynmap, BlueMap, and other services
+- **Secure Access**: HTTPS encryption with reverse proxy to protect credentials
 
-Access the dashboard at `http://localhost:8080` (or your configured `WEB_PORT`).
+Access the dashboard at `https://localhost:8443` (or your configured `WEB_HTTPS_PORT`). HTTP requests to port 8080 (or `WEB_HTTP_PORT`) will automatically redirect to HTTPS.
+
+### SSL Certificates
+
+The server uses self-signed SSL certificates by default for development. When you first access the web dashboard, your browser will show a security warning. This is expected and safe for local development.
+
+**For production use**, replace the self-signed certificates with certificates from a trusted Certificate Authority:
+
+1. Obtain SSL certificates (e.g., from [Let's Encrypt](https://letsencrypt.org/))
+2. Place your certificate in `nginx/ssl/cert.pem`
+3. Place your private key in `nginx/ssl/key.pem`
+4. Restart the services with `./up.sh`
+
+Alternatively, you can generate new self-signed certificates:
+```bash
+./scripts/generate-ssl-certs.sh
+```
 
 ## Configuration
 
@@ -94,14 +112,16 @@ These settings allow you to run multiple server instances in parallel without co
 ### Web Dashboard Configuration
 
 - `WEB_CONTAINER_NAME`: Web application container name (default: `private-mc-webapp`)
-- `WEB_PORT`: Web application port (default: `8080`)
+- `NGINX_CONTAINER_NAME`: Nginx reverse proxy container name (default: `private-mc-nginx`)
+- `WEB_HTTP_PORT`: HTTP port (redirects to HTTPS, default: `8080`)
+- `WEB_HTTPS_PORT`: HTTPS port (default: `8443`)
 - `RCON_PASSWORD`: Password for RCON authentication (default: `minecraft`)
 - `ADMIN_USERNAME`: Username for admin console authentication (default: `admin`)
 - `ADMIN_PASSWORD`: Password for admin console authentication (default: `admin`)
 - `DYNMAP_URL`: URL to Dynmap web interface (optional)
 - `BLUEMAP_URL`: URL to BlueMap web interface (optional)
 
-**Note**: The RCON password must match between the server and web application for admin commands to work. Change the admin username and password from defaults in production for security.
+**Note**: The RCON password must match between the server and web application for admin commands to work. Change the admin username and password from defaults in production for security. All connections to the web dashboard are encrypted using HTTPS to protect your credentials.
 
 **Running Parallel Development Servers**: To run multiple servers simultaneously (e.g., for testing different configurations), create separate `.env` files with different values for these settings and use `docker compose --env-file <env-file>` to start each server.
 
@@ -116,7 +136,9 @@ cp sample.env .env.dev2
 # - HOST_BLUEMAP_PORT=8101
 # - VOLUME_NAME=mcserver-dev2
 # - WEB_CONTAINER_NAME=private-mc-webapp-dev2
-# - WEB_PORT=8081
+# - NGINX_CONTAINER_NAME=private-mc-nginx-dev2
+# - WEB_HTTP_PORT=8081
+# - WEB_HTTPS_PORT=8444
 
 # Start the second server
 docker compose --env-file .env.dev2 up -d --build
@@ -229,10 +251,14 @@ docker compose build --no-cache
 
 ## Security Notes
 
+- **HTTPS Enabled**: All web dashboard connections are encrypted using HTTPS to protect admin credentials
 - Change default operator settings in `.env`
+- **Change default admin credentials**: Update `ADMIN_USERNAME` and `ADMIN_PASSWORD` in `.env`
+- **Production SSL**: Replace self-signed certificates with trusted CA certificates (e.g., Let's Encrypt) for production
 - Consider setting `ONLINE_MODE=true` for authentication
 - Don't expose the server publicly without proper security measures
 - Regularly backup your world data
+- Keep `RCON_PASSWORD` secure and different from default values
 
 ## License
 
