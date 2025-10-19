@@ -70,9 +70,16 @@ jobs:
       run: |
         echo "🌐 Building web application..."
         cd web-app
-        ./gradlew build -x test
+        ./gradlew build
         echo "✓ Web application built successfully"
         ls -lh build/libs/
+        
+    - name: Run web application tests
+      run: |
+        echo "🧪 Running web application tests..."
+        cd web-app
+        ./gradlew test
+        echo "✓ All tests passed"
         
     - name: Validate documentation
       run: |
