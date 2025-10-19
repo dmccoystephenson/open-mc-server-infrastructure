@@ -34,7 +34,7 @@ echo "✅ Environment configuration validation passed"
 
 echo "📚 Checking documentation..."
 test -f README.md
-grep -q "# Private Minecraft Server" README.md
+grep -q "# Open Minecraft Server Infrastructure" README.md
 test -f LICENSE
 echo "✅ Documentation validation passed"
 

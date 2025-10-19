@@ -250,7 +250,7 @@ Start the server and monitor the logs to ensure successful startup:
 ./up.sh
 
 # Monitor server logs in real-time
-docker logs -f private-mc-server
+docker logs -f open-mc-server
 ```
 
 **Look for these indicators of successful startup:**
@@ -344,10 +344,10 @@ After upgrading, verify that everything is working correctly:
 
 ```bash
 # Verify the container is running
-docker ps | grep private-mc-server
+docker ps | grep open-mc-server
 
 # Check server logs
-docker logs private-mc-server --tail 50
+docker logs open-mc-server --tail 50
 ```
 
 ### 2. Test Server Connection
@@ -366,12 +366,12 @@ docker logs private-mc-server --tail 50
 
 ```bash
 # Access server console
-docker exec -it private-mc-server screen -r minecraft
+docker exec -it open-mc-server screen -r minecraft
 # Use 'plugins' command to list all plugins
 # Press Ctrl+A then D to detach
 
 # Or view from logs
-docker logs private-mc-server | grep -i plugin
+docker logs open-mc-server | grep -i plugin
 ```
 
 Verify that:
@@ -391,10 +391,10 @@ Verify that:
 
 ```bash
 # Check resource usage
-docker stats private-mc-server
+docker stats open-mc-server
 
 # Watch for errors
-docker logs -f private-mc-server | grep -i error
+docker logs -f open-mc-server | grep -i error
 ```
 
 ## Troubleshooting
@@ -406,7 +406,7 @@ docker logs -f private-mc-server | grep -i error
 **Solutions**:
 1. Check the logs for specific errors:
    ```bash
-   docker logs private-mc-server
+   docker logs open-mc-server
    ```
 2. Common issues:
    - Incompatible world format: Rollback to previous version
@@ -420,7 +420,7 @@ docker logs -f private-mc-server | grep -i error
 **Solutions**:
 1. Verify the server is running the correct version:
    ```bash
-   docker logs private-mc-server | grep "Starting minecraft server version"
+   docker logs open-mc-server | grep "Starting minecraft server version"
    ```
 2. Ensure the Dockerfile version matches `.env`
 3. Rebuild the image if versions don't match:
@@ -449,7 +449,7 @@ docker logs -f private-mc-server | grep -i error
 2. Update plugins to compatible versions:
    ```bash
    # Copy updated plugin JARs to deposit-box
-   docker exec private-mc-server bash -c "cp /deposit-box/*.jar /mcserver/plugins/"
+   docker exec open-mc-server bash -c "cp /deposit-box/*.jar /mcserver/plugins/"
    docker compose restart
    ```
 3. Remove incompatible plugins and restart
@@ -461,7 +461,7 @@ docker logs -f private-mc-server | grep -i error
 **Solutions**:
 1. Check resource usage:
    ```bash
-   docker stats private-mc-server
+   docker stats open-mc-server
    ```
 2. Adjust memory allocation in your environment or `compose.yml`:
    ```yaml
@@ -499,7 +499,7 @@ If you encounter issues not covered in this guide:
 
 1. Check the [main README troubleshooting section](./README.md#troubleshooting)
 2. Review server logs for specific error messages
-3. Submit an issue on the [GitHub repository](https://github.com/dmccoystephenson/private-mc-server/issues)
+3. Submit an issue on the [GitHub repository](https://github.com/dmccoystephenson/open-mc-server/issues)
 
 ---
 

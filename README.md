@@ -1,8 +1,8 @@
-# Private Minecraft Server
+# Open Minecraft Server Infrastructure
 
 [![CI Pipeline](https://github.com/dmccoystephenson/private-mc-server/workflows/CI%20Pipeline/badge.svg?branch=main)](https://github.com/dmccoystephenson/private-mc-server/actions)
 
-A Docker-based private Minecraft server running the latest version of Minecraft (1.21.10) with Spigot for enhanced plugin support and performance.
+An open, community-agnostic, Docker-based Minecraft server infrastructure running the latest version of Minecraft (1.21.10) with Spigot for enhanced plugin support and performance. Highly configurable and customizable for any use case.
 
 ## Features
 
@@ -25,7 +25,7 @@ A Docker-based private Minecraft server running the latest version of Minecraft 
 1. **Clone the repository**
    ```bash
    git clone <your-repo-url>
-   cd private-mc-server
+   cd open-mc-server-infrastructure
    ```
 
 2. **Configure the server**
@@ -103,7 +103,7 @@ Copy `sample.env` to `.env` and modify the following settings:
 
 These settings allow you to run multiple server instances in parallel without conflicts:
 
-- `CONTAINER_NAME`: Docker container name (default: `private-mc-server`)
+- `CONTAINER_NAME`: Docker container name (default: `open-mc-server`)
 - `HOST_PORT`: Host port for Minecraft server (default: `25565`)
 - `HOST_RCON_PORT`: Host port for RCON (default: `25575`)
 - `HOST_BLUEMAP_PORT`: Host port for BlueMap (default: `8100`)
@@ -111,8 +111,8 @@ These settings allow you to run multiple server instances in parallel without co
 
 ### Web Dashboard Configuration
 
-- `WEB_CONTAINER_NAME`: Web application container name (default: `private-mc-webapp`)
-- `NGINX_CONTAINER_NAME`: Nginx reverse proxy container name (default: `private-mc-nginx`)
+- `WEB_CONTAINER_NAME`: Web application container name (default: `open-mc-webapp`)
+- `NGINX_CONTAINER_NAME`: Nginx reverse proxy container name (default: `open-mc-nginx`)
 - `WEB_HTTP_PORT`: HTTP port (redirects to HTTPS, default: `8080`)
 - `WEB_HTTPS_PORT`: HTTPS port (default: `8443`)
 - `RCON_PASSWORD`: Password for RCON authentication (default: `minecraft`)
@@ -130,13 +130,13 @@ Example for a second server:
 # Create a separate env file for the second server
 cp sample.env .env.dev2
 # Edit .env.dev2 and change:
-# - CONTAINER_NAME=private-mc-server-dev2
+# - CONTAINER_NAME=open-mc-server-dev2
 # - HOST_PORT=25566
 # - HOST_RCON_PORT=25576
 # - HOST_BLUEMAP_PORT=8101
 # - VOLUME_NAME=mcserver-dev2
-# - WEB_CONTAINER_NAME=private-mc-webapp-dev2
-# - NGINX_CONTAINER_NAME=private-mc-nginx-dev2
+# - WEB_CONTAINER_NAME=open-mc-webapp-dev2
+# - NGINX_CONTAINER_NAME=open-mc-nginx-dev2
 # - WEB_HTTP_PORT=8081
 # - WEB_HTTPS_PORT=8444
 
@@ -168,10 +168,10 @@ docker compose down
 
 ### Viewing Server Logs
 ```bash
-docker logs -f private-mc-server
+docker logs -f open-mc-server
 ```
 
-**Note**: Replace `private-mc-server` with your `CONTAINER_NAME` value if you've customized it.
+**Note**: Replace `open-mc-server` with your `CONTAINER_NAME` value if you've customized it.
 
 ## File Management
 
@@ -190,18 +190,18 @@ This creates a timestamped, compressed backup in `./backups/` and provides resto
 Alternatively, use Docker commands to manually copy server data:
 
 ```bash
-docker cp private-mc-server:/mcserver ./backup/
+docker cp open-mc-server:/mcserver ./backup/
 ```
 
-**Note**: Replace `private-mc-server` with your `CONTAINER_NAME` value if you've customized it.
+**Note**: Replace `open-mc-server` with your `CONTAINER_NAME` value if you've customized it.
 
 ### Restore Server Data
 ```bash
-docker cp ./backup/ private-mc-server:/mcserver
+docker cp ./backup/ open-mc-server:/mcserver
 docker compose restart
 ```
 
-**Note**: Replace `private-mc-server` with your `CONTAINER_NAME` value if you've customized it.
+**Note**: Replace `open-mc-server` with your `CONTAINER_NAME` value if you've customized it.
 
 ### Deposit Box
 The `deposit-box` directory is shared between your host system and the container at `/deposit-box`. Use it to transfer files to/from the server.
@@ -249,7 +249,7 @@ docker compose build --no-cache
 ## Troubleshooting
 
 ### Server Won't Start
-- Check Docker logs: `docker logs private-mc-server` (use your `CONTAINER_NAME` value)
+- Check Docker logs: `docker logs open-mc-server` (use your `CONTAINER_NAME` value)
 - Ensure all required environment variables are set
 - Verify Docker and Docker Compose are installed
 
@@ -260,7 +260,7 @@ docker compose build --no-cache
 
 ### Performance Issues
 - Adjust memory allocation in `sample.env` by setting appropriate values
-- Monitor system resources: `docker stats private-mc-server` (use your `CONTAINER_NAME` value)
+- Monitor system resources: `docker stats open-mc-server` (use your `CONTAINER_NAME` value)
 
 ## Security Notes
 

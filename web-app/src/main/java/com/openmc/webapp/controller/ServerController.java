@@ -1,7 +1,7 @@
-package com.privatemc.webapp.controller;
+package com.openmc.webapp.controller;
 
-import com.privatemc.webapp.config.ServerConfig;
-import com.privatemc.webapp.service.RconService;
+import com.openmc.webapp.config.ServerConfig;
+import com.openmc.webapp.service.RconService;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;

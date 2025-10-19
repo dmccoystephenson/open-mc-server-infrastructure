@@ -1,4 +1,4 @@
-package com.privatemc.webapp.config;
+package com.openmc.webapp.config;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

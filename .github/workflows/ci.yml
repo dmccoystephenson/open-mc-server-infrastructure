@@ -87,7 +87,7 @@ jobs:
       run: |
         echo "📚 Validating documentation..."
         test -f README.md
-        grep -q "# Private Minecraft Server" README.md  
+        grep -q "# Open Minecraft Server Infrastructure" README.md  
         test -f LICENSE
         
     - name: Test graceful shutdown functionality

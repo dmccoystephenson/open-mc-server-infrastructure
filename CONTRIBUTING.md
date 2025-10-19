@@ -1,4 +1,4 @@
-# Contributing to Private Minecraft Server
+# Contributing to Open Minecraft Server Infrastructure
 
 Thank you for your interest in contributing to this project! This document provides guidelines for contributing.
 
