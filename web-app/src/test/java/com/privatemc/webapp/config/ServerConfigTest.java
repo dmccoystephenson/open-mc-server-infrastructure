@@ -132,4 +132,17 @@ class ServerConfigTest {
         serverConfig.setBluemapUrl("http://example.com/bluemap");
         assertEquals("http://example.com/bluemap", serverConfig.getBluemapUrl());
     }
+
+    @Test
+    @DisplayName("Should have default refresh interval of 30 minutes")
+    void shouldHaveDefaultRefreshInterval() {
+        assertEquals(1800000, serverConfig.getRefreshIntervalMs());
+    }
+
+    @Test
+    @DisplayName("Should allow setting refresh interval")
+    void shouldAllowSettingRefreshInterval() {
+        serverConfig.setRefreshIntervalMs(60000);
+        assertEquals(60000, serverConfig.getRefreshIntervalMs());
+    }
 }

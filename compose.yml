@@ -47,6 +47,7 @@ services:
       - BLUEMAP_URL=${BLUEMAP_URL:-}
       - ADMIN_USERNAME=${ADMIN_USERNAME:-admin}
       - ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin}
+      - WEB_REFRESH_INTERVAL_MS=${WEB_REFRESH_INTERVAL_MS:-1800000}
 
 volumes:
   mcserver:
