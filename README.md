@@ -34,7 +34,13 @@ A Docker-based private Minecraft server running the latest version of Minecraft 
    # Edit .env with your settings (see Configuration section)
    ```
 
-3. **Start the server**
+3. **Build the web application**
+   ```bash
+   chmod +x build-webapp.sh
+   ./build-webapp.sh
+   ```
+
+4. **Start the server**
    ```bash
    chmod +x up.sh down.sh
    ./up.sh
@@ -42,7 +48,7 @@ A Docker-based private Minecraft server running the latest version of Minecraft 
    
    **Note**: The first build will take 10-15 minutes as it downloads and compiles Spigot from source.
 
-4. **Connect to your server**
+5. **Connect to your server**
    - Server address: `localhost:25565` (or your server's IP)
    - Web Dashboard: `http://localhost:8080` (or your server's IP with port 8080)
    - The server will take a few minutes to build on first run
