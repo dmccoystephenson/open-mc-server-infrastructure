@@ -26,6 +26,7 @@ services:
       - GAMEMODE=${GAMEMODE}
       - PVP_ENABLED=${PVP_ENABLED}
       - ONLINE_MODE=${ONLINE_MODE}
+      - JAVA_OPTS=${JAVA_OPTS}
 
   webapp:
     build:
