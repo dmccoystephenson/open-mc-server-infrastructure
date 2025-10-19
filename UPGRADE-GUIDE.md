@@ -499,7 +499,7 @@ If you encounter issues not covered in this guide:
 
 1. Check the [main README troubleshooting section](./README.md#troubleshooting)
 2. Review server logs for specific error messages
-3. Submit an issue on the [GitHub repository](https://github.com/dmccoystephenson/open-mc-server/issues)
+3. Submit an issue on the [GitHub repository](https://github.com/dmccoystephenson/open-mc-server-infrastructure/issues)
 
 ---
 
