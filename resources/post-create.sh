@@ -102,7 +102,7 @@ create_server_properties() {
     cat <<EOF > "$SERVER_DIR"/server.properties
 #Minecraft server properties
 enable-jmx-monitoring=false
-rcon.port=8100
+rcon.port=25575
 level-seed=
 gamemode=${GAMEMODE}
 enable-command-block=false

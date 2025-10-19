@@ -38,7 +38,7 @@ Or use the provided docker-compose which handles this automatically.
 The application is configured via environment variables:
 
 - `MC_HOST`: Minecraft server hostname (default: `mcserver`)
-- `MC_RCON_PORT`: RCON port (default: `8100`)
+- `MC_RCON_PORT`: RCON port (default: `25575`)
 - `MC_RCON_PASSWORD`: RCON password (default: `minecraft`)
 - `MC_MOTD`: Server MOTD
 - `MC_MAX_PLAYERS`: Maximum players
@@ -52,7 +52,7 @@ Run the application locally:
 ```bash
 # Set environment variables
 export MC_HOST=localhost
-export MC_RCON_PORT=8100
+export MC_RCON_PORT=25575
 export MC_RCON_PASSWORD=minecraft
 
 # Run the application

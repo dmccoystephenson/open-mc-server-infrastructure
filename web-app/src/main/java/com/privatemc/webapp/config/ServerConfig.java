@@ -8,7 +8,7 @@ import org.springframework.stereotype.Component;
 public class ServerConfig {
     
     private String host = "mcserver";
-    private int rconPort = 8100;
+    private int rconPort = 25575;
     private String rconPassword = "minecraft";
     private String motd = "A Private Minecraft Server";
     private int maxPlayers = 20;

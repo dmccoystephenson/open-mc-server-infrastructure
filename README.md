@@ -87,7 +87,7 @@ These settings allow you to run multiple server instances in parallel without co
 
 - `CONTAINER_NAME`: Docker container name (default: `private-mc-server`)
 - `HOST_PORT`: Host port for Minecraft server (default: `25565`)
-- `HOST_RCON_PORT`: Host port for RCON (default: `8100`)
+- `HOST_RCON_PORT`: Host port for RCON (default: `25575`)
 - `VOLUME_NAME`: Docker volume name for persistent data (default: `mcserver`)
 
 ### Web Dashboard Configuration
@@ -109,7 +109,7 @@ cp sample.env .env.dev2
 # Edit .env.dev2 and change:
 # - CONTAINER_NAME=private-mc-server-dev2
 # - HOST_PORT=25566
-# - HOST_RCON_PORT=8101
+# - HOST_RCON_PORT=25576
 # - VOLUME_NAME=mcserver-dev2
 # - WEB_CONTAINER_NAME=private-mc-webapp-dev2
 # - WEB_PORT=8081

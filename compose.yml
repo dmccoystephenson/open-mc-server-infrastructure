@@ -9,7 +9,7 @@ services:
     container_name: ${CONTAINER_NAME:-private-mc-server}
     ports:
       - "${HOST_PORT:-25565}:25565"
-      - "${HOST_RCON_PORT:-8100}:8100"
+      - "${HOST_RCON_PORT:-25575}:25575"
     volumes:
       - mcserver:/mcserver
       - ./deposit-box:/deposit-box
@@ -38,7 +38,7 @@ services:
       - mcserver
     environment:
       - MC_HOST=mcserver
-      - MC_RCON_PORT=8100
+      - MC_RCON_PORT=25575
       - MC_RCON_PASSWORD=${RCON_PASSWORD:-minecraft}
       - MC_MOTD=${SERVER_MOTD}
       - MC_MAX_PLAYERS=${MAX_PLAYERS}
