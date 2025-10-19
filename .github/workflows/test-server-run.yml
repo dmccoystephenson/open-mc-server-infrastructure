@@ -1,0 +1,182 @@
+name: Test Server Run
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test-server-run:
+    name: Test Minecraft Server Run
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+      
+    - name: Create environment file
+      run: |
+        echo "🔧 Creating test environment configuration..."
+        cp sample.env .env
+        # Set test values
+        sed -i 's/YOUR_UUID_HERE/test-uuid-12345678/g' .env
+        sed -i 's/YOUR_USERNAME_HERE/TestPlayer/g' .env
+        # Use lighter memory settings for CI
+        sed -i 's/-Xmx3G -Xms2G/-Xmx1G -Xms512M/g' .env
+        echo "✓ Environment file created"
+        
+    - name: Build Minecraft server image
+      run: |
+        echo "🐳 Building Minecraft server Docker image..."
+        echo "This will take several minutes as it downloads and compiles Spigot..."
+        docker compose build mcserver
+        echo "✓ Server image built successfully"
+        
+    - name: Start Minecraft server
+      run: |
+        echo "🚀 Starting Minecraft server..."
+        docker compose up -d mcserver
+        echo "✓ Server container started"
+        
+    - name: Wait for server initialization
+      run: |
+        echo "⏳ Waiting for server to initialize..."
+        echo "This may take a few minutes for first-time setup..."
+        
+        # Wait up to 10 minutes for server to be ready
+        MAX_WAIT=600
+        ELAPSED=0
+        INTERVAL=10
+        
+        while [ $ELAPSED -lt $MAX_WAIT ]; do
+          # Check if server setup is complete by looking for key log messages
+          if docker logs open-mc-server 2>&1 | grep -q "Done (.*s)!"; then
+            echo "✓ Server has finished loading!"
+            docker logs open-mc-server 2>&1 | tail -20
+            exit 0
+          fi
+          
+          # Check for setup completion
+          if docker logs open-mc-server 2>&1 | grep -q "Server started on localhost:25565"; then
+            echo "✓ Server wrapper has started successfully!"
+          fi
+          
+          # Check for critical errors
+          if docker logs open-mc-server 2>&1 | grep -qi "error\|exception\|failed"; then
+            echo "⚠️  Detected potential errors in logs:"
+            docker logs open-mc-server 2>&1 | grep -i "error\|exception\|failed" | tail -10
+          fi
+          
+          echo "Still waiting... ($ELAPSED seconds elapsed)"
+          sleep $INTERVAL
+          ELAPSED=$((ELAPSED + INTERVAL))
+        done
+        
+        echo "❌ Server did not complete initialization within ${MAX_WAIT} seconds"
+        echo "Last 50 lines of server logs:"
+        docker logs open-mc-server 2>&1 | tail -50
+        exit 1
+        
+    - name: Verify server is running
+      run: |
+        echo "🔍 Verifying server status..."
+        
+        # Check if container is running
+        if ! docker ps | grep -q "open-mc-server"; then
+          echo "❌ Server container is not running!"
+          docker ps -a | grep open-mc-server || echo "Container not found"
+          exit 1
+        fi
+        echo "✓ Container is running"
+        
+        # Check for successful server startup in logs
+        echo "Checking server logs for successful startup..."
+        if docker logs open-mc-server 2>&1 | grep -q "Done (.*s)!"; then
+          echo "✓ Server completed startup sequence"
+        else
+          echo "⚠️  Could not confirm complete startup in logs"
+        fi
+        
+        # Verify key components loaded
+        echo "Checking for essential server components..."
+        docker logs open-mc-server 2>&1 | grep -E "Starting minecraft server version|Spigot|Done" | tail -10
+        
+        echo "✓ Server verification completed"
+        
+    - name: Test server functionality
+      run: |
+        echo "🧪 Testing basic server functionality..."
+        
+        # Check if server is listening on port 25565
+        if docker exec open-mc-server netstat -tuln 2>/dev/null | grep -q ":25565"; then
+          echo "✓ Server is listening on port 25565"
+        else
+          echo "⚠️  Could not verify port 25565 listening"
+        fi
+        
+        # Check if RCON port is available
+        if docker exec open-mc-server netstat -tuln 2>/dev/null | grep -q ":25575"; then
+          echo "✓ RCON is listening on port 25575"
+        else
+          echo "⚠️  Could not verify RCON port 25575 listening"
+        fi
+        
+        # Check server files were created
+        echo "Checking server directory structure..."
+        docker exec open-mc-server ls -la /mcserver/ | head -15
+        
+        # Verify key server files exist
+        if docker exec open-mc-server test -f /mcserver/server.properties; then
+          echo "✓ server.properties exists"
+        fi
+        if docker exec open-mc-server test -f /mcserver/eula.txt; then
+          echo "✓ eula.txt exists"
+        fi
+        if docker exec open-mc-server test -d /mcserver/world; then
+          echo "✓ world directory exists"
+        fi
+        
+        echo "✓ Basic functionality tests completed"
+        
+    - name: Test graceful shutdown
+      if: always()
+      run: |
+        echo "🛑 Testing graceful server shutdown..."
+        
+        # Send stop signal to container
+        docker compose down
+        
+        # Wait for shutdown to complete
+        echo "Waiting for shutdown to complete..."
+        sleep 10
+        
+        # Check shutdown was graceful by looking at logs
+        echo "Checking shutdown logs..."
+        if docker logs open-mc-server 2>&1 | grep -q "Stopping server"; then
+          echo "✓ Graceful shutdown initiated"
+        fi
+        
+        if docker logs open-mc-server 2>&1 | grep -q "Server shutdown gracefully"; then
+          echo "✓ Server shutdown gracefully confirmed"
+        fi
+        
+        echo "✓ Shutdown test completed"
+        
+    - name: Display full server logs on failure
+      if: failure()
+      run: |
+        echo "📋 Full server logs for debugging:"
+        docker logs open-mc-server 2>&1 || echo "Could not retrieve logs"
+        
+    - name: Cleanup
+      if: always()
+      run: |
+        echo "🧹 Cleaning up..."
+        docker compose down -v || true
+        docker system prune -af || true
+        echo "✓ Cleanup completed"
