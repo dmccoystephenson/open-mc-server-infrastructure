@@ -6,7 +6,7 @@ This is a Spring Boot web application that provides a dashboard and admin interf
 
 - Server status display
 - Real-time player list via RCON
-- Admin console for sending server commands
+- Admin console for sending server commands (requires authentication)
 - Links to external services (Dynmap, BlueMap)
 
 ## Building
@@ -42,8 +42,12 @@ The application is configured via environment variables:
 - `MC_RCON_PASSWORD`: RCON password (default: `minecraft`)
 - `MC_MOTD`: Server MOTD
 - `MC_MAX_PLAYERS`: Maximum players
+- `ADMIN_USERNAME`: Username for admin console (default: `admin`)
+- `ADMIN_PASSWORD`: Password for admin console (default: `admin`)
 - `DYNMAP_URL`: Optional Dynmap URL
 - `BLUEMAP_URL`: Optional BlueMap URL
+
+**Security Note**: Change the admin username and password from defaults in production.
 
 ## Development
 
@@ -54,6 +58,8 @@ Run the application locally:
 export MC_HOST=localhost
 export MC_RCON_PORT=25575
 export MC_RCON_PASSWORD=minecraft
+export ADMIN_USERNAME=admin
+export ADMIN_PASSWORD=admin
 
 # Run the application
 ./gradlew bootRun

@@ -14,6 +14,8 @@ public class ServerConfig {
     private int maxPlayers = 20;
     private String dynmapUrl = "";
     private String bluemapUrl = "";
+    private String adminUsername = "admin";
+    private String adminPassword = "admin";
     
     // Getters and setters
     public String getHost() {
@@ -70,5 +72,21 @@ public class ServerConfig {
     
     public void setBluemapUrl(String bluemapUrl) {
         this.bluemapUrl = bluemapUrl;
+    }
+    
+    public String getAdminUsername() {
+        return adminUsername;
+    }
+    
+    public void setAdminUsername(String adminUsername) {
+        this.adminUsername = adminUsername;
+    }
+    
+    public String getAdminPassword() {
+        return adminPassword;
+    }
+    
+    public void setAdminPassword(String adminPassword) {
+        this.adminPassword = adminPassword;
     }
 }

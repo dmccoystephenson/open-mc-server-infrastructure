@@ -226,6 +226,18 @@
             <p style="color: #6b7280; margin-bottom: 15px;">Send commands to the server using RCON</p>
             <form class="command-form" onsubmit="sendCommand(event)">
                 <input type="text" 
+                       id="usernameInput" 
+                       class="command-input" 
+                       placeholder="Admin username" 
+                       required
+                       style="margin-bottom: 10px;">
+                <input type="password" 
+                       id="passwordInput" 
+                       class="command-input" 
+                       placeholder="Admin password" 
+                       required
+                       style="margin-bottom: 10px;">
+                <input type="text" 
                        id="commandInput" 
                        class="command-input" 
                        placeholder="Enter server command (e.g., list, say Hello)" 
@@ -240,11 +252,16 @@
         async function sendCommand(event) {
             event.preventDefault();
             
-            const input = document.getElementById('commandInput');
+            const usernameInput = document.getElementById('usernameInput');
+            const passwordInput = document.getElementById('passwordInput');
+            const commandInput = document.getElementById('commandInput');
             const output = document.getElementById('commandOutput');
-            const command = input.value.trim();
             
-            if (!command) return;
+            const username = usernameInput.value.trim();
+            const password = passwordInput.value.trim();
+            const command = commandInput.value.trim();
+            
+            if (!username || !password || !command) return;
             
             output.textContent = 'Sending command...';
             output.classList.add('show');
@@ -255,7 +272,11 @@
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({ command: command })
+                    body: JSON.stringify({ 
+                        username: username,
+                        password: password,
+                        command: command 
+                    })
                 });
                 
                 const data = await response.json();

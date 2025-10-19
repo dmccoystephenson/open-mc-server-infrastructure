@@ -31,7 +31,21 @@ public class ServerController {
     @PostMapping("/api/command")
     @ResponseBody
     public Map<String, String> sendCommand(@RequestBody Map<String, String> payload) {
+        String username = payload.get("username");
+        String password = payload.get("password");
         String command = payload.get("command");
+        
+        // Validate credentials
+        if (username == null || password == null) {
+            return Map.of("result", "Error: Username and password are required");
+        }
+        
+        if (!serverConfig.getAdminUsername().equals(username) || 
+            !serverConfig.getAdminPassword().equals(password)) {
+            return Map.of("result", "Error: Invalid username or password");
+        }
+        
+        // Validate command
         if (command == null || command.trim().isEmpty()) {
             return Map.of("result", "Error: Command cannot be empty");
         }

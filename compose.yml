@@ -44,6 +44,8 @@ services:
       - MC_MAX_PLAYERS=${MAX_PLAYERS}
       - DYNMAP_URL=${DYNMAP_URL:-}
       - BLUEMAP_URL=${BLUEMAP_URL:-}
+      - ADMIN_USERNAME=${ADMIN_USERNAME:-admin}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin}
 
 volumes:
   mcserver:

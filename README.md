@@ -95,10 +95,12 @@ These settings allow you to run multiple server instances in parallel without co
 - `WEB_CONTAINER_NAME`: Web application container name (default: `private-mc-webapp`)
 - `WEB_PORT`: Web application port (default: `8080`)
 - `RCON_PASSWORD`: Password for RCON authentication (default: `minecraft`)
+- `ADMIN_USERNAME`: Username for admin console authentication (default: `admin`)
+- `ADMIN_PASSWORD`: Password for admin console authentication (default: `admin`)
 - `DYNMAP_URL`: URL to Dynmap web interface (optional)
 - `BLUEMAP_URL`: URL to BlueMap web interface (optional)
 
-**Note**: The RCON password must match between the server and web application for admin commands to work.
+**Note**: The RCON password must match between the server and web application for admin commands to work. Change the admin username and password from defaults in production for security.
 
 **Running Parallel Development Servers**: To run multiple servers simultaneously (e.g., for testing different configurations), create separate `.env` files with different values for these settings and use `docker compose --env-file <env-file>` to start each server.
 
