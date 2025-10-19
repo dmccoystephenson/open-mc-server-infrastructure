@@ -1,4 +1,9 @@
-FROM nginx:alpine
+FROM nginx:latest
+
+# Install openssl
+RUN apt-get update && \
+    apt-get install -y openssl && \
+    rm -rf /var/lib/apt/lists/*
 
 # Copy nginx configuration
 COPY nginx.conf /etc/nginx/nginx.conf

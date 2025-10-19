@@ -61,7 +61,7 @@ services:
     depends_on:
       - webapp
     volumes:
-      - ./nginx/ssl:/etc/nginx/ssl:ro
+      - ./nginx/ssl:/etc/nginx/ssl
 
 volumes:
   mcserver:
