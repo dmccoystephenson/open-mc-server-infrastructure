@@ -44,7 +44,8 @@ get_env_value() {
 
 # Function to check if server is running
 is_server_running() {
-    local container_name=$(get_env_value "CONTAINER_NAME" "private-mc-server")
+    local container_name
+    container_name=$(get_env_value "CONTAINER_NAME" "private-mc-server")
     docker ps --format '{{.Names}}' | grep -q "^${container_name}$"
 }
 
@@ -54,39 +55,6 @@ get_current_version() {
         grep "^MINECRAFT_VERSION=" .env | cut -d'=' -f2
     else
         echo "unknown"
-    fi
-}
-
-# Function to create backup
-create_backup() {
-    local backup_dir
-    backup_dir="./backups/backup-$(date +%Y%m%d-%H%M%S)"
-    
-    local volume_name=$(get_env_value "VOLUME_NAME" "mcserver")
-    
-    log_info "Creating backup at: $backup_dir"
-    mkdir -p "$backup_dir"
-    
-    # Use docker run to create a tarball backup from the volume
-    docker run --rm \
-        -v "${volume_name}:/mcserver:ro" \
-        -v "$(pwd)/$backup_dir":/backup \
-        ubuntu \
-        tar czf /backup/mcserver-backup.tar.gz -C /mcserver . 2>/dev/null || {
-            log_error "Backup failed!"
-            return 1
-        }
-    
-    # Verify backup was created
-    if [ -f "$backup_dir/mcserver-backup.tar.gz" ]; then
-        local backup_size
-        backup_size=$(du -h "$backup_dir/mcserver-backup.tar.gz" | cut -f1)
-        log_success "Backup created successfully: $backup_dir/mcserver-backup.tar.gz ($backup_size)"
-        echo "$backup_dir"
-        return 0
-    else
-        log_error "Backup verification failed!"
-        return 1
     fi
 }
 
@@ -163,10 +131,28 @@ main() {
     
     # Step 2: Create backup
     log_info "Step 2/6: Creating backup..."
-    backup_dir=$(create_backup)
+    if [ ! -f ./backup.sh ]; then
+        log_error "backup.sh script not found! Cannot continue without backup capability."
+        exit 1
+    fi
+    
+    # Run the backup script and capture its output to get the backup directory
+    backup_output=$(./backup.sh 2>&1)
     backup_result=$?
+    
+    # Display the backup script output
+    echo "$backup_output"
+    
     if [ "$backup_result" -ne 0 ]; then
         log_error "Backup failed! Aborting upgrade."
+        exit 1
+    fi
+    
+    # Extract backup directory from the output (last line that contains "backups/backup-")
+    backup_dir=$(echo "$backup_output" | grep -o './backups/backup-[0-9]\{8\}-[0-9]\{6\}' | tail -1)
+    
+    if [ -z "$backup_dir" ]; then
+        log_error "Could not determine backup directory location. Aborting upgrade."
         exit 1
     fi
     echo ""
@@ -203,7 +189,8 @@ main() {
     log_info "Waiting for server to initialize..."
     sleep 5
     
-    local container_name=$(get_env_value "CONTAINER_NAME" "private-mc-server")
+    local container_name
+    container_name=$(get_env_value "CONTAINER_NAME" "private-mc-server")
     
     # Show recent logs
     echo ""
@@ -223,7 +210,8 @@ main() {
     echo "  - New version: $new_version"
     echo "  - Backup location: $backup_dir"
     echo ""
-    local container_name=$(get_env_value "CONTAINER_NAME" "private-mc-server")
+    local container_name
+    container_name=$(get_env_value "CONTAINER_NAME" "private-mc-server")
     log_info "Next steps:"
     echo "  1. Monitor logs: docker logs -f $container_name"
     echo "  2. Connect to the server and verify everything works"

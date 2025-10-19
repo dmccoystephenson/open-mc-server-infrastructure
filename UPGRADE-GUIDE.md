@@ -86,7 +86,27 @@ docker compose down
 
 Create a backup of all server data from the persistent volume. This is your safety net in case something goes wrong.
 
-#### Option A: Backup to Local Directory (Recommended)
+#### Option A: Using Backup Script (Recommended)
+
+The simplest way to create a backup is using the dedicated backup script:
+
+```bash
+./backup.sh
+```
+
+The script will:
+- Automatically create a timestamped backup directory
+- Create a compressed tarball of all server data
+- Display the backup location and size
+- Show instructions for restoration
+
+**Benefits:**
+- Single command execution
+- Automatic timestamping
+- Size verification
+- Built-in restoration instructions
+
+#### Option B: Manual Backup to Local Directory
 
 ```bash
 # Create a backup directory with timestamp
@@ -104,7 +124,7 @@ docker run --rm \
 echo "Backup created at: $BACKUP_DIR/mcserver-backup.tar.gz"
 ```
 
-#### Option B: Quick Backup via Docker CP
+#### Option C: Quick Backup via Docker CP
 
 ```bash
 # Create backup directory
@@ -122,7 +142,7 @@ docker cp mcserver-backup:/mcserver "./backups/backup-$(date +%Y%m%d-%H%M%S)/"
 docker rm -f mcserver-backup
 ```
 
-#### Option C: Using Deposit Box
+#### Option D: Using Deposit Box
 
 ```bash
 # Copy world and important files to deposit box
@@ -139,10 +159,13 @@ docker run --rm \
 **Verify your backup** before proceeding:
 
 ```bash
-# For Option A
+# For Option A (backup script)
+ls -lh ./backups/backup-*/mcserver-backup.tar.gz
+
+# For Option B (manual backup)
 ls -lh "$BACKUP_DIR/mcserver-backup.tar.gz"
 
-# For Option B
+# For Option C (docker cp)
 du -sh "./backups/backup-$(date +%Y%m%d-%H%M%S)/"
 ```
 

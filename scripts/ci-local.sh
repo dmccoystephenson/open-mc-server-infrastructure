@@ -10,6 +10,8 @@ echo "🚀 Running local CI validation..."
 echo "📝 Checking shell scripts..."
 bash -n up.sh
 bash -n down.sh
+bash -n backup.sh
+bash -n upgrade.sh
 bash -n resources/post-create.sh
 bash -n resources/minecraft-wrapper.sh
 echo "✅ Shell script syntax validation passed"
@@ -39,6 +41,8 @@ echo "✅ Documentation validation passed"
 echo "🔐 Checking file permissions..."
 test -x up.sh
 test -x down.sh
+test -x backup.sh
+test -x upgrade.sh
 test -x resources/post-create.sh
 test -x resources/minecraft-wrapper.sh
 echo "✅ File permissions validation passed"
