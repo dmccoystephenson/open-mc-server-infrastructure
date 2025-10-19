@@ -28,11 +28,12 @@ jobs:
         echo "🔍 Validating shell script syntax..."
         bash -n up.sh
         bash -n down.sh
+        bash -n build-webapp.sh
         bash -n resources/post-create.sh
         bash -n resources/minecraft-wrapper.sh
         
         echo "🔍 Running ShellCheck linter..."
-        shellcheck up.sh down.sh resources/*.sh scripts/*.sh
+        shellcheck up.sh down.sh build-webapp.sh resources/*.sh scripts/*.sh
         
     - name: Validate Docker configuration
       run: |
@@ -58,6 +59,20 @@ jobs:
         grep -q "OPERATOR_UUID=" sample.env
         grep -q "OPERATOR_NAME=" sample.env
         grep -q "SERVER_MOTD=" sample.env
+        
+    - name: Set up JDK 21
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'
+        java-version: '21'
+        
+    - name: Build web application
+      run: |
+        echo "🌐 Building web application..."
+        cd web-app
+        ./gradlew build -x test
+        echo "✓ Web application built successfully"
+        ls -lh build/libs/
         
     - name: Validate documentation
       run: |
