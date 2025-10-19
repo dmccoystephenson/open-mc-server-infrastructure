@@ -287,6 +287,7 @@ This repository includes a comprehensive CI pipeline that automatically validate
 - **Docker Configuration**: Validates Dockerfile and Docker Compose configurations
 - **Environment Configuration**: Ensures all required environment variables are properly defined
 - **Security Scanning**: Trivy security scanning for vulnerabilities
+- **Server Run Testing**: Actually runs the Minecraft server to verify it starts, operates, and stops correctly
 - **Integration Testing**: End-to-end validation of the complete setup
 
 ### Running Local CI Checks

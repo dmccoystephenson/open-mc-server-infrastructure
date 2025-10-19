@@ -58,6 +58,27 @@ Performs security vulnerability scanning using Trivy:
 - **GitHub Security Integration**: Uploads results to GitHub Security tab for review
 - **Non-blocking**: Continues pipeline execution even if vulnerabilities are found (informational)
 
+### 3. Test Server Run
+
+Performs end-to-end testing by actually running the Minecraft server in a containerized environment:
+
+#### Server Build and Startup
+- **Docker Image Build**: Builds the complete Minecraft server Docker image with Spigot
+- **Server Initialization**: Starts the server with test configuration and waits for full initialization
+- **Startup Verification**: Monitors server logs to confirm successful startup sequence completion
+
+#### Functionality Testing
+- **Port Verification**: Confirms server is listening on Minecraft port (25565) and RCON port (25575)
+- **File System Check**: Verifies critical server files are created (server.properties, world directory, etc.)
+- **Container Health**: Validates the Docker container is running properly
+
+#### Graceful Shutdown Testing
+- **Shutdown Sequence**: Tests proper server shutdown using Docker Compose
+- **Log Validation**: Confirms graceful shutdown signals are processed correctly
+- **Resource Cleanup**: Ensures all resources are properly cleaned up after testing
+
+This test provides real-world verification that the server can actually start, run, and stop correctly in a production-like environment.
+
 ## Local Testing
 
 You can run the same validation checks locally using:
@@ -84,6 +105,9 @@ This script mirrors the CI pipeline checks and helps catch issues before submitt
 - Graceful shutdown mechanism testing
 - Server wrapper script reliability
 - Plugin data preservation
+- Full server run testing with actual Minecraft server
+- Port availability and network functionality
+- Server file system initialization
 
 ### ✅ Security Assessment
 - Vulnerability scanning
@@ -121,6 +145,20 @@ This script mirrors the CI pipeline checks and helps catch issues before submitt
 - Ensure all required variables are defined in `sample.env`
 - Check variable naming consistency
 
+### Server Run Test Failures
+- Check Docker logs for server startup errors
+- Verify server initialization completes within timeout (10 minutes)
+- Ensure sufficient resources are available for server build
+- Check for port conflicts or networking issues
+- Review server configuration in test environment
+
 ## Performance
 
-The simplified CI pipeline typically completes in under 5 minutes, providing fast feedback while maintaining comprehensive validation coverage.
+The CI pipeline includes multiple workflows:
+- **Validation Pipeline**: Typically completes in under 5 minutes
+- **Server Run Test**: Takes 15-25 minutes due to Spigot build time
+  - First-time Spigot compilation: ~10-15 minutes
+  - Server initialization: ~2-5 minutes
+  - Testing and cleanup: ~2-3 minutes
+
+The server run test runs in parallel with other checks to provide comprehensive validation without significantly increasing total CI time.
