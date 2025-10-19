@@ -366,13 +366,32 @@ Verify that:
 
 ### 6. Monitor Performance
 
+Monitor resource usage to ensure the upgrade hasn't introduced performance issues:
+
 ```bash
-# Check resource usage
+# Quick resource check
 docker stats private-mc-server
+
+# Detailed monitoring with bottleneck analysis (recommended)
+./monitor.sh -i 10 -d 300 -l post-upgrade-$(date +%Y%m%d).log
+
+# Analyze the results
+./monitor.sh -a post-upgrade-$(date +%Y%m%d).log
 
 # Watch for errors
 docker logs -f private-mc-server | grep -i error
 ```
+
+**Post-upgrade monitoring checklist:**
+- CPU usage should remain within normal ranges (<80%)
+- Memory usage should not increase significantly
+- Network I/O should be consistent with pre-upgrade levels
+- No memory leaks over extended periods
+
+Compare results with pre-upgrade baselines if available. If resource usage increased significantly, check for:
+- New resource-intensive features in the Minecraft version
+- Plugin compatibility issues causing performance degradation
+- Configuration settings that need adjustment for the new version
 
 ## Troubleshooting
 
@@ -436,17 +455,38 @@ docker logs -f private-mc-server | grep -i error
 **Symptoms**: Lag, low TPS (ticks per second), high CPU/memory usage
 
 **Solutions**:
-1. Check resource usage:
+1. Identify bottlenecks with monitoring:
+   ```bash
+   # Monitor for 5 minutes during peak load
+   ./monitor.sh -i 10 -d 300 -l performance-check.log
+   
+   # Analyze for bottlenecks
+   ./monitor.sh -a performance-check.log
+   ```
+2. Quick resource check:
    ```bash
    docker stats private-mc-server
    ```
-2. Adjust memory allocation in your environment or `compose.yml`:
-   ```yaml
-   environment:
-     - JAVA_OPTS=-Xmx4G -Xms2G  # Increase memory
-   ```
-3. Optimize server properties (view-distance, simulation-distance)
-4. Update or remove resource-intensive plugins
+3. Based on bottleneck analysis:
+   
+   **If CPU is the bottleneck (>80% usage):**
+   - Reduce view-distance in server.properties (e.g., from 10 to 8)
+   - Reduce simulation-distance (e.g., from 10 to 6)
+   - Limit entities and mob farms
+   - Remove resource-intensive plugins
+   - Upgrade to a VM with more CPU cores
+   
+   **If Memory is the bottleneck (>85% usage):**
+   - Increase JAVA_OPTS memory allocation:
+     ```yaml
+     environment:
+       - JAVA_OPTS=-Xmx4G -Xms2G  # Increase both values
+     ```
+   - Upgrade VM RAM
+   - Reduce loaded chunks (lower view-distance)
+   - Check for memory leaks in plugins
+   
+4. Monitor again after changes to verify improvements
 
 ### Docker Volume Issues
 

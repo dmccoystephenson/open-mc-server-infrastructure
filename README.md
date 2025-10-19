@@ -151,6 +151,48 @@ docker logs -f private-mc-server
 
 **Note**: Replace `private-mc-server` with your `CONTAINER_NAME` value if you've customized it.
 
+### Monitoring Resource Usage
+
+Monitor server resource usage over time to identify bottlenecks (CPU, RAM, disk I/O):
+
+```bash
+./monitor.sh
+```
+
+**Common monitoring scenarios:**
+
+```bash
+# Quick 1-minute check with default 5-second intervals
+./monitor.sh
+
+# Extended monitoring with logging (5 minutes)
+./monitor.sh -i 10 -d 300 -l monitoring.log
+
+# Continuous monitoring (Ctrl+C to stop)
+./monitor.sh -i 5 -d 0 -l monitoring.log
+
+# Analyze collected data for bottlenecks
+./monitor.sh -a monitoring.log
+
+# Monitor specific container
+./monitor.sh -c private-mc-server-dev2
+```
+
+**Metrics collected:**
+- CPU usage (%)
+- Memory usage (MB and %)
+- Network I/O (sent/received)
+- Block I/O (read/write)
+- Process count
+
+**Analysis features:**
+- Identifies CPU and memory bottlenecks
+- Provides upgrade recommendations
+- Shows peak usage times
+- Calculates average resource utilization
+
+**Note**: For best results, monitor during peak player activity hours to identify true bottlenecks.
+
 ## File Management
 
 ### Backup Server Data
