@@ -176,6 +176,19 @@ docker logs -f private-mc-server
 ## File Management
 
 ### Backup Server Data
+
+#### Automated Backup (Recommended)
+Use the dedicated backup script for a simple, automated backup process:
+
+```bash
+./backup.sh
+```
+
+This creates a timestamped, compressed backup in `./backups/` and provides restoration instructions.
+
+#### Manual Backup
+Alternatively, use Docker commands to manually copy server data:
+
 ```bash
 docker cp private-mc-server:/mcserver ./backup/
 ```
