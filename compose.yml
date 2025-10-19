@@ -26,6 +26,25 @@ services:
       - PVP_ENABLED=${PVP_ENABLED}
       - ONLINE_MODE=${ONLINE_MODE}
 
+  webapp:
+    build:
+      context: ./web-app
+    image: private-mc-server-webapp
+    restart: always
+    container_name: ${WEB_CONTAINER_NAME:-private-mc-webapp}
+    ports:
+      - "${WEB_PORT:-8080}:8080"
+    depends_on:
+      - mcserver
+    environment:
+      - MC_HOST=mcserver
+      - MC_RCON_PORT=8100
+      - MC_RCON_PASSWORD=${RCON_PASSWORD:-minecraft}
+      - MC_MOTD=${SERVER_MOTD}
+      - MC_MAX_PLAYERS=${MAX_PLAYERS}
+      - DYNMAP_URL=${DYNMAP_URL:-}
+      - BLUEMAP_URL=${BLUEMAP_URL:-}
+
 volumes:
   mcserver:
     name: ${VOLUME_NAME:-mcserver}

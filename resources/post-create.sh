@@ -102,7 +102,7 @@ create_server_properties() {
     cat <<EOF > "$SERVER_DIR"/server.properties
 #Minecraft server properties
 enable-jmx-monitoring=false
-rcon.port=25575
+rcon.port=8100
 level-seed=
 gamemode=${GAMEMODE}
 enable-command-block=false
@@ -131,7 +131,7 @@ server-ip=
 resource-pack-prompt=
 allow-nether=true
 server-port=25565
-enable-rcon=false
+enable-rcon=true
 sync-chunk-writes=true
 op-permission-level=4
 prevent-proxy-connections=false
@@ -139,7 +139,7 @@ hide-online-players=false
 resource-pack=
 entity-broadcast-range-percentage=100
 simulation-distance=10
-rcon.password=
+rcon.password=minecraft
 player-idle-timeout=0
 debug=false
 force-gamemode=false
