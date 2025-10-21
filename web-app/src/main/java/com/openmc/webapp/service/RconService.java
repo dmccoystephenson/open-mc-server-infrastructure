@@ -5,11 +5,14 @@ import com.openmc.webapp.rcon.RconClient;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
+import java.time.Instant;
 
 @Service
 public class RconService {
     
     private final ServerConfig serverConfig;
+    private ServerStatus cachedStatus;
+    private Instant lastFetchTime;
     
     public RconService(ServerConfig serverConfig) {
         this.serverConfig = serverConfig;
@@ -25,9 +28,37 @@ public class RconService {
     }
     
     public ServerStatus getServerStatus() {
+        // Check if we need to refresh the cache
+        if (shouldRefreshCache()) {
+            refreshCache();
+        }
+        
+        // Return cached status or fetch fresh if cache is not initialized
+        if (cachedStatus == null) {
+            refreshCache();
+        }
+        
+        return cachedStatus;
+    }
+    
+    private boolean shouldRefreshCache() {
+        if (lastFetchTime == null) {
+            return true;
+        }
+        
+        long millisSinceLastFetch = Instant.now().toEpochMilli() - lastFetchTime.toEpochMilli();
+        return millisSinceLastFetch >= serverConfig.getRefreshIntervalMs();
+    }
+    
+    private void refreshCache() {
         String response = sendCommand("list");
         ResourceUsage resourceUsage = getResourceUsage();
-        return new ServerStatus(serverConfig, response, resourceUsage);
+        cachedStatus = new ServerStatus(serverConfig, response, resourceUsage);
+        lastFetchTime = Instant.now();
+    }
+    
+    public Instant getLastFetchTime() {
+        return lastFetchTime;
     }
     
     public ResourceUsage getResourceUsage() {

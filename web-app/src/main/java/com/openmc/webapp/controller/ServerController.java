@@ -31,6 +31,7 @@ public class ServerController {
         model.addAttribute("dynmapUrl", serverConfig.getDynmapUrl());
         model.addAttribute("bluemapUrl", serverConfig.getBluemapUrl());
         model.addAttribute("refreshIntervalMs", serverConfig.getRefreshIntervalMs());
+        model.addAttribute("lastFetchTime", rconService.getLastFetchTime());
         return "public";
     }
     
