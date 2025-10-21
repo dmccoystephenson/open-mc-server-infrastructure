@@ -7,6 +7,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
+import java.time.Instant;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 @DisplayName("RconService Tests")
@@ -124,5 +126,67 @@ class RconServiceTest {
         assertEquals("N/A", resourceUsage.getMemoryMax());
         assertEquals("N/A", resourceUsage.getMemoryFree());
         assertEquals(0.0, resourceUsage.getMemoryUsedPercent(), 0.01);
+    }
+    
+    @Test
+    @DisplayName("Should set last fetch time when getting server status")
+    void shouldSetLastFetchTimeWhenGettingServerStatus() {
+        Instant before = Instant.now();
+        rconService.getServerStatus();
+        Instant after = Instant.now();
+        
+        Instant lastFetchTime = rconService.getLastFetchTime();
+        assertNotNull(lastFetchTime);
+        assertTrue(!lastFetchTime.isBefore(before));
+        assertTrue(!lastFetchTime.isAfter(after));
+    }
+    
+    @Test
+    @DisplayName("Should cache server status and return same instance")
+    void shouldCacheServerStatusAndReturnSameInstance() {
+        RconService.ServerStatus firstStatus = rconService.getServerStatus();
+        RconService.ServerStatus secondStatus = rconService.getServerStatus();
+        
+        assertSame(firstStatus, secondStatus);
+    }
+    
+    @Test
+    @DisplayName("Should refresh cache after refresh interval")
+    void shouldRefreshCacheAfterRefreshInterval() throws InterruptedException {
+        // Set a very short refresh interval for testing
+        serverConfig.setRefreshIntervalMs(100); // 100ms
+        
+        RconService.ServerStatus firstStatus = rconService.getServerStatus();
+        Instant firstFetchTime = rconService.getLastFetchTime();
+        
+        // Wait for the refresh interval to pass
+        Thread.sleep(150);
+        
+        RconService.ServerStatus secondStatus = rconService.getServerStatus();
+        Instant secondFetchTime = rconService.getLastFetchTime();
+        
+        // The cache should have been refreshed, so fetch times should be different
+        assertNotEquals(firstFetchTime, secondFetchTime);
+        assertTrue(secondFetchTime.isAfter(firstFetchTime));
+    }
+    
+    @Test
+    @DisplayName("Should not refresh cache before refresh interval")
+    void shouldNotRefreshCacheBeforeRefreshInterval() throws InterruptedException {
+        // Set a longer refresh interval
+        serverConfig.setRefreshIntervalMs(5000); // 5 seconds
+        
+        RconService.ServerStatus firstStatus = rconService.getServerStatus();
+        Instant firstFetchTime = rconService.getLastFetchTime();
+        
+        // Wait a short time, less than the refresh interval
+        Thread.sleep(100);
+        
+        RconService.ServerStatus secondStatus = rconService.getServerStatus();
+        Instant secondFetchTime = rconService.getLastFetchTime();
+        
+        // The cache should not have been refreshed, so fetch times should be the same
+        assertEquals(firstFetchTime, secondFetchTime);
+        assertSame(firstStatus, secondStatus);
     }
 }

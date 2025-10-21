@@ -167,6 +167,10 @@
                 </span>
             </div>
             <div class="info-row">
+                <span class="info-label">Last Updated</span>
+                <span class="info-value" th:text="${lastFetchTime != null ? #temporals.format(lastFetchTime, 'yyyy-MM-dd HH:mm:ss') : 'N/A'}">N/A</span>
+            </div>
+            <div class="info-row">
                 <span class="info-label">MOTD</span>
                 <span class="info-value" th:text="${status.motd}">A Private Minecraft Server</span>
             </div>
