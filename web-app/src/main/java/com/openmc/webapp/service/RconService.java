@@ -1,18 +1,26 @@
 package com.openmc.webapp.service;
 
 import com.openmc.webapp.config.ServerConfig;
+import com.openmc.webapp.model.RetrievalRecord;
 import com.openmc.webapp.rcon.RconClient;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.LinkedList;
+import java.util.List;
 
 @Service
 public class RconService {
     
+    private static final int MAX_HISTORY_SIZE = 10;
+    
     private final ServerConfig serverConfig;
     private ServerStatus cachedStatus;
     private Instant lastFetchTime;
+    private final LinkedList<RetrievalRecord> retrievalHistory = new LinkedList<>();
     
     public RconService(ServerConfig serverConfig) {
         this.serverConfig = serverConfig;
@@ -55,6 +63,43 @@ public class RconService {
         ResourceUsage resourceUsage = getResourceUsage();
         cachedStatus = new ServerStatus(serverConfig, response, resourceUsage);
         lastFetchTime = Instant.now();
+        
+        // Track retrieval in history
+        boolean success = !response.startsWith("Error:");
+        int playerCount = extractPlayerCount(response);
+        addRetrievalRecord(new RetrievalRecord(lastFetchTime, success, playerCount, response));
+    }
+    
+    private int extractPlayerCount(String playerListResponse) {
+        if (playerListResponse.startsWith("Error:")) {
+            return 0;
+        }
+        
+        // Extract player count from response like "There are 0 of a max of 20 players online"
+        try {
+            String[] parts = playerListResponse.split(" ");
+            for (int i = 0; i < parts.length - 1; i++) {
+                if (parts[i].equals("are") && i + 1 < parts.length) {
+                    return Integer.parseInt(parts[i + 1]);
+                }
+            }
+        } catch (Exception e) {
+            // If parsing fails, return 0
+        }
+        return 0;
+    }
+    
+    private synchronized void addRetrievalRecord(RetrievalRecord record) {
+        retrievalHistory.addFirst(record);
+        
+        // Keep only the last MAX_HISTORY_SIZE records
+        while (retrievalHistory.size() > MAX_HISTORY_SIZE) {
+            retrievalHistory.removeLast();
+        }
+    }
+    
+    public synchronized List<RetrievalRecord> getRetrievalHistory() {
+        return Collections.unmodifiableList(new ArrayList<>(retrievalHistory));
     }
     
     public Instant getLastFetchTime() {

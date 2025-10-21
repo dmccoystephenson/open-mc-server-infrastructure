@@ -77,4 +77,10 @@ public class ServerController {
     public RconService.ResourceUsage getResources() {
         return rconService.getResourceUsage();
     }
+    
+    @GetMapping("/api/history")
+    @ResponseBody
+    public Map<String, Object> getHistory() {
+        return Map.of("history", rconService.getRetrievalHistory());
+    }
 }

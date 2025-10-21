@@ -143,6 +143,88 @@
             color: #9ca3af;
             font-style: italic;
         }
+        
+        .chart-container {
+            position: relative;
+            height: 300px;
+            margin-top: 20px;
+            padding: 20px;
+            background: #f9fafb;
+            border-radius: 8px;
+        }
+        
+        .chart-bars {
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-around;
+            height: 250px;
+            border-bottom: 2px solid #e5e7eb;
+            padding: 0 10px;
+        }
+        
+        .chart-bar-wrapper {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 0 5px;
+        }
+        
+        .chart-bar {
+            width: 100%;
+            min-height: 5px;
+            border-radius: 4px 4px 0 0;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        
+        .chart-bar:hover {
+            opacity: 0.8;
+        }
+        
+        .chart-bar.success {
+            background: linear-gradient(to top, #22c55e, #86efac);
+        }
+        
+        .chart-bar.error {
+            background: linear-gradient(to top, #ef4444, #fca5a5);
+        }
+        
+        .chart-label {
+            font-size: 11px;
+            color: #6b7280;
+            margin-top: 8px;
+            transform: rotate(-45deg);
+            white-space: nowrap;
+        }
+        
+        .chart-value {
+            font-size: 12px;
+            font-weight: 600;
+            color: #111827;
+            margin-bottom: 5px;
+        }
+        
+        .chart-legend {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-top: 15px;
+        }
+        
+        .chart-legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            color: #6b7280;
+        }
+        
+        .chart-legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+        }
     </style>
 </head>
 <body>
@@ -234,15 +316,88 @@
                 </span>
             </div>
         </div>
+        
+        <div class="card">
+            <h2>Data Retrieval History</h2>
+            <p style="color: #6b7280; margin-bottom: 15px;">Last 10 server status retrievals</p>
+            <div class="chart-container">
+                <div id="historyChart" class="chart-bars"></div>
+                <div class="chart-legend">
+                    <div class="chart-legend-item">
+                        <div class="chart-legend-color" style="background: linear-gradient(to top, #22c55e, #86efac);"></div>
+                        <span>Online</span>
+                    </div>
+                    <div class="chart-legend-item">
+                        <div class="chart-legend-color" style="background: linear-gradient(to top, #ef4444, #fca5a5);"></div>
+                        <span>Offline</span>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
     
     <script>
+        async function loadHistory() {
+            try {
+                const response = await fetch('/api/history');
+                const data = await response.json();
+                const history = data.history;
+                
+                const chartContainer = document.getElementById('historyChart');
+                chartContainer.innerHTML = '';
+                
+                if (history.length === 0) {
+                    chartContainer.innerHTML = '<div style="text-align: center; padding: 40px; color: #9ca3af;">No data yet</div>';
+                    return;
+                }
+                
+                // Reverse to show oldest to newest
+                const reversedHistory = [...history].reverse();
+                
+                // Find max player count for scaling
+                const maxPlayers = Math.max(...reversedHistory.map(r => r.playerCount), 1);
+                
+                reversedHistory.forEach(record => {
+                    const barWrapper = document.createElement('div');
+                    barWrapper.className = 'chart-bar-wrapper';
+                    
+                    const value = document.createElement('div');
+                    value.className = 'chart-value';
+                    value.textContent = record.playerCount;
+                    
+                    const bar = document.createElement('div');
+                    bar.className = 'chart-bar ' + (record.success ? 'success' : 'error');
+                    const height = (record.playerCount / maxPlayers) * 100;
+                    bar.style.height = Math.max(height, 5) + '%';
+                    bar.title = `Players: ${record.playerCount}\nStatus: ${record.success ? 'Online' : 'Offline'}\nTime: ${new Date(record.timestamp).toLocaleTimeString()}`;
+                    
+                    const label = document.createElement('div');
+                    label.className = 'chart-label';
+                    const date = new Date(record.timestamp);
+                    label.textContent = date.toLocaleTimeString();
+                    
+                    barWrapper.appendChild(value);
+                    barWrapper.appendChild(bar);
+                    barWrapper.appendChild(label);
+                    chartContainer.appendChild(barWrapper);
+                });
+            } catch (error) {
+                console.error('Failed to load history:', error);
+                document.getElementById('historyChart').innerHTML = 
+                    '<div style="text-align: center; padding: 40px; color: #ef4444;">Failed to load history</div>';
+            }
+        }
+        
+        // Load history on page load
+        loadHistory();
+        
         // Auto-refresh status
         const refreshInterval = /*[[${refreshIntervalMs}]]*/ 1800000;
         setInterval(async () => {
             try {
                 const response = await fetch('/api/status');
                 const status = await response.json();
+                loadHistory(); // Refresh history chart
                 location.reload();
             } catch (error) {
                 console.error('Failed to refresh status:', error);
