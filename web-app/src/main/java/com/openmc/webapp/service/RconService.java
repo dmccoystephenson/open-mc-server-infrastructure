@@ -93,14 +93,20 @@ public class RconService {
         // Common formats:
         // "TPS from last 1m, 5m, 15m: 20.0, 20.0, 20.0"
         // "§6TPS from last 1m, 5m, 15m: §a20.0§6, §a20.0§6, §a20.0"
+        // "§6TPS from last 1m, 5m, 15m: §a*20.0, §a*20.0, §a*20.0"
         
         // Remove color codes
         String cleaned = response.replaceAll("§[0-9a-fk-or]", "");
         
+        // Remove asterisks that may appear before TPS values
+        cleaned = cleaned.replaceAll("\\*", "");
+        
         if (cleaned.contains(":")) {
             String[] parts = cleaned.split(":");
             if (parts.length > 1) {
-                return parts[1].trim();
+                // Extract just the first line if multi-line response
+                String tpsLine = parts[1].split("\\n")[0].trim();
+                return tpsLine;
             }
         }
         
@@ -112,6 +118,7 @@ public class RconService {
         // Common formats:
         // "Memory: 1024MB/2048MB"
         // "Mem: 50.0% 1024MB/2048MB"
+        // "Current Memory Usage: 401/2048 mb (Max: 3072 mb)"
         
         String[] result = new String[3]; // used, max, free
         result[0] = "N/A";
@@ -126,20 +133,18 @@ public class RconService {
         // Remove color codes
         String cleaned = response.replaceAll("§[0-9a-fk-or]", "");
         
-        // Look for pattern like "1024MB/2048MB" or "1024M/2048M"
-        // Use a simpler, safer pattern to prevent ReDoS
-        java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("(\\d+\\.?\\d*)[MG]B?\\s*/\\s*(\\d+\\.?\\d*)[MG]B?");
+        // Look for pattern like "401/2048 mb" or "1024MB/2048MB" or "1024M/2048M"
+        // Now handles optional space before unit and case-insensitive matching
+        java.util.regex.Pattern pattern = java.util.regex.Pattern.compile(
+            "(\\d+\\.?\\d*)\\s*/\\s*(\\d+\\.?\\d*)\\s*([MmGg])[Bb]?",
+            java.util.regex.Pattern.CASE_INSENSITIVE
+        );
         java.util.regex.Matcher matcher = pattern.matcher(cleaned);
         
         if (matcher.find()) {
             String usedStr = matcher.group(1);
             String maxStr = matcher.group(2);
-            
-            // Determine the unit from the match
-            String unit = "MB";
-            if (cleaned.substring(matcher.start(), matcher.end()).contains("G")) {
-                unit = "GB";
-            }
+            String unit = matcher.group(3).toUpperCase() + "B";
             
             result[0] = usedStr + unit;
             result[1] = maxStr + unit;
