@@ -38,7 +38,8 @@ class ServerControllerTest {
 
     @BeforeEach
     void setUp() {
-        mockStatus = new RconService.ServerStatus(serverConfig, "There are 0 of a max of 20 players online");
+        RconService.ResourceUsage mockResourceUsage = new RconService.ResourceUsage("20.0, 20.0, 20.0", "1024MB", "2048MB", "1024MB", 50.0);
+        mockStatus = new RconService.ServerStatus(serverConfig, "There are 0 of a max of 20 players online", mockResourceUsage);
         
         when(serverConfig.getMotd()).thenReturn("Test Server");
         when(serverConfig.getMaxPlayers()).thenReturn(20);
@@ -85,6 +86,19 @@ class ServerControllerTest {
         mockMvc.perform(get("/api/status"))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON));
+    }
+
+    @Test
+    @DisplayName("Should return resource usage on GET /api/resources")
+    void shouldReturnResourceUsageOnGetApiResources() throws Exception {
+        RconService.ResourceUsage mockResourceUsage = new RconService.ResourceUsage("20.0, 20.0, 20.0", "1024MB", "2048MB", "1024MB", 50.0);
+        when(rconService.getResourceUsage()).thenReturn(mockResourceUsage);
+
+        mockMvc.perform(get("/api/resources"))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.tps").value("20.0, 20.0, 20.0"))
+                .andExpect(jsonPath("$.memoryUsed").value("1024MB"));
     }
 
     @Test

@@ -70,4 +70,10 @@ public class ServerController {
     public RconService.ServerStatus getStatus() {
         return rconService.getServerStatus();
     }
+    
+    @GetMapping("/api/resources")
+    @ResponseBody
+    public RconService.ResourceUsage getResources() {
+        return rconService.getResourceUsage();
+    }
 }
