@@ -178,6 +178,35 @@
             </form>
             <div id="commandOutput" class="command-output"></div>
         </div>
+        
+        <div class="card">
+            <h2>Change Admin Password</h2>
+            <p style="color: #6b7280; margin-bottom: 15px;">Update your admin password</p>
+            <form class="command-form" onsubmit="changePassword(event)">
+                <input type="text" 
+                       id="changePasswordUsername" 
+                       class="command-input" 
+                       placeholder="Admin username" 
+                       required>
+                <input type="password" 
+                       id="changePasswordCurrent" 
+                       class="command-input" 
+                       placeholder="Current password" 
+                       required>
+                <input type="password" 
+                       id="changePasswordNew" 
+                       class="command-input" 
+                       placeholder="New password" 
+                       required>
+                <input type="password" 
+                       id="changePasswordConfirm" 
+                       class="command-input" 
+                       placeholder="Confirm new password" 
+                       required>
+                <button type="submit" class="btn btn-primary">Change Password</button>
+            </form>
+            <div id="changePasswordOutput" class="command-output"></div>
+        </div>
     </div>
     
     <script>
@@ -215,6 +244,67 @@
                 output.textContent = '> ' + command + '\n\n' + data.result;
             } catch (error) {
                 output.textContent = 'Error: ' + error.message;
+            }
+        }
+        
+        async function changePassword(event) {
+            event.preventDefault();
+            
+            const usernameInput = document.getElementById('changePasswordUsername');
+            const currentPasswordInput = document.getElementById('changePasswordCurrent');
+            const newPasswordInput = document.getElementById('changePasswordNew');
+            const confirmPasswordInput = document.getElementById('changePasswordConfirm');
+            const output = document.getElementById('changePasswordOutput');
+            
+            const username = usernameInput.value.trim();
+            const currentPassword = currentPasswordInput.value.trim();
+            const newPassword = newPasswordInput.value.trim();
+            const confirmPassword = confirmPasswordInput.value.trim();
+            
+            if (!username || !currentPassword || !newPassword || !confirmPassword) {
+                output.textContent = 'Error: All fields are required';
+                output.classList.add('show');
+                return;
+            }
+            
+            if (newPassword !== confirmPassword) {
+                output.textContent = 'Error: New passwords do not match';
+                output.classList.add('show');
+                return;
+            }
+            
+            output.textContent = 'Changing password...';
+            output.classList.add('show');
+            
+            try {
+                const response = await fetch('/api/change-password', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ 
+                        username: username,
+                        currentPassword: currentPassword,
+                        newPassword: newPassword
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success === 'true') {
+                    output.textContent = 'Success: ' + data.message;
+                    output.style.color = '#059669';
+                    // Clear the form
+                    currentPasswordInput.value = '';
+                    newPasswordInput.value = '';
+                    confirmPasswordInput.value = '';
+                } else {
+                    output.textContent = 'Error: ' + data.message;
+                    output.style.color = '#dc2626';
+                }
+            } catch (error) {
+                output.textContent = 'Error: ' + error.message;
+                output.style.color = '#dc2626';
             }
         }
     </script>
