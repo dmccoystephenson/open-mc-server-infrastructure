@@ -369,7 +369,20 @@
                     bar.className = 'chart-bar ' + (record.success ? 'success' : 'error');
                     const height = (record.playerCount / maxPlayers) * 100;
                     bar.style.height = Math.max(height, 5) + '%';
-                    bar.title = `Players: ${record.playerCount}\nStatus: ${record.success ? 'Online' : 'Offline'}\nTime: ${new Date(record.timestamp).toLocaleTimeString()}`;
+                    
+                    // Enhanced tooltip with resource usage
+                    const tooltipLines = [
+                        `Players: ${record.playerCount}`,
+                        `Status: ${record.success ? 'Online' : 'Offline'}`,
+                        `Time: ${new Date(record.timestamp).toLocaleTimeString()}`
+                    ];
+                    
+                    if (record.resourceUsage) {
+                        tooltipLines.push(`TPS: ${record.resourceUsage.tps}`);
+                        tooltipLines.push(`Memory: ${record.resourceUsage.memoryUsed}/${record.resourceUsage.memoryMax}`);
+                    }
+                    
+                    bar.title = tooltipLines.join('\n');
                     
                     const label = document.createElement('div');
                     label.className = 'chart-label';

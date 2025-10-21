@@ -40,7 +40,7 @@ class RconServiceHistoryTest {
         
         RetrievalRecord record = history.get(0);
         assertNotNull(record.getTimestamp());
-        assertNotNull(record.getPlayerList());
+        assertNotNull(record.getResourceUsage());
     }
 
     @Test
@@ -124,5 +124,21 @@ class RconServiceHistoryTest {
         
         RetrievalRecord record = history.get(0);
         assertTrue(record.getPlayerCount() >= 0); // Should be 0 or positive
+    }
+    
+    @Test
+    @DisplayName("Should include resource usage in retrieval record")
+    void shouldIncludeResourceUsageInRetrievalRecord() {
+        rconService.getServerStatus();
+        
+        List<RetrievalRecord> history = rconService.getRetrievalHistory();
+        assertEquals(1, history.size());
+        
+        RetrievalRecord record = history.get(0);
+        assertNotNull(record.getResourceUsage());
+        assertNotNull(record.getResourceUsage().getTps());
+        assertNotNull(record.getResourceUsage().getMemoryUsed());
+        assertNotNull(record.getResourceUsage().getMemoryMax());
+        assertNotNull(record.getResourceUsage().getMemoryFree());
     }
 }

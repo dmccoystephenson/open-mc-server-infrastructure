@@ -67,7 +67,7 @@ public class RconService {
         // Track retrieval in history
         boolean success = !response.startsWith("Error:");
         int playerCount = extractPlayerCount(response);
-        addRetrievalRecord(new RetrievalRecord(lastFetchTime, success, playerCount, response));
+        addRetrievalRecord(new RetrievalRecord(lastFetchTime, success, playerCount, resourceUsage));
     }
     
     private int extractPlayerCount(String playerListResponse) {
