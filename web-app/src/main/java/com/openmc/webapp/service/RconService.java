@@ -118,11 +118,17 @@ public class RconService {
         result[1] = "N/A";
         result[2] = "N/A";
         
+        // Limit input length to prevent ReDoS attacks
+        if (response == null || response.length() > 1000) {
+            return result;
+        }
+        
         // Remove color codes
         String cleaned = response.replaceAll("§[0-9a-fk-or]", "");
         
         // Look for pattern like "1024MB/2048MB" or "1024M/2048M"
-        java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("(\\d+(?:\\.\\d+)?)[MG]B?\\s*/\\s*(\\d+(?:\\.\\d+)?)[MG]B?");
+        // Use a simpler, safer pattern to prevent ReDoS
+        java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("(\\d+\\.?\\d*)[MG]B?\\s*/\\s*(\\d+\\.?\\d*)[MG]B?");
         java.util.regex.Matcher matcher = pattern.matcher(cleaned);
         
         if (matcher.find()) {
