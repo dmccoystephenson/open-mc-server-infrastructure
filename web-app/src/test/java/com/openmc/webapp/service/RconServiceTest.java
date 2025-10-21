@@ -61,7 +61,8 @@ class RconServiceTest {
     @DisplayName("ServerStatus should have correct MOTD from config")
     void serverStatusShouldHaveCorrectMotdFromConfig() {
         serverConfig.setMotd("Test Server MOTD");
-        RconService.ServerStatus status = new RconService.ServerStatus(serverConfig, "Player list");
+        RconService.ResourceUsage resourceUsage = new RconService.ResourceUsage("20.0, 20.0, 20.0", "1024MB", "2048MB", "1024MB", 50.0);
+        RconService.ServerStatus status = new RconService.ServerStatus(serverConfig, "Player list", resourceUsage);
         
         assertEquals("Test Server MOTD", status.getMotd());
     }
@@ -70,7 +71,8 @@ class RconServiceTest {
     @DisplayName("ServerStatus should have correct max players from config")
     void serverStatusShouldHaveCorrectMaxPlayersFromConfig() {
         serverConfig.setMaxPlayers(50);
-        RconService.ServerStatus status = new RconService.ServerStatus(serverConfig, "Player list");
+        RconService.ResourceUsage resourceUsage = new RconService.ResourceUsage("20.0, 20.0, 20.0", "1024MB", "2048MB", "1024MB", 50.0);
+        RconService.ServerStatus status = new RconService.ServerStatus(serverConfig, "Player list", resourceUsage);
         
         assertEquals(50, status.getMaxPlayers());
     }
@@ -78,7 +80,8 @@ class RconServiceTest {
     @Test
     @DisplayName("ServerStatus should be online when response is successful")
     void serverStatusShouldBeOnlineWhenResponseIsSuccessful() {
-        RconService.ServerStatus status = new RconService.ServerStatus(serverConfig, "There are 0 of a max of 20 players online");
+        RconService.ResourceUsage resourceUsage = new RconService.ResourceUsage("20.0, 20.0, 20.0", "1024MB", "2048MB", "1024MB", 50.0);
+        RconService.ServerStatus status = new RconService.ServerStatus(serverConfig, "There are 0 of a max of 20 players online", resourceUsage);
         
         assertTrue(status.isOnline());
     }
@@ -86,8 +89,40 @@ class RconServiceTest {
     @Test
     @DisplayName("ServerStatus should be offline when response contains error")
     void serverStatusShouldBeOfflineWhenResponseContainsError() {
-        RconService.ServerStatus status = new RconService.ServerStatus(serverConfig, "Error: Connection failed");
+        RconService.ResourceUsage resourceUsage = new RconService.ResourceUsage("N/A", "N/A", "N/A", "N/A", 0.0);
+        RconService.ServerStatus status = new RconService.ServerStatus(serverConfig, "Error: Connection failed", resourceUsage);
         
         assertFalse(status.isOnline());
+    }
+    
+    @Test
+    @DisplayName("ResourceUsage should store TPS information")
+    void resourceUsageShouldStoreTpsInformation() {
+        RconService.ResourceUsage resourceUsage = new RconService.ResourceUsage("20.0, 20.0, 20.0", "1024MB", "2048MB", "1024MB", 50.0);
+        
+        assertEquals("20.0, 20.0, 20.0", resourceUsage.getTps());
+    }
+    
+    @Test
+    @DisplayName("ResourceUsage should store memory information")
+    void resourceUsageShouldStoreMemoryInformation() {
+        RconService.ResourceUsage resourceUsage = new RconService.ResourceUsage("20.0, 20.0, 20.0", "1024MB", "2048MB", "1024MB", 50.0);
+        
+        assertEquals("1024MB", resourceUsage.getMemoryUsed());
+        assertEquals("2048MB", resourceUsage.getMemoryMax());
+        assertEquals("1024MB", resourceUsage.getMemoryFree());
+        assertEquals(50.0, resourceUsage.getMemoryUsedPercent(), 0.01);
+    }
+    
+    @Test
+    @DisplayName("ResourceUsage should handle N/A values")
+    void resourceUsageShouldHandleNAValues() {
+        RconService.ResourceUsage resourceUsage = new RconService.ResourceUsage("N/A", "N/A", "N/A", "N/A", 0.0);
+        
+        assertEquals("N/A", resourceUsage.getTps());
+        assertEquals("N/A", resourceUsage.getMemoryUsed());
+        assertEquals("N/A", resourceUsage.getMemoryMax());
+        assertEquals("N/A", resourceUsage.getMemoryFree());
+        assertEquals(0.0, resourceUsage.getMemoryUsedPercent(), 0.01);
     }
 }

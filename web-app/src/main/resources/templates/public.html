@@ -181,6 +181,32 @@
         </div>
         
         <div class="card">
+            <h2>Resource Usage</h2>
+            <div class="info-row">
+                <span class="info-label">TPS (Ticks Per Second)</span>
+                <span class="info-value" th:text="${status.resourceUsage.tps}">N/A</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Memory Used</span>
+                <span class="info-value" th:text="${status.resourceUsage.memoryUsed}">N/A</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Memory Max</span>
+                <span class="info-value" th:text="${status.resourceUsage.memoryMax}">N/A</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Memory Free</span>
+                <span class="info-value" th:text="${status.resourceUsage.memoryFree}">N/A</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Memory Usage</span>
+                <span class="info-value">
+                    <span th:text="${#numbers.formatDecimal(status.resourceUsage.memoryUsedPercent, 1, 1)} + '%'">0.0%</span>
+                </span>
+            </div>
+        </div>
+        
+        <div class="card">
             <h2>External Services</h2>
             <div class="links">
                 <a th:if="${dynmapUrl != null && !dynmapUrl.isEmpty()}" 
