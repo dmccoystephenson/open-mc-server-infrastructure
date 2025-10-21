@@ -162,4 +162,114 @@ class ServerControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.result").value(containsString("Command cannot be empty")));
     }
+
+    @Test
+    @DisplayName("Should successfully change password with valid credentials")
+    void shouldChangePasswordWithValidCredentials() throws Exception {
+        mockMvc.perform(post("/api/change-password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"username\":\"admin\",\"currentPassword\":\"admin\",\"newPassword\":\"newpass123\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value("true"))
+                .andExpect(jsonPath("$.message").value(containsString("Password updated successfully")));
+    }
+
+    @Test
+    @DisplayName("Should reject password change with invalid current password")
+    void shouldRejectPasswordChangeWithInvalidCurrentPassword() throws Exception {
+        mockMvc.perform(post("/api/change-password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"username\":\"admin\",\"currentPassword\":\"wrongpass\",\"newPassword\":\"newpass123\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value("false"))
+                .andExpect(jsonPath("$.message").value(containsString("Invalid username or current password")));
+    }
+
+    @Test
+    @DisplayName("Should reject password change with invalid username")
+    void shouldRejectPasswordChangeWithInvalidUsername() throws Exception {
+        mockMvc.perform(post("/api/change-password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"username\":\"wronguser\",\"currentPassword\":\"admin\",\"newPassword\":\"newpass123\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value("false"))
+                .andExpect(jsonPath("$.message").value(containsString("Invalid username or current password")));
+    }
+
+    @Test
+    @DisplayName("Should reject password change with missing username")
+    void shouldRejectPasswordChangeWithMissingUsername() throws Exception {
+        mockMvc.perform(post("/api/change-password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"currentPassword\":\"admin\",\"newPassword\":\"newpass123\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value("false"))
+                .andExpect(jsonPath("$.message").value(containsString("All fields are required")));
+    }
+
+    @Test
+    @DisplayName("Should reject password change with missing current password")
+    void shouldRejectPasswordChangeWithMissingCurrentPassword() throws Exception {
+        mockMvc.perform(post("/api/change-password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"username\":\"admin\",\"newPassword\":\"newpass123\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value("false"))
+                .andExpect(jsonPath("$.message").value(containsString("All fields are required")));
+    }
+
+    @Test
+    @DisplayName("Should reject password change with missing new password")
+    void shouldRejectPasswordChangeWithMissingNewPassword() throws Exception {
+        mockMvc.perform(post("/api/change-password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"username\":\"admin\",\"currentPassword\":\"admin\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value("false"))
+                .andExpect(jsonPath("$.message").value(containsString("All fields are required")));
+    }
+
+    @Test
+    @DisplayName("Should reject password change with empty new password")
+    void shouldRejectPasswordChangeWithEmptyNewPassword() throws Exception {
+        mockMvc.perform(post("/api/change-password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"username\":\"admin\",\"currentPassword\":\"admin\",\"newPassword\":\"\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value("false"))
+                .andExpect(jsonPath("$.message").value(containsString("New password cannot be empty")));
+    }
+
+    @Test
+    @DisplayName("Should reject password change with whitespace-only new password")
+    void shouldRejectPasswordChangeWithWhitespaceNewPassword() throws Exception {
+        mockMvc.perform(post("/api/change-password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"username\":\"admin\",\"currentPassword\":\"admin\",\"newPassword\":\"   \"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value("false"))
+                .andExpect(jsonPath("$.message").value(containsString("New password cannot be empty")));
+    }
+
+    @Test
+    @DisplayName("Should allow command with new password after password change")
+    void shouldAllowCommandWithNewPasswordAfterChange() throws Exception {
+        // First change the password
+        mockMvc.perform(post("/api/change-password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"username\":\"admin\",\"currentPassword\":\"admin\",\"newPassword\":\"newpass123\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value("true"));
+
+        // Update the mock to return the new password
+        when(serverConfig.getAdminPassword()).thenReturn("newpass123");
+        when(rconService.sendCommand("list")).thenReturn("There are 0 of a max of 20 players online");
+
+        // Now try to send a command with the new password
+        mockMvc.perform(post("/api/command")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"username\":\"admin\",\"password\":\"newpass123\",\"command\":\"list\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.result").exists());
+    }
 }

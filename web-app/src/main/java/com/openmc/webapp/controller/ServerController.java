@@ -77,4 +77,32 @@ public class ServerController {
     public RconService.ResourceUsage getResources() {
         return rconService.getResourceUsage();
     }
+    
+    @PostMapping("/api/change-password")
+    @ResponseBody
+    public Map<String, String> changePassword(@RequestBody Map<String, String> payload) {
+        String username = payload.get("username");
+        String currentPassword = payload.get("currentPassword");
+        String newPassword = payload.get("newPassword");
+        
+        // Validate inputs
+        if (username == null || currentPassword == null || newPassword == null) {
+            return Map.of("success", "false", "message", "All fields are required");
+        }
+        
+        if (newPassword.trim().isEmpty()) {
+            return Map.of("success", "false", "message", "New password cannot be empty");
+        }
+        
+        // Verify current credentials
+        if (!serverConfig.getAdminUsername().equals(username) || 
+            !serverConfig.getAdminPassword().equals(currentPassword)) {
+            return Map.of("success", "false", "message", "Invalid username or current password");
+        }
+        
+        // Update password
+        serverConfig.setAdminPassword(newPassword);
+        
+        return Map.of("success", "true", "message", "Password updated successfully");
+    }
 }
