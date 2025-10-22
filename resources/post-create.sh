@@ -170,7 +170,7 @@ EOF
 # Function: Start server
 start_server() {
     log "Starting server with graceful shutdown wrapper..."
-    /resources/minecraft-wrapper.sh \
+    exec /resources/minecraft-wrapper.sh \
         "spigot-${MINECRAFT_VERSION}.jar" \
         "$SERVER_DIR" \
         "${JAVA_OPTS:--Xmx2G -Xms1G}"
