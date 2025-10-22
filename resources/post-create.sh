@@ -71,6 +71,12 @@ setup_server() {
 
 # Function: Setup ops.json file
 setup_ops_file() {
+    # Check if ops.json already exists - if so, preserve it to maintain runtime op changes
+    if [ -f "$SERVER_DIR/ops.json" ]; then
+        log "ops.json already exists - preserving existing operator configuration."
+        return
+    fi
+    
     # Only create ops.json if we have valid operator information
     if [ "$OPERATOR_UUID" != "YOUR_UUID_HERE" ] && [ -n "$OPERATOR_UUID" ] && [ "$OPERATOR_NAME" != "YOUR_USERNAME_HERE" ] && [ -n "$OPERATOR_NAME" ]; then
         log "Creating ops.json file with operator: ${OPERATOR_NAME}"
