@@ -3,6 +3,7 @@ package com.openmc.webapp.service;
 import com.openmc.webapp.config.ServerConfig;
 import com.openmc.webapp.model.RetrievalRecord;
 import com.openmc.webapp.rcon.RconClient;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
@@ -100,6 +101,13 @@ public class RconService {
     
     public synchronized List<RetrievalRecord> getRetrievalHistory() {
         return Collections.unmodifiableList(new ArrayList<>(retrievalHistory));
+    }
+    
+    // Scheduled task to fetch data every 30 minutes regardless of user visits
+    @Scheduled(fixedRate = 1800000) // 30 minutes in milliseconds
+    public void scheduledDataFetch() {
+        // Force a cache refresh to ensure history is populated
+        refreshCache();
     }
     
     public Instant getLastFetchTime() {
