@@ -35,36 +35,57 @@ validate_environment() {
 
 # Function: Setup server
 setup_server() {
+    # Set default server type if not specified
+    SERVER_TYPE=${SERVER_TYPE:-spigot}
+    
     if [ -z "$(ls -A "$SERVER_DIR")" ] || [ "$OVERWRITE_EXISTING_SERVER" = "true" ]; then
-        log "Setting up new server..."
+        log "Setting up new server (type: ${SERVER_TYPE})..."
         rm -rf "${SERVER_DIR:?}"/*
-        cp "$BUILD_DIR"/spigot-"${MINECRAFT_VERSION}".jar "$SERVER_DIR"/spigot-"${MINECRAFT_VERSION}".jar
+        cp "$BUILD_DIR"/"${SERVER_TYPE}"-"${MINECRAFT_VERSION}".jar "$SERVER_DIR"/"${SERVER_TYPE}"-"${MINECRAFT_VERSION}".jar
         mkdir -p "$SERVER_DIR"/plugins
+        
+        # Create mods directory for Mohist
+        if [ "$SERVER_TYPE" = "mohist" ]; then
+            mkdir -p "$SERVER_DIR"/mods
+            log "Created mods directory for Mohist server"
+        fi
     else
         log "Server is already set up."
         
-        # Check if we need to update the server JAR for a version upgrade
-        local new_jar="$BUILD_DIR/spigot-${MINECRAFT_VERSION}.jar"
-        local expected_jar="$SERVER_DIR/spigot-${MINECRAFT_VERSION}.jar"
+        # Check if we need to update the server JAR for a version upgrade or server type change
+        local new_jar="$BUILD_DIR/${SERVER_TYPE}-${MINECRAFT_VERSION}.jar"
+        local expected_jar="$SERVER_DIR/${SERVER_TYPE}-${MINECRAFT_VERSION}.jar"
         
-        # Check if the expected JAR for this version exists
+        # Check if the expected JAR for this version and type exists
         if [ ! -f "$expected_jar" ]; then
-            # The expected JAR doesn't exist, so we need to upgrade
-            log "Detected version change - updating server JAR to ${MINECRAFT_VERSION}..."
+            # The expected JAR doesn't exist, so we need to upgrade or switch server types
+            log "Detected version or server type change - updating server JAR to ${SERVER_TYPE} ${MINECRAFT_VERSION}..."
             
-            # Check if there are old version JARs to remove
-            if ls "$SERVER_DIR"/spigot-*.jar >/dev/null 2>&1; then
+            # Check if there are old version/type JARs to remove
+            if ls "$SERVER_DIR"/spigot-*.jar >/dev/null 2>&1 || ls "$SERVER_DIR"/mohist-*.jar >/dev/null 2>&1; then
                 local old_jars
-                old_jars=$(find "$SERVER_DIR" -name "spigot-*.jar" -exec basename {} \;)
-                log "Removing old JAR(s): $old_jars"
-                rm -f "$SERVER_DIR"/spigot-*.jar
+                if [ -d "$SERVER_DIR" ]; then
+                    old_jars=$(find "$SERVER_DIR" \( -name "spigot-*.jar" -o -name "mohist-*.jar" \) -exec basename {} \;)
+                else
+                    old_jars=""
+                fi
+                if [ -n "$old_jars" ]; then
+                    log "Removing old JAR(s): $old_jars"
+                    rm -f "$SERVER_DIR"/spigot-*.jar "$SERVER_DIR"/mohist-*.jar
+                fi
             fi
             
             # Copy new version JAR
             cp "$new_jar" "$expected_jar"
-            log "Server JAR updated successfully to version ${MINECRAFT_VERSION}."
+            log "Server JAR updated successfully to ${SERVER_TYPE} version ${MINECRAFT_VERSION}."
+            
+            # Create mods directory for Mohist if switching to it
+            if [ "$SERVER_TYPE" = "mohist" ] && [ ! -d "$SERVER_DIR/mods" ]; then
+                mkdir -p "$SERVER_DIR"/mods
+                log "Created mods directory for Mohist server"
+            fi
         else
-            log "Server JAR is up to date (version ${MINECRAFT_VERSION})."
+            log "Server JAR is up to date (${SERVER_TYPE} version ${MINECRAFT_VERSION})."
         fi
     fi
 }
@@ -169,9 +190,12 @@ EOF
 
 # Function: Start server
 start_server() {
-    log "Starting server with graceful shutdown wrapper..."
+    # Set default server type if not specified
+    SERVER_TYPE=${SERVER_TYPE:-spigot}
+    
+    log "Starting ${SERVER_TYPE} server with graceful shutdown wrapper..."
     /resources/minecraft-wrapper.sh \
-        "spigot-${MINECRAFT_VERSION}.jar" \
+        "${SERVER_TYPE}-${MINECRAFT_VERSION}.jar" \
         "$SERVER_DIR" \
         "${JAVA_OPTS:--Xmx2G -Xms1G}"
 }

@@ -99,6 +99,11 @@ jobs:
         echo "🧪 Testing graceful shutdown functionality..."
         ./scripts/test-graceful-shutdown.sh
         
+    - name: Test server type configuration
+      run: |
+        echo "🧪 Testing server type configuration (Spigot and Mohist)..."
+        ./scripts/test-server-types.sh
+        
   security-scan:
     name: Security Scanning
     runs-on: ubuntu-latest

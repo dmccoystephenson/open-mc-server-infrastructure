@@ -2,11 +2,12 @@
 
 [![CI Pipeline](https://github.com/dmccoystephenson/private-mc-server/workflows/CI%20Pipeline/badge.svg?branch=main)](https://github.com/dmccoystephenson/private-mc-server/actions)
 
-An open, community-agnostic, Docker-based Minecraft server infrastructure running the latest version of Minecraft (1.21.10) with Spigot for enhanced plugin support and performance. Highly configurable and customizable for any use case.
+An open, community-agnostic, Docker-based Minecraft server infrastructure running the latest version of Minecraft (1.21.10) with support for both Spigot (plugin-only) and Mohist (mods + plugins) servers. Highly configurable and customizable for any use case.
 
 ## Features
 
-- **Latest Minecraft Version**: Running Minecraft 1.21.10 with Spigot
+- **Latest Minecraft Version**: Running Minecraft 1.21.10 with Spigot or Mohist
+- **Multiple Server Types**: Choose between Spigot (plugins only) or Mohist (mods + plugins)
 - **Docker Containerized**: Easy deployment and management
 - **Web Dashboard**: Built-in Spring Boot web application for server management
 - **Configurable**: Environment-based configuration
@@ -46,7 +47,9 @@ An open, community-agnostic, Docker-based Minecraft server infrastructure runnin
    ./up.sh
    ```
    
-   **Note**: The first build will take 10-15 minutes as it downloads and compiles Spigot from source.
+   **Note**: 
+   - For Spigot servers: The first build will take 10-15 minutes as it downloads and compiles Spigot from source.
+   - For Mohist servers: The first build will take a few minutes as it downloads the pre-built Mohist server.
 
 5. **Connect to your server**
    - Server address: `localhost:25565` (or your server's IP)
@@ -86,12 +89,31 @@ Alternatively, you can generate new self-signed certificates:
 Copy `sample.env` to `.env` and modify the following settings:
 
 ### Essential Settings
+- `MINECRAFT_VERSION`: Minecraft version to run (e.g., 1.21.10)
+- `SERVER_TYPE`: Server type - `spigot` (default, plugins only) or `mohist` (mods + plugins)
 - `OPERATOR_UUID`: Your Minecraft player UUID (get from [mcuuid.net](https://mcuuid.net/))
 - `OPERATOR_NAME`: Your Minecraft username
 - `SERVER_MOTD`: Message displayed in the server list
 - `MAX_PLAYERS`: Maximum number of players allowed
 
 **Note**: If `OPERATOR_UUID` and `OPERATOR_NAME` are not properly configured, the server will still start but you'll need to manually add operators using the `op <username>` command in the server console.
+
+### Server Type Selection
+
+The infrastructure supports two server types:
+
+- **Spigot** (default): A plugin-only server based on CraftBukkit. Use this for a traditional Bukkit/Spigot plugin experience.
+  - Plugins go in the `plugins/` directory
+  - Best compatibility with Bukkit/Spigot plugins
+  - Faster build times
+
+- **Mohist**: A hybrid server that combines Forge modding with Bukkit/Spigot plugin support. Use this if you want to run both mods and plugins.
+  - Mods go in the `mods/` directory
+  - Plugins go in the `plugins/` directory
+  - Supports both Forge mods and Bukkit/Spigot plugins
+  - May have compatibility issues with some plugins
+
+To switch server types, update `SERVER_TYPE` in your `.env` file and rebuild the container with `./down.sh && docker compose build --no-cache && ./up.sh`.
 
 ### Server Settings
 - `DIFFICULTY`: Server difficulty (peaceful, easy, normal, hard)
@@ -205,6 +227,32 @@ docker compose restart
 
 ### Deposit Box
 The `deposit-box` directory is shared between your host system and the container at `/deposit-box`. Use it to transfer files to/from the server.
+
+### Adding Plugins and Mods
+
+**Plugins** (works for both Spigot and Mohist):
+1. Stop the server: `./down.sh`
+2. Place plugin JAR files in the Docker volume at `/mcserver/plugins/`
+3. Use the deposit box or `docker cp` to transfer files
+4. Start the server: `./up.sh`
+
+**Mods** (Mohist only):
+1. Stop the server: `./down.sh`
+2. Place mod JAR files in the Docker volume at `/mcserver/mods/`
+3. Use the deposit box or `docker cp` to transfer files
+4. Start the server: `./up.sh`
+
+Example using deposit box:
+```bash
+# Copy plugin/mod to deposit box
+cp mymod.jar ./deposit-box/
+
+# Copy from deposit box to server (while server is running)
+docker exec open-mc-server cp /deposit-box/mymod.jar /mcserver/mods/
+
+# Restart server to load the new mod/plugin
+./down.sh && ./up.sh
+```
 
 ## Updating
 

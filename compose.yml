@@ -4,6 +4,7 @@ services:
       context: .
       args:
         - MINECRAFT_VERSION=${MINECRAFT_VERSION}
+        - SERVER_TYPE=${SERVER_TYPE:-spigot}
     image: open-mc-server
     restart: always
     container_name: ${CONTAINER_NAME:-open-mc-server}
@@ -16,6 +17,7 @@ services:
       - ./deposit-box:/deposit-box
     environment:
       - MINECRAFT_VERSION=${MINECRAFT_VERSION}
+      - SERVER_TYPE=${SERVER_TYPE:-spigot}
       - OPERATOR_UUID=${OPERATOR_UUID}
       - OPERATOR_NAME=${OPERATOR_NAME}
       - OPERATOR_LEVEL=${OPERATOR_LEVEL}
