@@ -123,7 +123,6 @@ TESTS_RUN=$((TESTS_RUN + 1))
 cp sample.env .env.test
 sed -i 's/YOUR_UUID_HERE/test-uuid-1234/g' .env.test
 sed -i 's/YOUR_USERNAME_HERE/TestPlayer/g' .env.test
-sed -i 's/SERVER_TYPE=spigot/SERVER_TYPE=spigot/g' .env.test
 if docker compose --env-file .env.test config > /dev/null 2>&1; then
     test_success "✓ Docker Compose config valid with Spigot"
     TESTS_PASSED=$((TESTS_PASSED + 1))

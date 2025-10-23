@@ -23,7 +23,7 @@ RUN if [ "$SERVER_TYPE" = "spigot" ]; then \
 # Build Mohist server
 RUN if [ "$SERVER_TYPE" = "mohist" ]; then \
         wget --user-agent="Mozilla/5.0" -O mohist-${MINECRAFT_VERSION}.jar "https://mohistmc.com/api/v2/projects/mohist/${MINECRAFT_VERSION}/builds/latest/download" || \
-        { echo "Failed to download Mohist ${MINECRAFT_VERSION}. Please check if the version is supported at https://mohistmc.com/"; exit 1; }; \
+        { echo "Failed to download Mohist ${MINECRAFT_VERSION}. Please verify that your MINECRAFT_VERSION matches a supported Mohist version. You can check available versions at https://mohistmc.com/download"; exit 1; }; \
     fi
 
 FROM base as final

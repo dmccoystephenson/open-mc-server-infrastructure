@@ -64,7 +64,11 @@ setup_server() {
             # Check if there are old version/type JARs to remove
             if ls "$SERVER_DIR"/spigot-*.jar >/dev/null 2>&1 || ls "$SERVER_DIR"/mohist-*.jar >/dev/null 2>&1; then
                 local old_jars
-                old_jars=$(find "$SERVER_DIR" \( -name "spigot-*.jar" -o -name "mohist-*.jar" \) -exec basename {} \; 2>/dev/null || echo "")
+                if [ -d "$SERVER_DIR" ]; then
+                    old_jars=$(find "$SERVER_DIR" \( -name "spigot-*.jar" -o -name "mohist-*.jar" \) -exec basename {} \;)
+                else
+                    old_jars=""
+                fi
                 if [ -n "$old_jars" ]; then
                     log "Removing old JAR(s): $old_jars"
                     rm -f "$SERVER_DIR"/spigot-*.jar "$SERVER_DIR"/mohist-*.jar
