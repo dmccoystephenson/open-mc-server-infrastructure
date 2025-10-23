@@ -95,6 +95,10 @@ main() {
     # Get current version
     current_version=$(get_current_version)
     log_info "Current Minecraft version: $current_version"
+    
+    # Get current server type
+    current_server_type=$(get_env_value "SERVER_TYPE" "spigot")
+    log_info "Current server type: $current_server_type"
     echo ""
     
     # Prompt for new version
@@ -164,7 +168,15 @@ main() {
     
     # Step 4: Rebuild Docker image
     log_info "Step 4/6: Rebuilding Docker image with new version..."
-    log_warning "This may take 10-15 minutes as it compiles Spigot from source..."
+    local server_type
+    server_type=$(get_env_value "SERVER_TYPE" "spigot")
+    
+    if [ "$server_type" = "mohist" ]; then
+        log_warning "This may take a few minutes to download Mohist ${new_version}..."
+    else
+        log_warning "This may take 10-15 minutes as it compiles Spigot from source..."
+    fi
+    
     docker compose build --no-cache 2>&1 | while IFS= read -r line; do
         echo "  $line"
     done
@@ -208,6 +220,7 @@ main() {
     log_info "Summary:"
     echo "  - Previous version: $current_version"
     echo "  - New version: $new_version"
+    echo "  - Server type: $current_server_type"
     echo "  - Backup location: $backup_dir"
     echo ""
     local container_name

@@ -190,16 +190,18 @@ MINECRAFT_VERSION=1.21.9
 MINECRAFT_VERSION=1.21.10
 ```
 
-**Note**: The version must match an available Spigot build. Check [Spigot BuildTools](https://www.spigotmc.org/wiki/buildtools/) for supported versions.
+**Note**: The version must match an available build for your server type:
+- For Spigot: Check [Spigot BuildTools](https://www.spigotmc.org/wiki/buildtools/) for supported versions
+- For Mohist: Check [Mohist Downloads](https://mohistmc.com/download) for supported versions
 
 **Important**: The Dockerfile now uses a build argument that automatically reads the `MINECRAFT_VERSION` from your `.env` file, so you only need to update the version in one place!
 
 ### Step 4: Rebuild Docker Image
 
 Rebuild the Docker image with the new Minecraft version. This process will:
-- Download and compile the new Spigot version
+- Download and compile the new server version (Spigot takes 10-15 minutes, Mohist takes a few minutes)
 - Create a new server JAR file
-- Take 10-15 minutes depending on your system
+- Build time depends on your server type and system
 
 ```bash
 docker compose build --no-cache
@@ -489,6 +491,7 @@ docker logs -f open-mc-server | grep -i error
 ## Additional Resources
 
 - [Spigot BuildTools Documentation](https://www.spigotmc.org/wiki/buildtools/)
+- [Mohist Downloads](https://mohistmc.com/download)
 - [Minecraft Version History](https://minecraft.fandom.com/wiki/Java_Edition_version_history)
 - [Plugin Compatibility Checker](https://www.spigotmc.org/)
 - [Server Configuration Guide](./README.md#configuration)
