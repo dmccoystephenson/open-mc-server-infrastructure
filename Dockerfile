@@ -30,4 +30,4 @@ RUN chmod +x /resources/post-create.sh /resources/minecraft-wrapper.sh
 # Run server
 WORKDIR /mcserver
 EXPOSE 25565
-ENTRYPOINT /resources/post-create.sh
+ENTRYPOINT exec /resources/post-create.sh
