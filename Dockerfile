@@ -2,7 +2,7 @@ FROM ubuntu as base
 
 # Install dependencies
 RUN apt update
-RUN DEBIAN_FRONTEND=noninteractive apt install -y wget git openjdk-21-jdk openjdk-21-jre
+RUN DEBIAN_FRONTEND=noninteractive apt install -y wget curl git openjdk-21-jdk openjdk-21-jre
 
 FROM base as builder
 
@@ -22,8 +22,8 @@ RUN if [ "$SERVER_TYPE" = "spigot" ]; then \
 
 # Build Mohist server
 RUN if [ "$SERVER_TYPE" = "mohist" ]; then \
-        wget -O mohist-${MINECRAFT_VERSION}.jar https://mohistmc.com/api/v2/projects/mohist/${MINECRAFT_VERSION}/builds/latest/download || \
-        wget -O mohist-${MINECRAFT_VERSION}.jar $(curl -s https://mohistmc.com/api/v2/projects/mohist/${MINECRAFT_VERSION}/builds/latest | grep -o '"url":"[^"]*"' | sed 's/"url":"//;s/"//'); \
+        wget --user-agent="Mozilla/5.0" -O mohist-${MINECRAFT_VERSION}.jar "https://mohistmc.com/api/v2/projects/mohist/${MINECRAFT_VERSION}/builds/latest/download" || \
+        { echo "Failed to download Mohist ${MINECRAFT_VERSION}. Please check if the version is supported at https://mohistmc.com/"; exit 1; }; \
     fi
 
 FROM base as final
