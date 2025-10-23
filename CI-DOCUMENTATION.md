@@ -33,6 +33,7 @@ This is the main validation job that performs comprehensive checks across multip
 #### Environment Configuration Validation
 - **Sample Environment File**: Validates `sample.env` contains all required variables:
   - `MINECRAFT_VERSION`
+  - `SERVER_TYPE`
   - `OPERATOR_UUID`
   - `OPERATOR_NAME`
   - `SERVER_MOTD`
@@ -47,6 +48,14 @@ This is the main validation job that performs comprehensive checks across multip
   - Verifies proper stop command transmission via FIFO
   - Validates plugin data preservation during shutdown
   - Confirms clean server termination
+
+#### Server Type Configuration Testing
+- **Multi-Server Support**: Validates support for multiple server types (Spigot and Mohist)
+  - Verifies SERVER_TYPE environment variable is properly configured
+  - Tests Docker Compose configuration with both server types
+  - Validates Dockerfile build logic for both Spigot and Mohist
+  - Confirms documentation covers both server options
+  - Ensures post-create.sh handles server type switching correctly
 
 ### 2. Security Scanning
 
@@ -151,6 +160,12 @@ This script mirrors the CI pipeline checks and helps catch issues before submitt
 - Ensure sufficient resources are available for server build
 - Check for port conflicts or networking issues
 - Review server configuration in test environment
+
+### Server Type Configuration Failures
+- Verify SERVER_TYPE is properly defined in sample.env
+- Ensure both server types (spigot and mohist) are documented
+- Check that Dockerfile has build logic for both server types
+- Validate compose.yml passes SERVER_TYPE to the container
 
 ## Performance
 
