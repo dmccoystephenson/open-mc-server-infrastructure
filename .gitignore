@@ -27,3 +27,6 @@ test_validation.sh
 
 # SSL certificates (private keys should never be committed)
 nginx/ssl/
+
+# Backup directories
+backups/

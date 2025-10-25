@@ -52,15 +52,61 @@ create_backup() {
     log_info "Creating backup at: $backup_dir" >&2
     mkdir -p "$backup_dir"
     
+    # Check if volume exists
+    log_info "Checking if volume '$volume_name' exists..." >&2
+    if ! docker volume inspect "$volume_name" >/dev/null 2>&1; then
+        log_error "Volume '$volume_name' does not exist!" >&2
+        log_error "Please ensure the server has been started at least once." >&2
+        return 1
+    fi
+    log_success "Volume '$volume_name' found." >&2
+    
+    # Check if ubuntu image is available, pull if needed
+    log_info "Checking for ubuntu Docker image..." >&2
+    if ! docker image inspect ubuntu:latest >/dev/null 2>&1; then
+        log_info "Ubuntu image not found locally. Pulling from Docker Hub..." >&2
+        log_info "This may take a few minutes on first run..." >&2
+        if ! docker pull ubuntu:latest >&2; then
+            log_error "Failed to pull ubuntu image!" >&2
+            return 1
+        fi
+        log_success "Ubuntu image pulled successfully." >&2
+    else
+        log_success "Ubuntu image found." >&2
+    fi
+    
     # Use docker run to create a tarball backup from the volume
+    log_info "Creating compressed backup archive (this may take a while)..." >&2
+    
+    # Run docker command and capture output to a temp file
+    local temp_output
+    temp_output=$(mktemp -t backup.XXXXXX)
+    trap 'rm -f "$temp_output"' RETURN
+    local docker_exit_code
+    
     docker run --rm \
         -v "${volume_name}:/mcserver:ro" \
         -v "$(pwd)/$backup_dir":/backup \
-        ubuntu \
-        tar czf /backup/mcserver-backup.tar.gz -C /mcserver . 2>/dev/null || {
-            log_error "Backup failed!" >&2
-            return 1
-        }
+        ubuntu:latest \
+        tar czf /backup/mcserver-backup.tar.gz -C /mcserver . 2>&1 | tee "$temp_output" >&2
+    docker_exit_code=${PIPESTATUS[0]}
+    
+    # Log any tar warnings/errors from the output
+    if [ -s "$temp_output" ]; then
+        while IFS= read -r line; do
+            if [[ "$line" =~ (Error|error|Warning|warning|Cannot|cannot|Failed|failed) ]]; then
+                log_warning "tar: $line" >&2
+            fi
+        done < "$temp_output"
+    fi
+    
+    # Check if docker/tar command succeeded
+    if [ "$docker_exit_code" -eq 0 ]; then
+        log_success "Backup archive created successfully." >&2
+    else
+        log_error "Backup failed! Exit code: $docker_exit_code" >&2
+        return 1
+    fi
     
     # Verify backup was created
     if [ -f "$backup_dir/mcserver-backup.tar.gz" ]; then
@@ -109,7 +155,7 @@ main() {
         echo "     docker run --rm \\"
         echo "       -v mcserver:/mcserver \\"
         echo "       -v \"$(pwd)/$backup_dir\":/backup \\"
-        echo "       ubuntu \\"
+        echo "       ubuntu:latest \\"
         echo "       tar xzf /backup/mcserver-backup.tar.gz -C /mcserver"
         echo "  3. Start the server: ./up.sh"
         echo ""
