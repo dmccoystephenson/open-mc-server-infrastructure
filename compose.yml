@@ -27,6 +27,7 @@ services:
       - PVP_ENABLED=${PVP_ENABLED}
       - ONLINE_MODE=${ONLINE_MODE}
       - JAVA_OPTS=${JAVA_OPTS}
+      - RCON_PASSWORD=${RCON_PASSWORD:-minecraft}
 
   webapp:
     build:
