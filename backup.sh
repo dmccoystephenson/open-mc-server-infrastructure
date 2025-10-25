@@ -77,19 +77,31 @@ create_backup() {
     
     # Use docker run to create a tarball backup from the volume
     log_info "Creating compressed backup archive (this may take a while)..." >&2
-    if docker run --rm \
+    
+    # Capture tar output and exit status
+    local tar_output
+    local tar_exit_code
+    tar_output=$(docker run --rm \
         -v "${volume_name}:/mcserver:ro" \
         -v "$(pwd)/$backup_dir":/backup \
-        ubuntu \
-        tar czf /backup/mcserver-backup.tar.gz -C /mcserver . 2>&1 | while IFS= read -r line; do
-            # Only log tar warnings/errors, not every file
+        ubuntu:latest \
+        tar czf /backup/mcserver-backup.tar.gz -C /mcserver . 2>&1)
+    tar_exit_code=$?
+    
+    # Log any tar warnings/errors
+    if [ -n "$tar_output" ]; then
+        echo "$tar_output" | while IFS= read -r line; do
             if [[ "$line" =~ (Error|error|Warning|warning|Cannot|cannot|Failed|failed) ]]; then
                 log_warning "tar: $line" >&2
             fi
-        done; then
+        done
+    fi
+    
+    # Check if tar command succeeded
+    if [ "$tar_exit_code" -eq 0 ]; then
         log_success "Backup archive created successfully." >&2
     else
-        log_error "Backup failed!" >&2
+        log_error "Backup failed! tar exit code: $tar_exit_code" >&2
         return 1
     fi
     
@@ -140,7 +152,7 @@ main() {
         echo "     docker run --rm \\"
         echo "       -v mcserver:/mcserver \\"
         echo "       -v \"$(pwd)/$backup_dir\":/backup \\"
-        echo "       ubuntu \\"
+        echo "       ubuntu:latest \\"
         echo "       tar xzf /backup/mcserver-backup.tar.gz -C /mcserver"
         echo "  3. Start the server: ./up.sh"
         echo ""
