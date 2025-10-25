@@ -99,6 +99,11 @@ echo "[MOCK-SERVER] Ready for connections!"
 while read -r line; do
     echo "[MOCK-SERVER] Command received: '$line'"
     case "$line" in
+        say*)
+            # Extract the message after "say"
+            message="${line#say }"
+            echo "[MOCK-SERVER] Broadcasting to all players: $message"
+            ;;
         "stop")
             echo "[MOCK-SERVER] Stopping server gracefully..."
             echo "[MOCK-SERVER] Saving world data..."
@@ -198,6 +203,46 @@ else
 fi
 SHUTDOWN_TESTS=$((SHUTDOWN_TESTS + 1))
 
+if echo "$LOGS" | grep -q "\[WRAPPER\] Warning players of impending shutdown"; then
+    test_success "✓ Wrapper initiated player warning sequence"
+    SHUTDOWN_PASSED=$((SHUTDOWN_PASSED + 1))
+else
+    test_error "✗ Wrapper did not initiate player warnings"
+fi
+SHUTDOWN_TESTS=$((SHUTDOWN_TESTS + 1))
+
+if echo "$LOGS" | grep -q "Server is shutting down in 30 seconds"; then
+    test_success "✓ 30-second warning sent to players"
+    SHUTDOWN_PASSED=$((SHUTDOWN_PASSED + 1))
+else
+    test_error "✗ 30-second warning not sent"
+fi
+SHUTDOWN_TESTS=$((SHUTDOWN_TESTS + 1))
+
+if echo "$LOGS" | grep -q "Server is shutting down in 20 seconds"; then
+    test_success "✓ 20-second warning sent to players"
+    SHUTDOWN_PASSED=$((SHUTDOWN_PASSED + 1))
+else
+    test_error "✗ 20-second warning not sent"
+fi
+SHUTDOWN_TESTS=$((SHUTDOWN_TESTS + 1))
+
+if echo "$LOGS" | grep -q "Server is shutting down in 10 seconds"; then
+    test_success "✓ 10-second warning sent to players"
+    SHUTDOWN_PASSED=$((SHUTDOWN_PASSED + 1))
+else
+    test_error "✗ 10-second warning not sent"
+fi
+SHUTDOWN_TESTS=$((SHUTDOWN_TESTS + 1))
+
+if echo "$LOGS" | grep -q "Server is shutting down in 5 seconds"; then
+    test_success "✓ 5-second warning sent to players"
+    SHUTDOWN_PASSED=$((SHUTDOWN_PASSED + 1))
+else
+    test_error "✗ 5-second warning not sent"
+fi
+SHUTDOWN_TESTS=$((SHUTDOWN_TESTS + 1))
+
 if echo "$LOGS" | grep -q "\[WRAPPER\] Sending 'stop' command to Minecraft server"; then
     test_success "✓ Stop command sent to server"
     SHUTDOWN_PASSED=$((SHUTDOWN_PASSED + 1))
@@ -236,7 +281,7 @@ test_log "Shutdown tests passed: $SHUTDOWN_PASSED/$SHUTDOWN_TESTS"
 
 if [ "$SHUTDOWN_PASSED" -eq "$SHUTDOWN_TESTS" ]; then
     test_success "🎉 All Docker graceful shutdown tests passed!"
-    test_success "The fix correctly handles SIGTERM in Docker containers"
+    test_success "The wrapper correctly warns players and handles SIGTERM in Docker containers"
     exit 0
 else
     test_error "❌ Some Docker graceful shutdown tests failed"

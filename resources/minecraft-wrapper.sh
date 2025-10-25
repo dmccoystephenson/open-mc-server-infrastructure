@@ -21,6 +21,21 @@ graceful_shutdown() {
     log "Received shutdown signal, initiating graceful server stop..."
     
     if [ -n "$PID" ] && kill -0 "$PID" 2>/dev/null; then
+        # Warn players before shutdown with countdown
+        log "Warning players of impending shutdown..."
+        
+        echo "say Server is shutting down in 30 seconds!" > "$INPUT_FIFO" 2>/dev/null || true
+        sleep 10
+        
+        echo "say Server is shutting down in 20 seconds!" > "$INPUT_FIFO" 2>/dev/null || true
+        sleep 10
+        
+        echo "say Server is shutting down in 10 seconds!" > "$INPUT_FIFO" 2>/dev/null || true
+        sleep 5
+        
+        echo "say Server is shutting down in 5 seconds!" > "$INPUT_FIFO" 2>/dev/null || true
+        sleep 5
+        
         log "Sending 'stop' command to Minecraft server..."
         
         # Send stop command to the server via the FIFO

@@ -50,6 +50,11 @@ echo "[MOCK-SERVER] Ready for connections!"
 while read -r line; do
     echo "[MOCK-SERVER] Command received: '$line'"
     case "$line" in
+        say*)
+            # Extract the message after "say"
+            message="${line#say }"
+            echo "[MOCK-SERVER] Broadcasting to all players: $message"
+            ;;
         "stop")
             echo "[MOCK-SERVER] Stopping server gracefully..."
             echo "[MOCK-SERVER] Saving world data..."
@@ -147,8 +152,8 @@ sleep 2
 # Send SIGTERM to wrapper (simulating docker compose stop)
 kill -TERM "$WRAPPER_PID"
 
-# Wait for shutdown to complete
-sleep 10
+# Wait for shutdown to complete (30 seconds for warnings + time for actual shutdown)
+sleep 40
 
 # Check wrapper output for shutdown logs
 test_log "Checking for shutdown logs in wrapper output..."
@@ -163,6 +168,46 @@ if grep -q "\[WRAPPER\] Received shutdown signal" "$TEST_DIR/wrapper_output.log"
     SHUTDOWN_PASSED=$((SHUTDOWN_PASSED + 1))
 else
     test_error "✗ Shutdown signal not received by wrapper"
+fi
+SHUTDOWN_TESTS=$((SHUTDOWN_TESTS + 1))
+
+if grep -q "\[WRAPPER\] Warning players of impending shutdown" "$TEST_DIR/wrapper_output.log"; then
+    test_success "✓ Wrapper initiated player warning sequence"
+    SHUTDOWN_PASSED=$((SHUTDOWN_PASSED + 1))
+else
+    test_error "✗ Wrapper did not initiate player warnings"
+fi
+SHUTDOWN_TESTS=$((SHUTDOWN_TESTS + 1))
+
+if grep -q "Server is shutting down in 30 seconds" "$TEST_DIR/wrapper_output.log"; then
+    test_success "✓ 30-second warning sent to players"
+    SHUTDOWN_PASSED=$((SHUTDOWN_PASSED + 1))
+else
+    test_error "✗ 30-second warning not sent"
+fi
+SHUTDOWN_TESTS=$((SHUTDOWN_TESTS + 1))
+
+if grep -q "Server is shutting down in 20 seconds" "$TEST_DIR/wrapper_output.log"; then
+    test_success "✓ 20-second warning sent to players"
+    SHUTDOWN_PASSED=$((SHUTDOWN_PASSED + 1))
+else
+    test_error "✗ 20-second warning not sent"
+fi
+SHUTDOWN_TESTS=$((SHUTDOWN_TESTS + 1))
+
+if grep -q "Server is shutting down in 10 seconds" "$TEST_DIR/wrapper_output.log"; then
+    test_success "✓ 10-second warning sent to players"
+    SHUTDOWN_PASSED=$((SHUTDOWN_PASSED + 1))
+else
+    test_error "✗ 10-second warning not sent"
+fi
+SHUTDOWN_TESTS=$((SHUTDOWN_TESTS + 1))
+
+if grep -q "Server is shutting down in 5 seconds" "$TEST_DIR/wrapper_output.log"; then
+    test_success "✓ 5-second warning sent to players"
+    SHUTDOWN_PASSED=$((SHUTDOWN_PASSED + 1))
+else
+    test_error "✗ 5-second warning not sent"
 fi
 SHUTDOWN_TESTS=$((SHUTDOWN_TESTS + 1))
 
@@ -204,7 +249,7 @@ test_log "Shutdown tests passed: $SHUTDOWN_PASSED/$SHUTDOWN_TESTS"
 
 if [ "$SHUTDOWN_PASSED" -eq "$SHUTDOWN_TESTS" ]; then
     test_success "🎉 All graceful shutdown tests passed!"
-    test_success "The wrapper correctly handles SIGTERM and preserves plugin data"
+    test_success "The wrapper correctly warns players and handles SIGTERM while preserving plugin data"
     exit 0
 else
     test_error "❌ Some graceful shutdown tests failed"

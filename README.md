@@ -164,7 +164,7 @@ or
 docker compose down
 ```
 
-**Note**: The server includes graceful shutdown handling that automatically sends the "stop" command to Minecraft when the container is stopped. This ensures that plugins save their data properly, preventing data loss that could occur with an abrupt termination.
+**Note**: The server includes graceful shutdown handling that automatically warns players before stopping. When a shutdown is initiated, players will receive countdown warnings at 30, 20, 10, and 5 seconds before the server stops. The server then sends the "stop" command to Minecraft, ensuring that plugins save their data properly and preventing data loss that could occur with an abrupt termination. The Docker Compose configuration includes a 45-second grace period to allow sufficient time for the warning sequence and graceful shutdown to complete.
 
 ### Viewing Server Logs
 ```bash
