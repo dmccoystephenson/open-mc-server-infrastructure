@@ -52,15 +52,46 @@ create_backup() {
     log_info "Creating backup at: $backup_dir" >&2
     mkdir -p "$backup_dir"
     
+    # Check if volume exists
+    log_info "Checking if volume '$volume_name' exists..." >&2
+    if ! docker volume inspect "$volume_name" >/dev/null 2>&1; then
+        log_error "Volume '$volume_name' does not exist!" >&2
+        log_error "Please ensure the server has been started at least once." >&2
+        return 1
+    fi
+    log_success "Volume '$volume_name' found." >&2
+    
+    # Check if ubuntu image is available, pull if needed
+    log_info "Checking for ubuntu Docker image..." >&2
+    if ! docker image inspect ubuntu:latest >/dev/null 2>&1; then
+        log_info "Ubuntu image not found locally. Pulling from Docker Hub..." >&2
+        log_info "This may take a few minutes on first run..." >&2
+        if ! docker pull ubuntu:latest >&2; then
+            log_error "Failed to pull ubuntu image!" >&2
+            return 1
+        fi
+        log_success "Ubuntu image pulled successfully." >&2
+    else
+        log_success "Ubuntu image found." >&2
+    fi
+    
     # Use docker run to create a tarball backup from the volume
-    docker run --rm \
+    log_info "Creating compressed backup archive (this may take a while)..." >&2
+    if docker run --rm \
         -v "${volume_name}:/mcserver:ro" \
         -v "$(pwd)/$backup_dir":/backup \
         ubuntu \
-        tar czf /backup/mcserver-backup.tar.gz -C /mcserver . 2>/dev/null || {
-            log_error "Backup failed!" >&2
-            return 1
-        }
+        tar czf /backup/mcserver-backup.tar.gz -C /mcserver . 2>&1 | while IFS= read -r line; do
+            # Only log tar warnings/errors, not every file
+            if [[ "$line" =~ (Error|error|Warning|warning|Cannot|cannot|Failed|failed) ]]; then
+                log_warning "tar: $line" >&2
+            fi
+        done; then
+        log_success "Backup archive created successfully." >&2
+    else
+        log_error "Backup failed!" >&2
+        return 1
+    fi
     
     # Verify backup was created
     if [ -f "$backup_dir/mcserver-backup.tar.gz" ]; then
