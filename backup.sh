@@ -78,30 +78,33 @@ create_backup() {
     # Use docker run to create a tarball backup from the volume
     log_info "Creating compressed backup archive (this may take a while)..." >&2
     
-    # Capture tar output and exit status
-    local tar_output
+    # Run docker command and capture output to a temp file
+    local temp_output
+    temp_output=$(mktemp)
     local tar_exit_code
-    tar_output=$(docker run --rm \
+    
+    docker run --rm \
         -v "${volume_name}:/mcserver:ro" \
         -v "$(pwd)/$backup_dir":/backup \
         ubuntu:latest \
-        tar czf /backup/mcserver-backup.tar.gz -C /mcserver . 2>&1)
-    tar_exit_code=$?
+        tar czf /backup/mcserver-backup.tar.gz -C /mcserver . 2>&1 | tee "$temp_output" >&2
+    tar_exit_code=${PIPESTATUS[0]}
     
-    # Log any tar warnings/errors
-    if [ -n "$tar_output" ]; then
-        echo "$tar_output" | while IFS= read -r line; do
+    # Log any tar warnings/errors from the output
+    if [ -s "$temp_output" ]; then
+        while IFS= read -r line; do
             if [[ "$line" =~ (Error|error|Warning|warning|Cannot|cannot|Failed|failed) ]]; then
                 log_warning "tar: $line" >&2
             fi
-        done
+        done < "$temp_output"
     fi
+    rm -f "$temp_output"
     
-    # Check if tar command succeeded
+    # Check if docker/tar command succeeded
     if [ "$tar_exit_code" -eq 0 ]; then
         log_success "Backup archive created successfully." >&2
     else
-        log_error "Backup failed! tar exit code: $tar_exit_code" >&2
+        log_error "Backup failed! Exit code: $tar_exit_code" >&2
         return 1
     fi
     
