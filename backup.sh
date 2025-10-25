@@ -80,15 +80,16 @@ create_backup() {
     
     # Run docker command and capture output to a temp file
     local temp_output
-    temp_output=$(mktemp)
-    local tar_exit_code
+    temp_output=$(mktemp -t backup.XXXXXX)
+    trap 'rm -f "$temp_output"' RETURN
+    local docker_exit_code
     
     docker run --rm \
         -v "${volume_name}:/mcserver:ro" \
         -v "$(pwd)/$backup_dir":/backup \
         ubuntu:latest \
         tar czf /backup/mcserver-backup.tar.gz -C /mcserver . 2>&1 | tee "$temp_output" >&2
-    tar_exit_code=${PIPESTATUS[0]}
+    docker_exit_code=${PIPESTATUS[0]}
     
     # Log any tar warnings/errors from the output
     if [ -s "$temp_output" ]; then
@@ -98,13 +99,12 @@ create_backup() {
             fi
         done < "$temp_output"
     fi
-    rm -f "$temp_output"
     
     # Check if docker/tar command succeeded
-    if [ "$tar_exit_code" -eq 0 ]; then
+    if [ "$docker_exit_code" -eq 0 ]; then
         log_success "Backup archive created successfully." >&2
     else
-        log_error "Backup failed! Exit code: $tar_exit_code" >&2
+        log_error "Backup failed! Exit code: $docker_exit_code" >&2
         return 1
     fi
     
