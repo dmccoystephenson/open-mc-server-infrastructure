@@ -80,7 +80,7 @@ Or using Docker Compose directly:
 docker compose down
 ```
 
-**Important**: The server includes graceful shutdown handling that automatically saves all data before stopping.
+**Important**: The server includes graceful shutdown handling that automatically warns players and saves all data before stopping. Players will receive countdown warnings before the shutdown completes.
 
 ### Step 2: Backup Server Files
 
