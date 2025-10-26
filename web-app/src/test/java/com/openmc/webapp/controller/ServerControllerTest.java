@@ -1,6 +1,7 @@
 package com.openmc.webapp.controller;
 
 import com.openmc.webapp.config.ServerConfig;
+import com.openmc.webapp.service.ActivityTrackerService;
 import com.openmc.webapp.service.RconService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -33,6 +34,9 @@ class ServerControllerTest {
 
     @MockBean
     private ServerConfig serverConfig;
+    
+    @MockBean
+    private ActivityTrackerService activityTrackerService;
 
     private RconService.ServerStatus mockStatus;
 
@@ -47,6 +51,7 @@ class ServerControllerTest {
         when(serverConfig.getBluemapUrl()).thenReturn("");
         when(serverConfig.getAdminUsername()).thenReturn("admin");
         when(serverConfig.getAdminPassword()).thenReturn("admin");
+        when(activityTrackerService.isEnabled()).thenReturn(false);
     }
 
     @Test

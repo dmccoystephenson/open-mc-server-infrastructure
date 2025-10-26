@@ -236,6 +236,46 @@
         .chart-bar.memory {
             background: linear-gradient(to top, #3b82f6, #93c5fd);
         }
+        
+        .leaderboard-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .leaderboard-table th {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+        }
+        
+        .leaderboard-table td {
+            padding: 12px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        
+        .leaderboard-table tr:hover {
+            background-color: #f9fafb;
+        }
+        
+        .leaderboard-rank {
+            font-weight: 700;
+            color: #764ba2;
+            font-size: 1.2em;
+        }
+        
+        .leaderboard-rank.gold {
+            color: #fbbf24;
+        }
+        
+        .leaderboard-rank.silver {
+            color: #9ca3af;
+        }
+        
+        .leaderboard-rank.bronze {
+            color: #cd7f32;
+        }
     </style>
 </head>
 <body>
@@ -325,6 +365,25 @@
                 <span th:if="${bluemapUrl == null || bluemapUrl.isEmpty()}" class="empty-link">
                     🌐 BlueMap (Not configured)
                 </span>
+            </div>
+        </div>
+        
+        <!-- Activity Tracker Section -->
+        <div th:if="${activityTrackerEnabled}" class="card">
+            <h2>📊 Activity Tracker Statistics</h2>
+            <div id="activityTrackerStats">
+                <div class="info-row">
+                    <span class="info-label">Loading...</span>
+                    <span class="info-value"></span>
+                </div>
+            </div>
+        </div>
+        
+        <div th:if="${activityTrackerEnabled}" class="card">
+            <h2>🏆 Player Leaderboard</h2>
+            <p style="color: #6b7280; margin-bottom: 15px;">Top 10 players by hours played</p>
+            <div id="leaderboardTable">
+                <div style="text-align: center; padding: 40px; color: #9ca3af;">Loading...</div>
             </div>
         </div>
         
@@ -471,8 +530,107 @@
             }
         }
         
+        // Load Activity Tracker data
+        async function loadActivityTrackerStats() {
+            try {
+                const response = await fetch('/api/activity-tracker/stats');
+                if (!response.ok) {
+                    throw new Error('Failed to fetch stats');
+                }
+                const stats = await response.json();
+                
+                if (stats) {
+                    const container = document.getElementById('activityTrackerStats');
+                    container.innerHTML = `
+                        <div class="info-row">
+                            <span class="info-label">Unique Players</span>
+                            <span class="info-value">${stats.uniqueLogins}</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Total Logins</span>
+                            <span class="info-value">${stats.totalLogins}</span>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error('Failed to load Activity Tracker stats:', error);
+                const container = document.getElementById('activityTrackerStats');
+                if (container) {
+                    container.innerHTML = '<div style="text-align: center; padding: 20px; color: #9ca3af;">Unable to load statistics</div>';
+                }
+            }
+        }
+        
+        async function loadActivityTrackerLeaderboard() {
+            try {
+                const response = await fetch('/api/activity-tracker/leaderboard');
+                if (!response.ok) {
+                    throw new Error('Failed to fetch leaderboard');
+                }
+                const leaderboard = await response.json();
+                
+                const container = document.getElementById('leaderboardTable');
+                if (!leaderboard || leaderboard.length === 0) {
+                    container.innerHTML = '<div style="text-align: center; padding: 40px; color: #9ca3af;">No player data available</div>';
+                    return;
+                }
+                
+                let tableHtml = `
+                    <table class="leaderboard-table">
+                        <thead>
+                            <tr>
+                                <th>Rank</th>
+                                <th>Player</th>
+                                <th>Hours Played</th>
+                                <th>Total Logins</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                `;
+                
+                leaderboard.forEach((entry, index) => {
+                    const rank = index + 1;
+                    let rankClass = 'leaderboard-rank';
+                    if (rank === 1) rankClass += ' gold';
+                    else if (rank === 2) rankClass += ' silver';
+                    else if (rank === 3) rankClass += ' bronze';
+                    
+                    const hoursFormatted = entry.hoursPlayed.toFixed(1);
+                    
+                    tableHtml += `
+                        <tr>
+                            <td><span class="${rankClass}">${rank}</span></td>
+                            <td>${entry.playerName}</td>
+                            <td>${hoursFormatted} hrs</td>
+                            <td>${entry.totalLogins}</td>
+                        </tr>
+                    `;
+                });
+                
+                tableHtml += `
+                        </tbody>
+                    </table>
+                `;
+                
+                container.innerHTML = tableHtml;
+            } catch (error) {
+                console.error('Failed to load Activity Tracker leaderboard:', error);
+                const container = document.getElementById('leaderboardTable');
+                if (container) {
+                    container.innerHTML = '<div style="text-align: center; padding: 40px; color: #9ca3af;">Unable to load leaderboard</div>';
+                }
+            }
+        }
+        
         // Load history on page load
         loadHistory();
+        
+        // Load Activity Tracker data if enabled
+        const activityTrackerEnabled = /*[[${activityTrackerEnabled}]]*/ false;
+        if (activityTrackerEnabled) {
+            loadActivityTrackerStats();
+            loadActivityTrackerLeaderboard();
+        }
         
         // Auto-refresh status
         const refreshInterval = /*[[${refreshIntervalMs}]]*/ 1800000;
@@ -481,6 +639,10 @@
                 const response = await fetch('/api/status');
                 const status = await response.json();
                 loadHistory(); // Refresh history chart
+                if (activityTrackerEnabled) {
+                    loadActivityTrackerStats();
+                    loadActivityTrackerLeaderboard();
+                }
                 location.reload();
             } catch (error) {
                 console.error('Failed to refresh status:', error);

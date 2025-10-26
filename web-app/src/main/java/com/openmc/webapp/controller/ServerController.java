@@ -1,11 +1,15 @@
 package com.openmc.webapp.controller;
 
 import com.openmc.webapp.config.ServerConfig;
+import com.openmc.webapp.model.ActivityTrackerStats;
+import com.openmc.webapp.model.LeaderboardEntry;
+import com.openmc.webapp.service.ActivityTrackerService;
 import com.openmc.webapp.service.RconService;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Map;
 
 @Controller
@@ -13,10 +17,13 @@ public class ServerController {
     
     private final RconService rconService;
     private final ServerConfig serverConfig;
+    private final ActivityTrackerService activityTrackerService;
     
-    public ServerController(RconService rconService, ServerConfig serverConfig) {
+    public ServerController(RconService rconService, ServerConfig serverConfig, 
+                          ActivityTrackerService activityTrackerService) {
         this.rconService = rconService;
         this.serverConfig = serverConfig;
+        this.activityTrackerService = activityTrackerService;
     }
     
     @GetMapping("/")
@@ -32,6 +39,7 @@ public class ServerController {
         model.addAttribute("bluemapUrl", serverConfig.getBluemapUrl());
         model.addAttribute("refreshIntervalMs", serverConfig.getRefreshIntervalMs());
         model.addAttribute("lastFetchTime", rconService.getLastFetchTime());
+        model.addAttribute("activityTrackerEnabled", activityTrackerService.isEnabled());
         return "public";
     }
     
@@ -82,5 +90,23 @@ public class ServerController {
     @ResponseBody
     public Map<String, Object> getHistory() {
         return Map.of("history", rconService.getRetrievalHistory());
+    }
+    
+    @GetMapping("/api/activity-tracker/stats")
+    @ResponseBody
+    public ActivityTrackerStats getActivityTrackerStats() {
+        return activityTrackerService.getStats();
+    }
+    
+    @GetMapping("/api/activity-tracker/leaderboard")
+    @ResponseBody
+    public List<LeaderboardEntry> getActivityTrackerLeaderboard() {
+        return activityTrackerService.getLeaderboard();
+    }
+    
+    @GetMapping("/api/activity-tracker/enabled")
+    @ResponseBody
+    public Map<String, Boolean> getActivityTrackerEnabled() {
+        return Map.of("enabled", activityTrackerService.isEnabled());
     }
 }
