@@ -1,7 +1,9 @@
-FROM eclipse-temurin:21-jre-alpine
+# Using Ubuntu-based image for reliable package installation
+# Alpine had network issues with apk in the build environment
+FROM eclipse-temurin:21-jre
 
-# Install bash and docker CLI
-RUN apk add --no-cache bash docker-cli
+# Install docker CLI
+RUN apt-get update && apt-get install -y docker.io && rm -rf /var/lib/apt/lists/*
 
 # Set working directory
 WORKDIR /app
