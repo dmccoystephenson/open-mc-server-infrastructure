@@ -575,18 +575,22 @@
                     return;
                 }
                 
-                let tableHtml = `
-                    <table class="leaderboard-table">
-                        <thead>
-                            <tr>
-                                <th>Rank</th>
-                                <th>Player</th>
-                                <th>Hours Played</th>
-                                <th>Total Logins</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                `;
+                // Create table element
+                const table = document.createElement('table');
+                table.className = 'leaderboard-table';
+                
+                // Create thead
+                const thead = document.createElement('thead');
+                const headerRow = document.createElement('tr');
+                ['Rank', 'Player', 'Hours Played', 'Total Logins'].forEach(headerText => {
+                    const th = document.createElement('th');
+                    th.textContent = headerText;
+                    headerRow.appendChild(th);
+                });
+                thead.appendChild(headerRow);
+                
+                // Create tbody
+                const tbody = document.createElement('tbody');
                 
                 leaderboard.forEach((entry, index) => {
                     const rank = index + 1;
@@ -595,24 +599,43 @@
                     else if (rank === 2) rankClass += ' silver';
                     else if (rank === 3) rankClass += ' bronze';
                     
-                    const hoursFormatted = entry.hoursPlayed.toFixed(1);
+                    // Safely handle hoursPlayed with null check and default value
+                    const hoursFormatted = (entry.hoursPlayed != null ? entry.hoursPlayed : 0).toFixed(1);
                     
-                    tableHtml += `
-                        <tr>
-                            <td><span class="${rankClass}">${rank}</span></td>
-                            <td>${entry.playerName}</td>
-                            <td>${hoursFormatted} hrs</td>
-                            <td>${entry.totalLogins}</td>
-                        </tr>
-                    `;
+                    // Create table row element to avoid XSS vulnerabilities
+                    const tr = document.createElement('tr');
+                    
+                    // Rank cell
+                    const rankTd = document.createElement('td');
+                    const rankSpan = document.createElement('span');
+                    rankSpan.className = rankClass;
+                    rankSpan.textContent = rank;
+                    rankTd.appendChild(rankSpan);
+                    tr.appendChild(rankTd);
+                    
+                    // Player name cell (safely escaped)
+                    const nameTd = document.createElement('td');
+                    nameTd.textContent = entry.playerName || 'Unknown';
+                    tr.appendChild(nameTd);
+                    
+                    // Hours played cell
+                    const hoursTd = document.createElement('td');
+                    hoursTd.textContent = `${hoursFormatted} hrs`;
+                    tr.appendChild(hoursTd);
+                    
+                    // Total logins cell
+                    const loginsTd = document.createElement('td');
+                    loginsTd.textContent = entry.totalLogins || 0;
+                    tr.appendChild(loginsTd);
+                    
+                    tbody.appendChild(tr);
                 });
                 
-                tableHtml += `
-                        </tbody>
-                    </table>
-                `;
+                table.appendChild(thead);
+                table.appendChild(tbody);
                 
-                container.innerHTML = tableHtml;
+                container.innerHTML = '';
+                container.appendChild(table);
             } catch (error) {
                 console.error('Failed to load Activity Tracker leaderboard:', error);
                 const container = document.getElementById('leaderboardTable');
