@@ -61,6 +61,7 @@ The server includes a built-in web dashboard that provides:
 - **Server Status**: Real-time view of server status, player count, and MOTD
 - **Admin Console**: Send commands to the server using RCON
 - **External Links**: Quick access to Dynmap, BlueMap, and other services
+- **Activity Tracker Integration**: View player statistics and leaderboards (optional)
 - **Secure Access**: HTTPS encryption with reverse proxy to protect credentials
 
 Access the dashboard at `https://localhost:8443` (or your configured `WEB_HTTPS_PORT`). HTTP requests to port 8080 (or `WEB_HTTP_PORT`) will automatically redirect to HTTPS.
@@ -80,6 +81,26 @@ Alternatively, you can generate new self-signed certificates:
 ```bash
 ./scripts/generate-ssl-certs.sh
 ```
+
+### Activity Tracker Integration
+
+The web dashboard can optionally integrate with the [Activity Tracker plugin](https://github.com/Dans-Plugins/Activity-Tracker) to display player statistics and leaderboards. When enabled, the dashboard will show:
+
+- **Server Statistics**: Number of unique players and total logins
+- **Player Leaderboard**: Top 10 players ranked by hours played, with total logins
+
+To enable Activity Tracker integration:
+
+1. Install the Activity Tracker plugin on your Minecraft server
+2. Configure the plugin to enable its REST API (see plugin documentation)
+3. Set the following environment variables in your `.env` file:
+   ```bash
+   ACTIVITY_TRACKER_ENABLED=true
+   ACTIVITY_TRACKER_URL=http://localhost:8080
+   ```
+4. Restart the web application with `./up.sh`
+
+The Activity Tracker data will automatically refresh with the server status updates. If the Activity Tracker API is not available, the sections will be hidden without affecting other dashboard functionality.
 
 ## Configuration
 
@@ -120,6 +141,8 @@ These settings allow you to run multiple server instances in parallel without co
 - `ADMIN_PASSWORD`: Password for admin console authentication (default: `admin`)
 - `DYNMAP_URL`: URL to Dynmap web interface (optional)
 - `BLUEMAP_URL`: URL to BlueMap web interface (optional)
+- `ACTIVITY_TRACKER_URL`: URL to Activity Tracker plugin REST API (optional, e.g., `http://localhost:8080`)
+- `ACTIVITY_TRACKER_ENABLED`: Enable Activity Tracker integration (default: `false`)
 
 **Note**: The RCON password must match between the server and web application for admin commands to work. Change the admin username and password from defaults in production for security. All connections to the web dashboard are encrypted using HTTPS to protect your credentials.
 
