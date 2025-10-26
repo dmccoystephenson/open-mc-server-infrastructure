@@ -66,6 +66,25 @@ services:
     volumes:
       - ./nginx/ssl:/etc/nginx/ssl
 
+  backup-manager:
+    build:
+      context: ./backup-manager
+    image: open-mc-server-backup-manager
+    restart: always
+    container_name: ${BACKUP_CONTAINER_NAME:-open-mc-backup-manager}
+    volumes:
+      - mcserver:/mcserver:ro
+      - ./backups:/backups
+      - ./backup.sh:/backup.sh:ro
+      - ./.env:/.env:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - BACKUP_SCRIPT_PATH=/backup.sh
+      - BACKUP_DIRECTORY=/backups
+      - BACKUP_MAX_SIZE_MB=${BACKUP_MAX_SIZE_MB:-10240}
+      - BACKUP_SCHEDULE=${BACKUP_SCHEDULE:-0 0 2 * * ?}
+      - VOLUME_NAME=${VOLUME_NAME:-mcserver}
+
 volumes:
   mcserver:
     name: ${VOLUME_NAME:-mcserver}
