@@ -17,6 +17,8 @@ public class ServerConfig {
     private String adminUsername = "admin";
     private String adminPassword = "admin";
     private long refreshIntervalMs = 1800000; // Default: 30 minutes
+    private String activityTrackerUrl = "";
+    private boolean activityTrackerEnabled = false;
     
     // Getters and setters
     public String getHost() {
@@ -97,5 +99,21 @@ public class ServerConfig {
     
     public void setRefreshIntervalMs(long refreshIntervalMs) {
         this.refreshIntervalMs = refreshIntervalMs;
+    }
+    
+    public String getActivityTrackerUrl() {
+        return activityTrackerUrl;
+    }
+    
+    public void setActivityTrackerUrl(String activityTrackerUrl) {
+        this.activityTrackerUrl = activityTrackerUrl;
+    }
+    
+    public boolean isActivityTrackerEnabled() {
+        return activityTrackerEnabled;
+    }
+    
+    public void setActivityTrackerEnabled(boolean activityTrackerEnabled) {
+        this.activityTrackerEnabled = activityTrackerEnabled;
     }
 }
