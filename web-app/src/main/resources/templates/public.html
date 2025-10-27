@@ -423,7 +423,7 @@
         </div>
     </div>
     
-    <script>
+    <script th:inline="javascript">
         async function loadHistory() {
             try {
                 const response = await fetch('/api/history');
