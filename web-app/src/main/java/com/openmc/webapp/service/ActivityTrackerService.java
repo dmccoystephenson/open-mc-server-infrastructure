@@ -26,15 +26,33 @@ public class ActivityTrackerService {
     public ActivityTrackerService(ServerConfig serverConfig) {
         this.serverConfig = serverConfig;
         this.restTemplate = new RestTemplate();
+        logConfiguration();
+    }
+    
+    /**
+     * Log Activity Tracker configuration on startup
+     */
+    private void logConfiguration() {
+        logger.info("Activity Tracker configuration:");
+        logger.info("  - Enabled flag: {}", serverConfig.isActivityTrackerEnabled());
+        logger.info("  - URL: {}", serverConfig.getActivityTrackerUrl() != null && !serverConfig.getActivityTrackerUrl().isEmpty() 
+            ? serverConfig.getActivityTrackerUrl() : "(not configured)");
+        logger.info("  - Integration active: {}", isEnabled());
     }
     
     /**
      * Check if Activity Tracker integration is enabled and configured
      */
     public boolean isEnabled() {
-        return serverConfig.isActivityTrackerEnabled() 
-            && serverConfig.getActivityTrackerUrl() != null 
-            && !serverConfig.getActivityTrackerUrl().trim().isEmpty();
+        boolean enabled = serverConfig.isActivityTrackerEnabled();
+        String url = serverConfig.getActivityTrackerUrl();
+        boolean hasUrl = url != null && !url.trim().isEmpty();
+        
+        if (enabled && !hasUrl) {
+            logger.warn("Activity Tracker is enabled but URL is not configured");
+        }
+        
+        return enabled && hasUrl;
     }
     
     /**
@@ -42,14 +60,27 @@ public class ActivityTrackerService {
      */
     public ActivityTrackerStats getStats() {
         if (!isEnabled()) {
+            logger.debug("Activity Tracker is not enabled, skipping stats fetch");
             return null;
         }
         
         try {
             String url = buildUrl("/api/stats");
-            return restTemplate.getForObject(url, ActivityTrackerStats.class);
+            logger.debug("Fetching Activity Tracker stats from: {}", url);
+            ActivityTrackerStats stats = restTemplate.getForObject(url, ActivityTrackerStats.class);
+            if (stats != null) {
+                logger.info("Successfully fetched Activity Tracker stats: {} unique logins, {} total logins", 
+                    stats.getUniqueLogins(), stats.getTotalLogins());
+            } else {
+                logger.warn("Activity Tracker stats response was null");
+            }
+            return stats;
         } catch (Exception e) {
-            logger.error("Error fetching Activity Tracker stats: {}", e.getMessage());
+            logger.error("Error fetching Activity Tracker stats from {}: {} - {}", 
+                buildUrl("/api/stats"), e.getClass().getSimpleName(), e.getMessage());
+            if (logger.isDebugEnabled()) {
+                logger.debug("Stack trace:", e);
+            }
             return null;
         }
     }
@@ -59,15 +90,23 @@ public class ActivityTrackerService {
      */
     public List<LeaderboardEntry> getLeaderboard() {
         if (!isEnabled()) {
+            logger.debug("Activity Tracker is not enabled, skipping leaderboard fetch");
             return Collections.emptyList();
         }
         
         try {
             String url = buildUrl("/api/leaderboard");
+            logger.debug("Fetching Activity Tracker leaderboard from: {}", url);
             LeaderboardEntry[] entries = restTemplate.getForObject(url, LeaderboardEntry[].class);
-            return entries != null ? Arrays.asList(entries) : Collections.emptyList();
+            List<LeaderboardEntry> leaderboard = entries != null ? Arrays.asList(entries) : Collections.emptyList();
+            logger.info("Successfully fetched Activity Tracker leaderboard with {} entries", leaderboard.size());
+            return leaderboard;
         } catch (Exception e) {
-            logger.error("Error fetching Activity Tracker leaderboard: {}", e.getMessage());
+            logger.error("Error fetching Activity Tracker leaderboard from {}: {} - {}", 
+                buildUrl("/api/leaderboard"), e.getClass().getSimpleName(), e.getMessage());
+            if (logger.isDebugEnabled()) {
+                logger.debug("Stack trace:", e);
+            }
             return Collections.emptyList();
         }
     }
@@ -77,15 +116,19 @@ public class ActivityTrackerService {
      */
     public boolean isHealthy() {
         if (!isEnabled()) {
+            logger.debug("Activity Tracker is not enabled, health check skipped");
             return false;
         }
         
         try {
             String url = buildUrl("/api/health");
+            logger.debug("Performing Activity Tracker health check at: {}", url);
             restTemplate.getForObject(url, String.class);
+            logger.info("Activity Tracker health check passed");
             return true;
         } catch (Exception e) {
-            logger.debug("Activity Tracker health check failed: {}", e.getMessage());
+            logger.warn("Activity Tracker health check failed at {}: {} - {}", 
+                buildUrl("/api/health"), e.getClass().getSimpleName(), e.getMessage());
             return false;
         }
     }

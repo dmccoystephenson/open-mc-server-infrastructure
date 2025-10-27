@@ -532,12 +532,15 @@
         
         // Load Activity Tracker data
         async function loadActivityTrackerStats() {
+            console.log('[Activity Tracker] Loading stats...');
             try {
                 const response = await fetch('/api/activity-tracker/stats');
+                console.log('[Activity Tracker] Stats response status:', response.status);
                 if (!response.ok) {
-                    throw new Error('Failed to fetch stats');
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
                 }
                 const stats = await response.json();
+                console.log('[Activity Tracker] Stats data received:', stats);
                 
                 if (stats) {
                     const container = document.getElementById('activityTrackerStats');
@@ -551,26 +554,38 @@
                             <span class="info-value">${stats.totalLogins}</span>
                         </div>
                     `;
+                    console.log('[Activity Tracker] Stats displayed successfully');
+                } else {
+                    console.warn('[Activity Tracker] Stats data is null - integration may be disabled or unavailable');
+                    const container = document.getElementById('activityTrackerStats');
+                    if (container) {
+                        container.innerHTML = '<div style="text-align: center; padding: 20px; color: #9ca3af;">Statistics not available</div>';
+                    }
                 }
             } catch (error) {
-                console.error('Failed to load Activity Tracker stats:', error);
+                console.error('[Activity Tracker] Failed to load stats:', error.message);
+                console.error('[Activity Tracker] Error details:', error);
                 const container = document.getElementById('activityTrackerStats');
                 if (container) {
-                    container.innerHTML = '<div style="text-align: center; padding: 20px; color: #9ca3af;">Unable to load statistics</div>';
+                    container.innerHTML = '<div style="text-align: center; padding: 20px; color: #ef4444;">Error loading statistics</div>';
                 }
             }
         }
         
         async function loadActivityTrackerLeaderboard() {
+            console.log('[Activity Tracker] Loading leaderboard...');
             try {
                 const response = await fetch('/api/activity-tracker/leaderboard');
+                console.log('[Activity Tracker] Leaderboard response status:', response.status);
                 if (!response.ok) {
-                    throw new Error('Failed to fetch leaderboard');
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
                 }
                 const leaderboard = await response.json();
+                console.log('[Activity Tracker] Leaderboard data received:', leaderboard ? `${leaderboard.length} entries` : 'null');
                 
                 const container = document.getElementById('leaderboardTable');
                 if (!leaderboard || leaderboard.length === 0) {
+                    console.warn('[Activity Tracker] Leaderboard is empty - no player data available or integration disabled');
                     container.innerHTML = '<div style="text-align: center; padding: 40px; color: #9ca3af;">No player data available</div>';
                     return;
                 }
@@ -636,11 +651,13 @@
                 
                 container.innerHTML = '';
                 container.appendChild(table);
+                console.log('[Activity Tracker] Leaderboard displayed successfully');
             } catch (error) {
-                console.error('Failed to load Activity Tracker leaderboard:', error);
+                console.error('[Activity Tracker] Failed to load leaderboard:', error.message);
+                console.error('[Activity Tracker] Error details:', error);
                 const container = document.getElementById('leaderboardTable');
                 if (container) {
-                    container.innerHTML = '<div style="text-align: center; padding: 40px; color: #9ca3af;">Unable to load leaderboard</div>';
+                    container.innerHTML = '<div style="text-align: center; padding: 40px; color: #ef4444;">Error loading leaderboard</div>';
                 }
             }
         }
@@ -650,7 +667,9 @@
         
         // Load Activity Tracker data if enabled
         const activityTrackerEnabled = /*[[${activityTrackerEnabled}]]*/ false;
+        console.log('[Activity Tracker] Integration enabled:', activityTrackerEnabled);
         if (activityTrackerEnabled) {
+            console.log('[Activity Tracker] Initializing data load...');
             loadActivityTrackerStats();
             loadActivityTrackerLeaderboard();
         }

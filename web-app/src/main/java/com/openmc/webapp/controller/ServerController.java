@@ -5,6 +5,8 @@ import com.openmc.webapp.model.ActivityTrackerStats;
 import com.openmc.webapp.model.LeaderboardEntry;
 import com.openmc.webapp.service.ActivityTrackerService;
 import com.openmc.webapp.service.RconService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
@@ -14,6 +16,8 @@ import java.util.Map;
 
 @Controller
 public class ServerController {
+    
+    private static final Logger logger = LoggerFactory.getLogger(ServerController.class);
     
     private final RconService rconService;
     private final ServerConfig serverConfig;
@@ -95,18 +99,30 @@ public class ServerController {
     @GetMapping("/api/activity-tracker/stats")
     @ResponseBody
     public ActivityTrackerStats getActivityTrackerStats() {
-        return activityTrackerService.getStats();
+        logger.debug("API request: /api/activity-tracker/stats");
+        ActivityTrackerStats stats = activityTrackerService.getStats();
+        if (stats == null) {
+            logger.warn("Activity Tracker stats request returned null - check if integration is enabled and API is accessible");
+        }
+        return stats;
     }
     
     @GetMapping("/api/activity-tracker/leaderboard")
     @ResponseBody
     public List<LeaderboardEntry> getActivityTrackerLeaderboard() {
-        return activityTrackerService.getLeaderboard();
+        logger.debug("API request: /api/activity-tracker/leaderboard");
+        List<LeaderboardEntry> leaderboard = activityTrackerService.getLeaderboard();
+        if (leaderboard.isEmpty()) {
+            logger.warn("Activity Tracker leaderboard request returned empty - check if integration is enabled and API is accessible");
+        }
+        return leaderboard;
     }
     
     @GetMapping("/api/activity-tracker/enabled")
     @ResponseBody
     public Map<String, Boolean> getActivityTrackerEnabled() {
-        return Map.of("enabled", activityTrackerService.isEnabled());
+        boolean enabled = activityTrackerService.isEnabled();
+        logger.debug("API request: /api/activity-tracker/enabled - returning: {}", enabled);
+        return Map.of("enabled", enabled);
     }
 }
