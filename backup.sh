@@ -101,8 +101,13 @@ create_backup() {
     fi
     
     # Check if docker/tar command succeeded
+    # Exit code 1 from tar means "some files changed during backup" which is acceptable for live systems
+    # Exit code 2 or higher indicates a fatal error
     if [ "$docker_exit_code" -eq 0 ]; then
         log_success "Backup archive created successfully." >&2
+    elif [ "$docker_exit_code" -eq 1 ]; then
+        log_warning "Backup completed with warnings (files changed during backup)." >&2
+        log_info "This is normal for a running server and the backup should still be usable." >&2
     else
         log_error "Backup failed! Exit code: $docker_exit_code" >&2
         return 1
