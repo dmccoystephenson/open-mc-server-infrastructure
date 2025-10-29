@@ -83,6 +83,7 @@ services:
     environment:
       - BACKUP_SCRIPT_PATH=/backup.sh
       - BACKUP_DIRECTORY=/backups
+      - HOST_BACKUP_DIRECTORY=${PWD}/backups
       - BACKUP_MAX_SIZE_MB=${BACKUP_MAX_SIZE_MB:-10240}
       - BACKUP_SCHEDULE=${BACKUP_SCHEDULE:-0 0 2 * * ?}
       - VOLUME_NAME=${VOLUME_NAME:-mcserver}
