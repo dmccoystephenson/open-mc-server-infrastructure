@@ -56,15 +56,15 @@ fi
 # Get custom ports from user
 echo ""
 echo -e "${YELLOW}Port Configuration${NC}"
-read -p "Minecraft server port [25565]: " MC_PORT
+read -r -p "Minecraft server port [25565]: " MC_PORT
 MC_PORT=${MC_PORT:-25565}
 
-read -p "Web Dashboard HTTPS port [8443]: " WEB_HTTPS_PORT
+read -r -p "Web Dashboard HTTPS port [8443]: " WEB_HTTPS_PORT
 WEB_HTTPS_PORT=${WEB_HTTPS_PORT:-8443}
 
-read -p "Enable HTTP redirect port 8080? (yes/no) [no]: " ENABLE_HTTP
-read -p "Enable BlueMap port 8100? (yes/no) [no]: " ENABLE_BLUEMAP
-read -p "Enable RCON port 25575? (NOT RECOMMENDED) (yes/no) [no]: " ENABLE_RCON
+read -r -p "Enable HTTP redirect port 8080? (yes/no) [no]: " ENABLE_HTTP
+read -r -p "Enable BlueMap port 8100? (yes/no) [no]: " ENABLE_BLUEMAP
+read -r -p "Enable RCON port 25575? (NOT RECOMMENDED) (yes/no) [no]: " ENABLE_RCON
 
 # Configure UFW
 if [[ $FIREWALL == "ufw" ]]; then
@@ -72,7 +72,7 @@ if [[ $FIREWALL == "ufw" ]]; then
     echo -e "${YELLOW}Configuring UFW...${NC}"
     
     # Backup current rules
-    ufw status numbered > /tmp/ufw-backup-$(date +%Y%m%d-%H%M%S).txt
+    ufw status numbered > "/tmp/ufw-backup-$(date +%Y%m%d-%H%M%S).txt"
     echo -e "${GREEN}✓ Current rules backed up to /tmp/${NC}"
     
     # Set default policies
@@ -86,11 +86,11 @@ if [[ $FIREWALL == "ufw" ]]; then
     
     # Allow Minecraft
     echo "Allowing Minecraft (port $MC_PORT)..."
-    ufw allow $MC_PORT/tcp comment 'Minecraft Server'
+    ufw allow "$MC_PORT"/tcp comment 'Minecraft Server'
     
     # Allow Web Dashboard HTTPS
     echo "Allowing Web Dashboard HTTPS (port $WEB_HTTPS_PORT)..."
-    ufw allow $WEB_HTTPS_PORT/tcp comment 'Web Dashboard HTTPS'
+    ufw allow "$WEB_HTTPS_PORT"/tcp comment 'Web Dashboard HTTPS'
     
     # Optional ports
     if [[ $ENABLE_HTTP =~ ^[Yy]es$ ]]; then
@@ -123,7 +123,7 @@ elif [[ $FIREWALL == "iptables" ]]; then
     echo -e "${YELLOW}Configuring iptables...${NC}"
     
     # Backup current rules
-    iptables-save > /tmp/iptables-backup-$(date +%Y%m%d-%H%M%S).rules
+    iptables-save > "/tmp/iptables-backup-$(date +%Y%m%d-%H%M%S).rules"
     echo -e "${GREEN}✓ Current rules backed up to /tmp/${NC}"
     
     # Flush existing rules (BE CAREFUL)
@@ -151,15 +151,15 @@ elif [[ $FIREWALL == "iptables" ]]; then
     
     # Allow Minecraft with rate limiting
     echo "Allowing Minecraft (port $MC_PORT) with rate limiting..."
-    iptables -A INPUT -p tcp --dport $MC_PORT -m conntrack --ctstate NEW -m recent --set
-    iptables -A INPUT -p tcp --dport $MC_PORT -m conntrack --ctstate NEW -m recent --update --seconds 60 --hitcount 10 -j DROP
-    iptables -A INPUT -p tcp --dport $MC_PORT -j ACCEPT
+    iptables -A INPUT -p tcp --dport "$MC_PORT" -m conntrack --ctstate NEW -m recent --set
+    iptables -A INPUT -p tcp --dport "$MC_PORT" -m conntrack --ctstate NEW -m recent --update --seconds 60 --hitcount 10 -j DROP
+    iptables -A INPUT -p tcp --dport "$MC_PORT" -j ACCEPT
     
     # Allow Web Dashboard HTTPS with rate limiting
     echo "Allowing Web Dashboard HTTPS (port $WEB_HTTPS_PORT) with rate limiting..."
-    iptables -A INPUT -p tcp --dport $WEB_HTTPS_PORT -m conntrack --ctstate NEW -m recent --set
-    iptables -A INPUT -p tcp --dport $WEB_HTTPS_PORT -m conntrack --ctstate NEW -m recent --update --seconds 60 --hitcount 20 -j DROP
-    iptables -A INPUT -p tcp --dport $WEB_HTTPS_PORT -j ACCEPT
+    iptables -A INPUT -p tcp --dport "$WEB_HTTPS_PORT" -m conntrack --ctstate NEW -m recent --set
+    iptables -A INPUT -p tcp --dport "$WEB_HTTPS_PORT" -m conntrack --ctstate NEW -m recent --update --seconds 60 --hitcount 20 -j DROP
+    iptables -A INPUT -p tcp --dport "$WEB_HTTPS_PORT" -j ACCEPT
     
     # Optional ports
     if [[ $ENABLE_HTTP =~ ^[Yy]es$ ]]; then
@@ -208,8 +208,8 @@ echo "4. Review the SELF-HOSTING.md guide for additional security measures"
 echo ""
 echo -e "${YELLOW}Backup locations:${NC}"
 if [[ $FIREWALL == "ufw" ]]; then
-    ls -lh /tmp/ufw-backup-*.txt 2>/dev/null | tail -1
+    find /tmp -name "ufw-backup-*.txt" -type f -printf "%T@ %p\n" 2>/dev/null | sort -n | tail -1 | cut -d' ' -f2- | xargs ls -lh 2>/dev/null
 else
-    ls -lh /tmp/iptables-backup-*.rules 2>/dev/null | tail -1
+    find /tmp -name "iptables-backup-*.rules" -type f -printf "%T@ %p\n" 2>/dev/null | sort -n | tail -1 | cut -d' ' -f2- | xargs ls -lh 2>/dev/null
 fi
 echo ""

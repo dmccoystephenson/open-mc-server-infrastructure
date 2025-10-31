@@ -187,7 +187,40 @@ Set up automatic renewal:
 sudo certbot renew --dry-run
 ```
 
-### 4. Regular Updates
+### 4. Use Enhanced Security Docker Compose Configuration
+
+This repository includes an optional security overlay that adds container-level security enhancements:
+
+```bash
+# Start with enhanced security
+docker compose -f compose.yml -f compose.security.yml up -d
+```
+
+The `compose.security.yml` file provides:
+- **Capability restrictions**: Drops unnecessary Linux capabilities
+- **Resource limits**: Prevents resource exhaustion attacks
+- **Security options**: Enables `no-new-privileges` to prevent privilege escalation
+
+These settings follow Docker security best practices and are recommended for production deployments.
+
+### 5. Use the Firewall Configuration Helper
+
+For easy firewall setup, use the included helper script:
+
+```bash
+# Run with sudo/root privileges
+sudo ./scripts/configure-firewall.sh
+```
+
+This interactive script will:
+- Detect your firewall system (UFW or iptables)
+- Configure rules for required ports
+- Add rate limiting to prevent abuse
+- Backup existing firewall rules
+
+See the [Firewall Configuration](#firewall-configuration) section for manual setup options.
+
+### 6. Regular Updates
 
 Keep your system and Docker images updated:
 
@@ -200,7 +233,7 @@ docker compose pull
 ./up.sh
 ```
 
-### 5. Backup Regularly
+### 7. Backup Regularly
 
 Use the automated backup script:
 
@@ -211,7 +244,7 @@ Use the automated backup script:
 
 Store backups in multiple locations (external drive, cloud storage, etc.).
 
-### 6. Limit RCON Access
+### 8. Limit RCON Access
 
 NEVER expose RCON (port 25575) to the public internet. If you need remote administration:
 
