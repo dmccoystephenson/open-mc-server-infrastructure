@@ -20,6 +20,24 @@ An open, community-agnostic, Docker-based Minecraft server infrastructure runnin
 - [Docker Compose](https://docs.docker.com/compose/install/)
 - [Git](https://git-scm.com/downloads)
 
+## Deployment Options
+
+### Local Development
+Follow the Quick Start guide below for running the server on your local machine.
+
+### Self-Hosting at Home
+For secure home deployment with proper firewall configuration, network setup, and security best practices, see the **[Self-Hosting Guide](SELF-HOSTING.md)**.
+
+The Self-Hosting Guide covers:
+- Hardware and network requirements
+- Router and port forwarding configuration
+- Firewall setup (UFW, iptables, OPNsense, pfSense)
+- DDoS protection and rate limiting
+- Dynamic DNS configuration
+- SSL certificate setup for public access
+- Monitoring and maintenance
+- Advanced security configurations
+
 ## Quick Start
 
 1. **Clone the repository**
@@ -295,6 +313,13 @@ docker compose build --no-cache
 - Don't expose the server publicly without proper security measures
 - Regularly backup your world data
 - Keep `RCON_PASSWORD` secure and different from default values
+
+**For comprehensive security guidance**, especially for public/home hosting, see the **[Self-Hosting Guide](SELF-HOSTING.md)** which covers:
+- Firewall configuration (UFW, iptables, OPNsense, pfSense)
+- DDoS protection and rate limiting
+- Port forwarding best practices
+- Network security hardening
+- Advanced security configurations
 
 ## License
 
