@@ -38,6 +38,7 @@ public class BackupService {
     @Scheduled(cron = "${backup.schedule:0 0 2 * * ?}")
     public void performScheduledBackup() {
         log.info("Starting scheduled backup at {}", java.time.LocalDateTime.now());
+        log.info("Backup configuration: directory={}, maxSizeMb={}", backupDirectory, maxBackupSizeMb);
         try {
             runBackupScript();
             cleanupOldBackups();
