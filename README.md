@@ -9,6 +9,7 @@ An open, community-agnostic, Docker-based Minecraft server infrastructure runnin
 - **Latest Minecraft Version**: Running Minecraft 1.21.10 with Spigot
 - **Docker Containerized**: Easy deployment and management
 - **Web Dashboard**: Built-in Spring Boot web application for server management
+- **Automated Backups**: Scheduled backups with automatic cleanup and size management
 - **Configurable**: Environment-based configuration
 - **Persistent Data**: Server data persists across container restarts
 - **Easy Management**: Simple scripts for starting and stopping the server
@@ -34,10 +35,11 @@ An open, community-agnostic, Docker-based Minecraft server infrastructure runnin
    # Edit .env with your settings (see Configuration section)
    ```
 
-3. **Build the web application**
+3. **Build the applications**
    ```bash
-   chmod +x build-webapp.sh
+   chmod +x build-webapp.sh build-backup-manager.sh
    ./build-webapp.sh
+   ./build-backup-manager.sh
    ```
 
 4. **Start the server**
@@ -146,6 +148,14 @@ These settings allow you to run multiple server instances in parallel without co
 
 **Note**: The RCON password must match between the server and web application for admin commands to work. Change the admin username and password from defaults in production for security. All connections to the web dashboard are encrypted using HTTPS to protect your credentials.
 
+### Backup Manager Configuration
+
+- `BACKUP_CONTAINER_NAME`: Backup manager container name (default: `open-mc-backup-manager`)
+- `BACKUP_MAX_SIZE_MB`: Maximum size of backups directory in MB (default: `10240` = 10GB)
+- `BACKUP_SCHEDULE`: Cron expression for backup schedule (default: `0 0 2 * * ?` = 2 AM daily)
+
+See [backup-manager/README.md](backup-manager/README.md) for detailed cron expression examples and configuration.
+
 **Running Parallel Development Servers**: To run multiple servers simultaneously (e.g., for testing different configurations), create separate `.env` files with different values for these settings and use `docker compose --env-file <env-file>` to start each server.
 
 Example for a second server:
@@ -160,6 +170,7 @@ cp sample.env .env.dev2
 # - VOLUME_NAME=mcserver-dev2
 # - WEB_CONTAINER_NAME=open-mc-webapp-dev2
 # - NGINX_CONTAINER_NAME=open-mc-nginx-dev2
+# - BACKUP_CONTAINER_NAME=open-mc-backup-manager-dev2
 # - WEB_HTTP_PORT=8081
 # - WEB_HTTPS_PORT=8444
 
@@ -200,8 +211,34 @@ docker logs -f open-mc-server
 
 ### Backup Server Data
 
-#### Automated Backup (Recommended)
-Use the dedicated backup script for a simple, automated backup process:
+#### Automated Scheduled Backups (Recommended)
+
+The infrastructure includes a **backup-manager** service that automatically backs up the server data:
+
+- **Automatic Scheduling**: Runs daily at 2 AM (configurable via `BACKUP_SCHEDULE` in `.env`)
+- **Size Management**: Automatically removes old backups when the backup directory exceeds the configured size limit (default: 10GB)
+- **Containerized**: Runs in its own container for isolation and reliability
+
+To configure automated backups, set the following in your `.env` file:
+
+```bash
+# Maximum size of backups directory in MB (default: 10GB)
+BACKUP_MAX_SIZE_MB=10240
+
+# Backup schedule (cron expression, default: 2 AM daily)
+BACKUP_SCHEDULE=0 0 2 * * ?
+```
+
+View backup-manager logs:
+```bash
+docker logs -f open-mc-backup-manager
+```
+
+See [backup-manager/README.md](backup-manager/README.md) for detailed configuration options.
+
+#### Manual Backup
+
+For on-demand backups, use the dedicated backup script:
 
 ```bash
 ./backup.sh
@@ -209,7 +246,6 @@ Use the dedicated backup script for a simple, automated backup process:
 
 This creates a timestamped, compressed backup in `./backups/` and provides restoration instructions.
 
-#### Manual Backup
 Alternatively, use Docker commands to manually copy server data:
 
 ```bash

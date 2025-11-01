@@ -43,8 +43,12 @@ get_env_value() {
 
 # Function to create backup
 create_backup() {
+    # Use BACKUP_DIRECTORY env var if set, otherwise default to ./backups
+    local base_backup_dir
+    base_backup_dir="${BACKUP_DIRECTORY:-./backups}"
+    
     local backup_dir
-    backup_dir="./backups/backup-$(date +%Y%m%d-%H%M%S)"
+    backup_dir="${base_backup_dir}/backup-$(date +%Y%m%d-%H%M%S)"
     
     local volume_name
     volume_name=$(get_env_value "VOLUME_NAME" "mcserver")
@@ -84,11 +88,26 @@ create_backup() {
     trap 'rm -f "$temp_output"' RETURN
     local docker_exit_code
     
+    # Extract just the backup subdirectory name (e.g., backup-20251029-020439)
+    local backup_subdir
+    backup_subdir=$(basename "$backup_dir")
+    
+    # Determine which path to use for docker run mount
+    # If HOST_BACKUP_DIRECTORY is set, use it (when running from container with docker socket)
+    # Otherwise use the local base_backup_dir (when running standalone)
+    local docker_mount_path
+    if [ -n "${HOST_BACKUP_DIRECTORY:-}" ]; then
+        docker_mount_path="${HOST_BACKUP_DIRECTORY}"
+    else
+        docker_mount_path="${base_backup_dir}"
+    fi
+    
+    # Mount the base backup directory and create the tar file in the subdirectory
     docker run --rm \
         -v "${volume_name}:/mcserver:ro" \
-        -v "$(pwd)/$backup_dir":/backup \
+        -v "${docker_mount_path}:/backups" \
         ubuntu:latest \
-        tar czf /backup/mcserver-backup.tar.gz -C /mcserver . 2>&1 | tee "$temp_output" >&2
+        tar czf "/backups/${backup_subdir}/mcserver-backup.tar.gz" -C /mcserver . 2>&1 | tee "$temp_output" >&2
     docker_exit_code=${PIPESTATUS[0]}
     
     # Log any tar warnings/errors from the output
@@ -101,8 +120,13 @@ create_backup() {
     fi
     
     # Check if docker/tar command succeeded
+    # Exit code 1 from tar means "some files changed during backup" which is acceptable for live systems
+    # Exit code 2 or higher indicates a fatal error
     if [ "$docker_exit_code" -eq 0 ]; then
         log_success "Backup archive created successfully." >&2
+    elif [ "$docker_exit_code" -eq 1 ]; then
+        log_warning "Backup completed with warnings (files changed during backup)." >&2
+        log_info "This is normal for a running server and the backup should still be usable." >&2
     else
         log_error "Backup failed! Exit code: $docker_exit_code" >&2
         return 1
