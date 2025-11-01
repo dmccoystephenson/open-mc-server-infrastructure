@@ -1,5 +1,6 @@
 package com.openmc.backupmanager.service;
 
+import com.openmc.backupmanager.exception.BackupException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -53,7 +54,7 @@ class BackupServiceTest {
 
     @Test
     @DisplayName("Should handle non-existent backup directory gracefully")
-    void shouldHandleNonExistentDirectory() throws IOException {
+    void shouldHandleNonExistentDirectory() {
         Path nonExistentDir = tempDir.resolve("non-existent");
         ReflectionTestUtils.setField(backupService, "backupDirectory", nonExistentDir.toString());
 
@@ -79,7 +80,7 @@ class BackupServiceTest {
 
     @Test
     @DisplayName("Should cleanup old backups when exceeding size limit")
-    void shouldCleanupOldBackups() throws IOException, InterruptedException {
+    void shouldCleanupOldBackups() throws BackupException, IOException, InterruptedException {
         // Set a very small size limit
         ReflectionTestUtils.setField(backupService, "maxBackupSizeMb", 0L);
 

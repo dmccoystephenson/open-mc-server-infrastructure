@@ -1,7 +1,8 @@
 package com.openmc.backupmanager.service;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import com.openmc.backupmanager.exception.BackupException;
+import com.openmc.backupmanager.exception.BackupScriptException;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -19,9 +20,8 @@ import java.util.Comparator;
 import java.util.List;
 
 @Service
+@Slf4j
 public class BackupService {
-
-    private static final Logger logger = LoggerFactory.getLogger(BackupService.class);
 
     @Value("${backup.script.path:/backup.sh}")
     private String backupScriptPath;
@@ -37,74 +37,83 @@ public class BackupService {
      */
     @Scheduled(cron = "${backup.schedule:0 0 2 * * ?}")
     public void performScheduledBackup() {
-        logger.info("Starting scheduled backup at {}", java.time.LocalDateTime.now());
+        log.info("Starting scheduled backup at {}", java.time.LocalDateTime.now());
         try {
             runBackupScript();
             cleanupOldBackups();
-            logger.info("Scheduled backup completed successfully");
+            log.info("Scheduled backup completed successfully");
         } catch (Exception e) {
-            logger.error("Error during scheduled backup", e);
+            log.error("Error during scheduled backup", e);
         }
     }
 
     /**
      * Execute the backup.sh script
      */
-    public void runBackupScript() throws IOException, InterruptedException {
+    public void runBackupScript() throws BackupException {
         File scriptFile = new File(backupScriptPath);
         if (!scriptFile.exists()) {
-            logger.error("Backup script not found at: {}", backupScriptPath);
-            throw new IOException("Backup script not found: " + backupScriptPath);
+            log.error("Backup script not found at: {}", backupScriptPath);
+            throw new BackupException("Backup script not found: " + backupScriptPath);
         }
 
-        logger.info("Executing backup script: {}", backupScriptPath);
+        log.info("Executing backup script: {}", backupScriptPath);
         
         ProcessBuilder processBuilder = new ProcessBuilder("/bin/bash", backupScriptPath);
         processBuilder.directory(scriptFile.getParentFile());
         processBuilder.redirectErrorStream(true);
         
-        Process process = processBuilder.start();
-        
-        // Log output from the script
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
-            String line;
-            while ((line = reader.readLine()) != null) {
-                logger.info("backup.sh: {}", line);
+        try {
+            Process process = processBuilder.start();
+            
+            // Log output from the script
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    log.info("backup.sh: {}", line);
+                }
             }
+            
+            int exitCode = process.waitFor();
+            if (exitCode != 0) {
+                log.error("Backup script exited with code: {}", exitCode);
+                throw new BackupScriptException("Backup script failed with exit code: " + exitCode, exitCode);
+            }
+            
+            log.info("Backup script completed successfully");
+        } catch (IOException | InterruptedException e) {
+            throw new BackupException("Failed to execute backup script", e);
         }
-        
-        int exitCode = process.waitFor();
-        if (exitCode != 0) {
-            logger.error("Backup script exited with code: {}", exitCode);
-            throw new IOException("Backup script failed with exit code: " + exitCode);
-        }
-        
-        logger.info("Backup script completed successfully");
     }
 
     /**
      * Clean up old backups to ensure the backups directory doesn't exceed the size limit
      */
-    public void cleanupOldBackups() throws IOException {
+    public void cleanupOldBackups() throws BackupException {
         Path backupDir = Paths.get(backupDirectory);
         
         if (!Files.exists(backupDir)) {
-            logger.warn("Backup directory does not exist: {}", backupDirectory);
+            log.warn("Backup directory does not exist: {}", backupDirectory);
             return;
         }
 
         long maxSizeBytes = maxBackupSizeMb * 1024 * 1024;
-        long currentSize = calculateDirectorySize(backupDir);
+        long currentSize;
+        try {
+            currentSize = calculateDirectorySize(backupDir);
+        } catch (IOException e) {
+            throw new BackupException("Failed to calculate backup directory size", e);
+        }
         
-        logger.info("Current backup directory size: {} MB (limit: {} MB)", 
+        log.info("Current backup directory size: {} MB (limit: {} MB)", 
                     currentSize / 1024 / 1024, maxBackupSizeMb);
 
         if (currentSize <= maxSizeBytes) {
-            logger.info("Backup directory size is within limits");
+            log.info("Backup directory size is within limits");
             return;
         }
 
-        logger.info("Backup directory exceeds size limit, cleaning up old backups");
+        log.info("Backup directory exceeds size limit, cleaning up old backups");
         
         // Get all backup directories sorted by modification time (oldest first)
         List<Path> backupFolders = new ArrayList<>();
@@ -113,6 +122,8 @@ public class BackupService {
             for (Path entry : stream) {
                 backupFolders.add(entry);
             }
+        } catch (IOException e) {
+            throw new BackupException("Failed to list backup directories", e);
         }
 
         // Sort by last modified time (oldest first)
@@ -130,15 +141,26 @@ public class BackupService {
                 break;
             }
 
-            long folderSize = calculateDirectorySize(backupFolder);
-            logger.info("Deleting old backup: {} (size: {} MB)", 
+            long folderSize;
+            try {
+                folderSize = calculateDirectorySize(backupFolder);
+            } catch (IOException e) {
+                log.warn("Failed to calculate size of backup folder: {}", backupFolder, e);
+                continue;
+            }
+            
+            log.info("Deleting old backup: {} (size: {} MB)", 
                         backupFolder.getFileName(), folderSize / 1024 / 1024);
             
-            deleteDirectory(backupFolder);
-            currentSize -= folderSize;
+            try {
+                deleteDirectory(backupFolder);
+                currentSize -= folderSize;
+            } catch (IOException e) {
+                log.error("Failed to delete backup folder: {}", backupFolder, e);
+            }
         }
 
-        logger.info("Cleanup completed. New backup directory size: {} MB", 
+        log.info("Cleanup completed. New backup directory size: {} MB", 
                     currentSize / 1024 / 1024);
     }
 
@@ -156,7 +178,7 @@ public class BackupService {
                     try {
                         return Files.size(path);
                     } catch (IOException e) {
-                        logger.warn("Error getting size of file: {}", path, e);
+                        log.warn("Error getting size of file: {}", path, e);
                         return 0L;
                     }
                 })
@@ -177,7 +199,7 @@ public class BackupService {
                     try {
                         Files.delete(path);
                     } catch (IOException e) {
-                        logger.error("Error deleting: {}", path, e);
+                        log.error("Error deleting: {}", path, e);
                     }
                 });
     }
