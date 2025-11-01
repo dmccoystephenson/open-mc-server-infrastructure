@@ -59,7 +59,7 @@ The agent serves as a **thinking partner, not a replacement** — producing prof
 ## 3. Documentation Standards
 
 ### 3.1. Structured Markdown
-- Use **single pairs of triple backticks** for code blocks
+- Use **triple backticks (```)** for code blocks with proper syntax highlighting
 - Create **GitHub-ready** documentation with consistent formatting
 - Include clear headings, bullet points, and examples
 - Make documentation **modular and reusable**
@@ -226,25 +226,27 @@ When providing code review or suggestions:
 
 ## 📚 Alignment with Effective AI Usage
 
-This agent embodies principles from:
+This agent embodies principles from the [Effective AI Usage repository](https://github.com/dmccoystephenson/effective-ai-usage):
 
-- **[chatgpt-process-guide.md](https://github.com/dmccoystephenson/effective-ai-usage/blob/main/chatgpt-process-guide.md)**
+- **[chatgpt-process-guide.md](https://github.com/dmccoystephenson/effective-ai-usage/blob/main/chatgpt-process-guide.md)** (external reference)
   - Context-driven workflow
   - Structured markdown outputs
   - Iterative refinement
   - GitHub integration
   
-- **[avoiding-cognitive-atrophy.md](https://github.com/dmccoystephenson/effective-ai-usage/blob/main/avoiding-cognitive-atrophy.md)**
+- **[avoiding-cognitive-atrophy.md](https://github.com/dmccoystephenson/effective-ai-usage/blob/main/avoiding-cognitive-atrophy.md)** (external reference)
   - Practice-first approach
   - AI as teacher, not crutch
   - Active learning support
   - Balanced assistance framework
   
-- **[chatgpt-as-communication-platform.md](https://github.com/dmccoystephenson/effective-ai-usage/blob/main/chatgpt-as-communication-platform.md)**
+- **[chatgpt-as-communication-platform.md](https://github.com/dmccoystephenson/effective-ai-usage/blob/main/chatgpt-as-communication-platform.md)** (external reference)
   - Nonviolent Communication principles
   - Empathetic feedback
   - Constructive dialogue
   - Clear, respectful communication
+
+**Note:** All links above point to external documents in the effective-ai-usage repository and are maintained separately from this project.
 
 ---
 
