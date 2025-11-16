@@ -206,8 +206,12 @@ kill "$FIFO_KEEPER_PID" 2>/dev/null || true
 
 log "Minecraft server process exited with code: $EXIT_CODE"
 
-# Send alert if server crashed (non-zero exit code, not from graceful shutdown)
-if [ $EXIT_CODE -ne 0 ]; then
+# Send appropriate alert based on exit code
+if [ $EXIT_CODE -eq 0 ]; then
+    # Normal shutdown (e.g., /stop command) - send shutdown alert
+    send_alert "Minecraft Server Stopped" "The Minecraft server has been shut down." "INFO" "ALERTS_SERVER_STOP"
+else
+    # Server crashed (non-zero exit code, not from graceful shutdown)
     send_alert "Minecraft Server Crashed" "The Minecraft server exited unexpectedly with code $EXIT_CODE. Check logs for details." "ERROR" "ALERTS_SERVER_CRASH"
 fi
 
