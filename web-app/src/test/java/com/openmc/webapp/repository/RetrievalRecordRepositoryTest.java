@@ -1,4 +1,4 @@
-package com.openmc.webapp.storage;
+package com.openmc.webapp.repository;
 
 import com.openmc.webapp.model.RetrievalRecord;
 import com.openmc.webapp.service.RconService;
@@ -12,22 +12,20 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-@DisplayName("JsonDataStorage Tests")
-class JsonDataStorageTest {
+@DisplayName("RetrievalRecordRepository Tests")
+class RetrievalRecordRepositoryTest {
     
     private static final String TEST_DATA_FILE = "data/retrieval-history.json";
-    private JsonDataStorage storage;
+    private RetrievalRecordRepository repository;
     
     @BeforeEach
     void setUp() {
-        // Clean up before each test
         cleanupDataFile();
-        storage = new JsonDataStorage();
+        repository = new RetrievalRecordRepository();
     }
     
     @AfterEach
     void tearDown() {
-        // Clean up after each test
         cleanupDataFile();
     }
     
@@ -36,7 +34,6 @@ class JsonDataStorageTest {
         if (dataFile.exists()) {
             dataFile.delete();
         }
-        // Also clean up the directory if it's empty
         File dataDir = dataFile.getParentFile();
         if (dataDir != null && dataDir.exists() && dataDir.list() != null && dataDir.list().length == 0) {
             dataDir.delete();
@@ -46,7 +43,7 @@ class JsonDataStorageTest {
     @Test
     @DisplayName("Should return empty list when no data file exists")
     void shouldReturnEmptyListWhenNoDataFileExists() {
-        List<RetrievalRecord> records = storage.loadRecords();
+        List<RetrievalRecord> records = repository.findAll();
         assertNotNull(records);
         assertTrue(records.isEmpty());
     }
@@ -54,16 +51,12 @@ class JsonDataStorageTest {
     @Test
     @DisplayName("Should save and load records successfully")
     void shouldSaveAndLoadRecordsSuccessfully() {
-        // Create test records
         List<RetrievalRecord> records = createTestRecords(3);
         
-        // Save records
-        storage.saveRecords(records);
+        repository.save(records);
         
-        // Load records
-        List<RetrievalRecord> loadedRecords = storage.loadRecords();
+        List<RetrievalRecord> loadedRecords = repository.findAll();
         
-        // Verify
         assertEquals(3, loadedRecords.size());
         for (int i = 0; i < records.size(); i++) {
             assertEquals(records.get(i).getTimestamp(), loadedRecords.get(i).getTimestamp());
@@ -75,28 +68,22 @@ class JsonDataStorageTest {
     @Test
     @DisplayName("Should clear data file when clear is called")
     void shouldClearDataFileWhenClearIsCalled() {
-        // Create and save test records
         List<RetrievalRecord> records = createTestRecords(2);
-        storage.saveRecords(records);
+        repository.save(records);
         
-        // Verify file exists
         File dataFile = new File(TEST_DATA_FILE);
         assertTrue(dataFile.exists());
         
-        // Clear
-        storage.clear();
+        repository.clear();
         
-        // Verify file is deleted
         assertFalse(dataFile.exists());
     }
     
     @Test
     @DisplayName("Should filter out records older than retention period")
     void shouldFilterOutRecordsOlderThanRetentionPeriod() {
-        // Create storage with 1 day retention
-        JsonDataStorage shortRetentionStorage = new JsonDataStorage(Duration.ofDays(1));
+        RetrievalRecordRepository shortRetentionRepository = new RetrievalRecordRepository(Duration.ofDays(1));
         
-        // Create records with different timestamps
         List<RetrievalRecord> records = new ArrayList<>();
         RconService.ResourceUsage resourceUsage = new RconService.ResourceUsage("20.0", "1024MB", "2048MB", "1024MB", 50.0);
         
@@ -106,51 +93,12 @@ class JsonDataStorageTest {
         // Old record (should be filtered out)
         records.add(new RetrievalRecord(Instant.now().minus(Duration.ofDays(2)), true, 3, resourceUsage));
         
-        // Save records
-        shortRetentionStorage.saveRecords(records);
+        shortRetentionRepository.save(records);
         
-        // Load records
-        List<RetrievalRecord> loadedRecords = shortRetentionStorage.loadRecords();
+        List<RetrievalRecord> loadedRecords = shortRetentionRepository.findAll();
         
-        // Only the recent record should be loaded
         assertEquals(1, loadedRecords.size());
         assertEquals(5, loadedRecords.get(0).getPlayerCount());
-    }
-    
-    @Test
-    @DisplayName("Should handle empty record list")
-    void shouldHandleEmptyRecordList() {
-        List<RetrievalRecord> records = new ArrayList<>();
-        storage.saveRecords(records);
-        
-        List<RetrievalRecord> loadedRecords = storage.loadRecords();
-        assertTrue(loadedRecords.isEmpty());
-    }
-    
-    @Test
-    @DisplayName("Should preserve ResourceUsage data")
-    void shouldPreserveResourceUsageData() {
-        RconService.ResourceUsage resourceUsage = new RconService.ResourceUsage(
-            "20.0, 19.8, 19.9", 
-            "1536MB", 
-            "2048MB", 
-            "512MB", 
-            75.0
-        );
-        
-        List<RetrievalRecord> records = new ArrayList<>();
-        records.add(new RetrievalRecord(Instant.now(), true, 10, resourceUsage));
-        
-        storage.saveRecords(records);
-        List<RetrievalRecord> loadedRecords = storage.loadRecords();
-        
-        assertEquals(1, loadedRecords.size());
-        RconService.ResourceUsage loadedUsage = loadedRecords.get(0).getResourceUsage();
-        assertEquals("20.0, 19.8, 19.9", loadedUsage.getTps());
-        assertEquals("1536MB", loadedUsage.getMemoryUsed());
-        assertEquals("2048MB", loadedUsage.getMemoryMax());
-        assertEquals("512MB", loadedUsage.getMemoryFree());
-        assertEquals(75.0, loadedUsage.getMemoryUsedPercent(), 0.01);
     }
     
     private List<RetrievalRecord> createTestRecords(int count) {

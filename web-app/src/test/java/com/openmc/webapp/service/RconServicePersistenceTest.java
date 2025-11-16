@@ -2,7 +2,7 @@ package com.openmc.webapp.service;
 
 import com.openmc.webapp.config.ServerConfig;
 import com.openmc.webapp.model.RetrievalRecord;
-import com.openmc.webapp.storage.JsonDataStorage;
+import com.openmc.webapp.repository.RetrievalRecordRepository;
 import org.junit.jupiter.api.*;
 
 import java.io.File;
@@ -15,14 +15,14 @@ class RconServicePersistenceTest {
     
     private static final String TEST_DATA_FILE = "data/retrieval-history.json";
     private ServerConfig serverConfig;
-    private JsonDataStorage storage;
+    private RetrievalRecordRepository repository;
     
     @BeforeEach
     void setUp() {
         cleanupDataFile();
         serverConfig = new ServerConfig();
         serverConfig.setRefreshIntervalMs(1); // Very short interval for testing
-        storage = new JsonDataStorage();
+        repository = new RetrievalRecordRepository();
     }
     
     @AfterEach
@@ -45,7 +45,7 @@ class RconServicePersistenceTest {
     @DisplayName("Should persist history across service restarts")
     void shouldPersistHistoryAcrossServiceRestarts() throws InterruptedException {
         // Create first service instance and generate some history
-        RconService firstService = new RconService(serverConfig, storage);
+        RconService firstService = new RconService(serverConfig, repository);
         
         // Force multiple retrievals
         for (int i = 0; i < 3; i++) {
@@ -58,7 +58,7 @@ class RconServicePersistenceTest {
         assertEquals(3, firstHistory.size());
         
         // Create second service instance (simulating restart)
-        RconService secondService = new RconService(serverConfig, storage);
+        RconService secondService = new RconService(serverConfig, repository);
         
         // Get history from second service
         List<RetrievalRecord> secondHistory = secondService.getRetrievalHistory();
@@ -77,7 +77,7 @@ class RconServicePersistenceTest {
     @Test
     @DisplayName("Should start with empty history when no persisted data exists")
     void shouldStartWithEmptyHistoryWhenNoPersistedDataExists() {
-        RconService service = new RconService(serverConfig, storage);
+        RconService service = new RconService(serverConfig, repository);
         
         List<RetrievalRecord> history = service.getRetrievalHistory();
         assertTrue(history.isEmpty());
@@ -87,7 +87,7 @@ class RconServicePersistenceTest {
     @DisplayName("Should limit loaded history to MAX_HISTORY_SIZE")
     void shouldLimitLoadedHistoryToMaxHistorySize() throws InterruptedException {
         // Create first service and generate more than MAX_HISTORY_SIZE records
-        RconService firstService = new RconService(serverConfig, storage);
+        RconService firstService = new RconService(serverConfig, repository);
         
         // Force 15 retrievals (more than the limit of 10)
         for (int i = 0; i < 15; i++) {
@@ -99,7 +99,7 @@ class RconServicePersistenceTest {
         assertEquals(10, firstService.getRetrievalHistory().size());
         
         // Create second service (simulating restart)
-        RconService secondService = new RconService(serverConfig, storage);
+        RconService secondService = new RconService(serverConfig, repository);
         
         // Should load only 10 most recent records
         List<RetrievalRecord> history = secondService.getRetrievalHistory();
@@ -110,7 +110,7 @@ class RconServicePersistenceTest {
     @DisplayName("Should append new records to loaded history")
     void shouldAppendNewRecordsToLoadedHistory() throws InterruptedException {
         // Create first service and generate some history
-        RconService firstService = new RconService(serverConfig, storage);
+        RconService firstService = new RconService(serverConfig, repository);
         firstService.getServerStatus();
         Thread.sleep(5);
         firstService.getServerStatus();
@@ -118,7 +118,7 @@ class RconServicePersistenceTest {
         assertEquals(2, firstService.getRetrievalHistory().size());
         
         // Create second service (simulating restart)
-        RconService secondService = new RconService(serverConfig, storage);
+        RconService secondService = new RconService(serverConfig, repository);
         
         // Should have loaded 2 records
         assertEquals(2, secondService.getRetrievalHistory().size());

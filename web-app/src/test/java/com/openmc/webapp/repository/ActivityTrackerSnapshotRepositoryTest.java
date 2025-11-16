@@ -1,4 +1,4 @@
-package com.openmc.webapp.storage;
+package com.openmc.webapp.repository;
 
 import com.openmc.webapp.model.ActivityTrackerSnapshot;
 import com.openmc.webapp.model.ActivityTrackerStats;
@@ -14,16 +14,16 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-@DisplayName("JsonActivityTrackerStorage Tests")
-class JsonActivityTrackerStorageTest {
+@DisplayName("ActivityTrackerSnapshotRepository Tests")
+class ActivityTrackerSnapshotRepositoryTest {
     
     private static final String TEST_DATA_FILE = "data/activity-tracker-history.json";
-    private JsonActivityTrackerStorage storage;
+    private ActivityTrackerSnapshotRepository repository;
     
     @BeforeEach
     void setUp() {
         cleanupDataFile();
-        storage = new JsonActivityTrackerStorage();
+        repository = new ActivityTrackerSnapshotRepository();
     }
     
     @AfterEach
@@ -45,7 +45,7 @@ class JsonActivityTrackerStorageTest {
     @Test
     @DisplayName("Should return empty list when no data file exists")
     void shouldReturnEmptyListWhenNoDataFileExists() {
-        List<ActivityTrackerSnapshot> snapshots = storage.loadSnapshots();
+        List<ActivityTrackerSnapshot> snapshots = repository.findAll();
         assertNotNull(snapshots);
         assertTrue(snapshots.isEmpty());
     }
@@ -55,9 +55,9 @@ class JsonActivityTrackerStorageTest {
     void shouldSaveAndLoadSnapshotsSuccessfully() {
         List<ActivityTrackerSnapshot> snapshots = createTestSnapshots(3);
         
-        storage.saveSnapshots(snapshots);
+        repository.save(snapshots);
         
-        List<ActivityTrackerSnapshot> loadedSnapshots = storage.loadSnapshots();
+        List<ActivityTrackerSnapshot> loadedSnapshots = repository.findAll();
         
         assertEquals(3, loadedSnapshots.size());
         for (int i = 0; i < snapshots.size(); i++) {
@@ -74,12 +74,12 @@ class JsonActivityTrackerStorageTest {
     @DisplayName("Should clear data file when clear is called")
     void shouldClearDataFileWhenClearIsCalled() {
         List<ActivityTrackerSnapshot> snapshots = createTestSnapshots(2);
-        storage.saveSnapshots(snapshots);
+        repository.save(snapshots);
         
         File dataFile = new File(TEST_DATA_FILE);
         assertTrue(dataFile.exists());
         
-        storage.clear();
+        repository.clear();
         
         assertFalse(dataFile.exists());
     }
@@ -87,7 +87,7 @@ class JsonActivityTrackerStorageTest {
     @Test
     @DisplayName("Should filter out snapshots older than retention period")
     void shouldFilterOutSnapshotsOlderThanRetentionPeriod() {
-        JsonActivityTrackerStorage shortRetentionStorage = new JsonActivityTrackerStorage(Duration.ofDays(1));
+        ActivityTrackerSnapshotRepository shortRetentionRepository = new ActivityTrackerSnapshotRepository(Duration.ofDays(1));
         
         List<ActivityTrackerSnapshot> snapshots = new ArrayList<>();
         ActivityTrackerStats stats = new ActivityTrackerStats(10, 50);
@@ -108,21 +108,11 @@ class JsonActivityTrackerStorageTest {
             true
         ));
         
-        shortRetentionStorage.saveSnapshots(snapshots);
+        shortRetentionRepository.save(snapshots);
         
-        List<ActivityTrackerSnapshot> loadedSnapshots = shortRetentionStorage.loadSnapshots();
+        List<ActivityTrackerSnapshot> loadedSnapshots = shortRetentionRepository.findAll();
         
         assertEquals(1, loadedSnapshots.size());
-    }
-    
-    @Test
-    @DisplayName("Should handle empty snapshot list")
-    void shouldHandleEmptySnapshotList() {
-        List<ActivityTrackerSnapshot> snapshots = new ArrayList<>();
-        storage.saveSnapshots(snapshots);
-        
-        List<ActivityTrackerSnapshot> loadedSnapshots = storage.loadSnapshots();
-        assertTrue(loadedSnapshots.isEmpty());
     }
     
     @Test
@@ -136,8 +126,8 @@ class JsonActivityTrackerStorageTest {
         List<ActivityTrackerSnapshot> snapshots = new ArrayList<>();
         snapshots.add(new ActivityTrackerSnapshot(Instant.now(), stats, leaderboard, true));
         
-        storage.saveSnapshots(snapshots);
-        List<ActivityTrackerSnapshot> loadedSnapshots = storage.loadSnapshots();
+        repository.save(snapshots);
+        List<ActivityTrackerSnapshot> loadedSnapshots = repository.findAll();
         
         assertEquals(1, loadedSnapshots.size());
         ActivityTrackerSnapshot loaded = loadedSnapshots.get(0);

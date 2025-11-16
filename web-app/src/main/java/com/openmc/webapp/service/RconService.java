@@ -3,7 +3,7 @@ package com.openmc.webapp.service;
 import com.openmc.webapp.config.ServerConfig;
 import com.openmc.webapp.model.RetrievalRecord;
 import com.openmc.webapp.rcon.RconClient;
-import com.openmc.webapp.storage.DataStorage;
+import com.openmc.webapp.repository.Repository;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
@@ -20,19 +20,19 @@ public class RconService {
     private static final int MAX_HISTORY_SIZE = 10;
     
     private final ServerConfig serverConfig;
-    private final DataStorage dataStorage;
+    private final Repository<RetrievalRecord> repository;
     private ServerStatus cachedStatus;
     private Instant lastFetchTime;
     private final LinkedList<RetrievalRecord> retrievalHistory = new LinkedList<>();
     
-    public RconService(ServerConfig serverConfig, DataStorage dataStorage) {
+    public RconService(ServerConfig serverConfig, Repository<RetrievalRecord> repository) {
         this.serverConfig = serverConfig;
-        this.dataStorage = dataStorage;
+        this.repository = repository;
         loadHistoricalData();
     }
     
     private void loadHistoricalData() {
-        List<RetrievalRecord> loadedRecords = dataStorage.loadRecords();
+        List<RetrievalRecord> loadedRecords = repository.findAll();
         if (!loadedRecords.isEmpty()) {
             // Add loaded records to history, keeping only the most recent MAX_HISTORY_SIZE
             retrievalHistory.addAll(loadedRecords);
@@ -114,7 +114,7 @@ public class RconService {
         }
         
         // Persist to storage
-        dataStorage.saveRecords(new ArrayList<>(retrievalHistory));
+        repository.save(new ArrayList<>(retrievalHistory));
     }
     
     public synchronized List<RetrievalRecord> getRetrievalHistory() {

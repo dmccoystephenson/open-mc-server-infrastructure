@@ -4,7 +4,7 @@ import com.openmc.webapp.config.ServerConfig;
 import com.openmc.webapp.model.ActivityTrackerSnapshot;
 import com.openmc.webapp.model.ActivityTrackerStats;
 import com.openmc.webapp.model.LeaderboardEntry;
-import com.openmc.webapp.storage.ActivityTrackerStorage;
+import com.openmc.webapp.repository.Repository;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
@@ -30,23 +30,23 @@ public class ActivityTrackerService {
     
     private final ServerConfig serverConfig;
     private final RestTemplate restTemplate;
-    private final ActivityTrackerStorage storage;
+    private final Repository<ActivityTrackerSnapshot> repository;
     private final LinkedList<ActivityTrackerSnapshot> snapshotHistory = new LinkedList<>();
     
     private ActivityTrackerStats cachedStats;
     private List<LeaderboardEntry> cachedLeaderboard;
     private Instant lastFetchTime;
     
-    public ActivityTrackerService(ServerConfig serverConfig, ActivityTrackerStorage storage) {
+    public ActivityTrackerService(ServerConfig serverConfig, Repository<ActivityTrackerSnapshot> repository) {
         this.serverConfig = serverConfig;
         this.restTemplate = new RestTemplate();
-        this.storage = storage;
+        this.repository = repository;
         loadHistoricalData();
         logConfiguration();
     }
     
     private void loadHistoricalData() {
-        List<ActivityTrackerSnapshot> loadedSnapshots = storage.loadSnapshots();
+        List<ActivityTrackerSnapshot> loadedSnapshots = repository.findAll();
         if (!loadedSnapshots.isEmpty()) {
             snapshotHistory.addAll(loadedSnapshots);
             while (snapshotHistory.size() > MAX_HISTORY_SIZE) {
@@ -173,7 +173,7 @@ public class ActivityTrackerService {
         }
         
         // Persist to storage
-        storage.saveSnapshots(new ArrayList<>(snapshotHistory));
+        repository.save(new ArrayList<>(snapshotHistory));
     }
     
     /**

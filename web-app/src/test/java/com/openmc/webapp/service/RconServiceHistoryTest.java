@@ -2,7 +2,7 @@ package com.openmc.webapp.service;
 
 import com.openmc.webapp.config.ServerConfig;
 import com.openmc.webapp.model.RetrievalRecord;
-import com.openmc.webapp.storage.InMemoryDataStorage;
+import com.openmc.webapp.repository.InMemoryRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.DisplayName;
@@ -20,7 +20,7 @@ class RconServiceHistoryTest {
     @BeforeEach
     void setUp() {
         serverConfig = new ServerConfig();
-        rconService = new RconService(serverConfig, new InMemoryDataStorage());
+        rconService = new RconService(serverConfig, new InMemoryRepository<>());
     }
 
     @Test
