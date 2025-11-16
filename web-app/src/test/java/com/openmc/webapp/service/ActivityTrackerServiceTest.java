@@ -3,6 +3,7 @@ package com.openmc.webapp.service;
 import com.openmc.webapp.config.ServerConfig;
 import com.openmc.webapp.model.ActivityTrackerStats;
 import com.openmc.webapp.model.LeaderboardEntry;
+import com.openmc.webapp.storage.InMemoryActivityTrackerStorage;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.DisplayName;
@@ -20,7 +21,7 @@ class ActivityTrackerServiceTest {
     @BeforeEach
     void setUp() {
         serverConfig = new ServerConfig();
-        activityTrackerService = new ActivityTrackerService(serverConfig);
+        activityTrackerService = new ActivityTrackerService(serverConfig, new InMemoryActivityTrackerStorage());
     }
 
     @Test

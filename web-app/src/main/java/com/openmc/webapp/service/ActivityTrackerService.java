@@ -1,15 +1,21 @@
 package com.openmc.webapp.service;
 
 import com.openmc.webapp.config.ServerConfig;
+import com.openmc.webapp.model.ActivityTrackerSnapshot;
 import com.openmc.webapp.model.ActivityTrackerStats;
 import com.openmc.webapp.model.LeaderboardEntry;
+import com.openmc.webapp.storage.ActivityTrackerStorage;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.LinkedList;
 import java.util.List;
 
 /**
@@ -19,14 +25,44 @@ import java.util.List;
 public class ActivityTrackerService {
     
     private static final Logger logger = LoggerFactory.getLogger(ActivityTrackerService.class);
+    private static final int MAX_HISTORY_SIZE = 10;
+    private static final long CACHE_DURATION_MS = 300000; // 5 minutes
     
     private final ServerConfig serverConfig;
     private final RestTemplate restTemplate;
+    private final ActivityTrackerStorage storage;
+    private final LinkedList<ActivityTrackerSnapshot> snapshotHistory = new LinkedList<>();
     
-    public ActivityTrackerService(ServerConfig serverConfig) {
+    private ActivityTrackerStats cachedStats;
+    private List<LeaderboardEntry> cachedLeaderboard;
+    private Instant lastFetchTime;
+    
+    public ActivityTrackerService(ServerConfig serverConfig, ActivityTrackerStorage storage) {
         this.serverConfig = serverConfig;
         this.restTemplate = new RestTemplate();
+        this.storage = storage;
+        loadHistoricalData();
         logConfiguration();
+    }
+    
+    private void loadHistoricalData() {
+        List<ActivityTrackerSnapshot> loadedSnapshots = storage.loadSnapshots();
+        if (!loadedSnapshots.isEmpty()) {
+            snapshotHistory.addAll(loadedSnapshots);
+            while (snapshotHistory.size() > MAX_HISTORY_SIZE) {
+                snapshotHistory.removeLast();
+            }
+            
+            // Initialize cache with most recent snapshot if available
+            if (!snapshotHistory.isEmpty()) {
+                ActivityTrackerSnapshot latest = snapshotHistory.getFirst();
+                if (latest.isSuccess()) {
+                    cachedStats = latest.getStats();
+                    cachedLeaderboard = latest.getLeaderboard();
+                    lastFetchTime = latest.getTimestamp();
+                }
+            }
+        }
     }
     
     /**
@@ -64,25 +100,80 @@ public class ActivityTrackerService {
             return null;
         }
         
+        // Return cached data if still valid
+        if (shouldReturnCached()) {
+            logger.debug("Returning cached Activity Tracker stats");
+            return cachedStats;
+        }
+        
+        // Fetch fresh data
+        refreshCache();
+        return cachedStats;
+    }
+    
+    private boolean shouldReturnCached() {
+        if (lastFetchTime == null || cachedStats == null) {
+            return false;
+        }
+        
+        long millisSinceLastFetch = Instant.now().toEpochMilli() - lastFetchTime.toEpochMilli();
+        return millisSinceLastFetch < CACHE_DURATION_MS;
+    }
+    
+    private void refreshCache() {
         try {
-            String url = buildUrl("/api/stats");
-            logger.debug("Fetching Activity Tracker stats from: {}", url);
-            ActivityTrackerStats stats = restTemplate.getForObject(url, ActivityTrackerStats.class);
-            if (stats != null) {
-                logger.info("Successfully fetched Activity Tracker stats: {} unique logins, {} total logins", 
-                    stats.getUniqueLogins(), stats.getTotalLogins());
+            String statsUrl = buildUrl("/api/stats");
+            String leaderboardUrl = buildUrl("/api/leaderboard");
+            
+            logger.debug("Fetching Activity Tracker data from: {}", statsUrl);
+            ActivityTrackerStats stats = restTemplate.getForObject(statsUrl, ActivityTrackerStats.class);
+            LeaderboardEntry[] entries = restTemplate.getForObject(leaderboardUrl, LeaderboardEntry[].class);
+            List<LeaderboardEntry> leaderboard = entries != null ? Arrays.asList(entries) : Collections.emptyList();
+            
+            boolean success = stats != null;
+            if (success) {
+                logger.info("Successfully fetched Activity Tracker data: {} unique logins, {} total logins, {} leaderboard entries", 
+                    stats.getUniqueLogins(), stats.getTotalLogins(), leaderboard.size());
+                cachedStats = stats;
+                cachedLeaderboard = leaderboard;
             } else {
                 logger.warn("Activity Tracker stats response was null");
             }
-            return stats;
+            
+            lastFetchTime = Instant.now();
+            
+            // Create snapshot and add to history
+            ActivityTrackerSnapshot snapshot = new ActivityTrackerSnapshot(
+                lastFetchTime, stats, leaderboard, success
+            );
+            addSnapshot(snapshot);
+            
         } catch (Exception e) {
-            logger.error("Error fetching Activity Tracker stats from {}: {} - {}", 
-                buildUrl("/api/stats"), e.getClass().getSimpleName(), e.getMessage());
+            logger.error("Error fetching Activity Tracker data: {} - {}", 
+                e.getClass().getSimpleName(), e.getMessage());
             if (logger.isDebugEnabled()) {
                 logger.debug("Stack trace:", e);
             }
-            return null;
+            
+            // Create failed snapshot
+            lastFetchTime = Instant.now();
+            ActivityTrackerSnapshot snapshot = new ActivityTrackerSnapshot(
+                lastFetchTime, null, Collections.emptyList(), false
+            );
+            addSnapshot(snapshot);
         }
+    }
+    
+    private synchronized void addSnapshot(ActivityTrackerSnapshot snapshot) {
+        snapshotHistory.addFirst(snapshot);
+        
+        // Keep only the last MAX_HISTORY_SIZE snapshots in memory
+        while (snapshotHistory.size() > MAX_HISTORY_SIZE) {
+            snapshotHistory.removeLast();
+        }
+        
+        // Persist to storage
+        storage.saveSnapshots(new ArrayList<>(snapshotHistory));
     }
     
     /**
@@ -94,20 +185,37 @@ public class ActivityTrackerService {
             return Collections.emptyList();
         }
         
-        try {
-            String url = buildUrl("/api/leaderboard");
-            logger.debug("Fetching Activity Tracker leaderboard from: {}", url);
-            LeaderboardEntry[] entries = restTemplate.getForObject(url, LeaderboardEntry[].class);
-            List<LeaderboardEntry> leaderboard = entries != null ? Arrays.asList(entries) : Collections.emptyList();
-            logger.info("Successfully fetched Activity Tracker leaderboard with {} entries", leaderboard.size());
-            return leaderboard;
-        } catch (Exception e) {
-            logger.error("Error fetching Activity Tracker leaderboard from {}: {} - {}", 
-                buildUrl("/api/leaderboard"), e.getClass().getSimpleName(), e.getMessage());
-            if (logger.isDebugEnabled()) {
-                logger.debug("Stack trace:", e);
-            }
-            return Collections.emptyList();
+        // Return cached data if still valid
+        if (shouldReturnCached()) {
+            logger.debug("Returning cached Activity Tracker leaderboard");
+            return cachedLeaderboard != null ? cachedLeaderboard : Collections.emptyList();
+        }
+        
+        // Fetch fresh data (this will also fetch stats)
+        refreshCache();
+        return cachedLeaderboard != null ? cachedLeaderboard : Collections.emptyList();
+    }
+    
+    /**
+     * Get the snapshot history
+     */
+    public synchronized List<ActivityTrackerSnapshot> getSnapshotHistory() {
+        return Collections.unmodifiableList(new ArrayList<>(snapshotHistory));
+    }
+    
+    /**
+     * Get the last fetch time
+     */
+    public Instant getLastFetchTime() {
+        return lastFetchTime;
+    }
+    
+    // Scheduled task to fetch data every 30 minutes regardless of user visits
+    @Scheduled(fixedRate = 1800000) // 30 minutes in milliseconds
+    public void scheduledDataFetch() {
+        if (isEnabled()) {
+            logger.info("Scheduled Activity Tracker data fetch triggered");
+            refreshCache();
         }
     }
     
