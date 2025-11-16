@@ -3,6 +3,7 @@ package com.openmc.webapp.service;
 import com.openmc.webapp.config.ServerConfig;
 import com.openmc.webapp.model.RetrievalRecord;
 import com.openmc.webapp.rcon.RconClient;
+import com.openmc.webapp.storage.DataStorage;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
@@ -19,12 +20,26 @@ public class RconService {
     private static final int MAX_HISTORY_SIZE = 10;
     
     private final ServerConfig serverConfig;
+    private final DataStorage dataStorage;
     private ServerStatus cachedStatus;
     private Instant lastFetchTime;
     private final LinkedList<RetrievalRecord> retrievalHistory = new LinkedList<>();
     
-    public RconService(ServerConfig serverConfig) {
+    public RconService(ServerConfig serverConfig, DataStorage dataStorage) {
         this.serverConfig = serverConfig;
+        this.dataStorage = dataStorage;
+        loadHistoricalData();
+    }
+    
+    private void loadHistoricalData() {
+        List<RetrievalRecord> loadedRecords = dataStorage.loadRecords();
+        if (!loadedRecords.isEmpty()) {
+            // Add loaded records to history, keeping only the most recent MAX_HISTORY_SIZE
+            retrievalHistory.addAll(loadedRecords);
+            while (retrievalHistory.size() > MAX_HISTORY_SIZE) {
+                retrievalHistory.removeLast();
+            }
+        }
     }
     
     public String sendCommand(String command) {
@@ -93,10 +108,13 @@ public class RconService {
     private synchronized void addRetrievalRecord(RetrievalRecord record) {
         retrievalHistory.addFirst(record);
         
-        // Keep only the last MAX_HISTORY_SIZE records
+        // Keep only the last MAX_HISTORY_SIZE records in memory
         while (retrievalHistory.size() > MAX_HISTORY_SIZE) {
             retrievalHistory.removeLast();
         }
+        
+        // Persist to storage
+        dataStorage.saveRecords(new ArrayList<>(retrievalHistory));
     }
     
     public synchronized List<RetrievalRecord> getRetrievalHistory() {
@@ -306,7 +324,13 @@ public class RconService {
         private final String memoryFree;
         private final double memoryUsedPercent;
         
-        public ResourceUsage(String tps, String memoryUsed, String memoryMax, String memoryFree, double memoryUsedPercent) {
+        @com.fasterxml.jackson.annotation.JsonCreator
+        public ResourceUsage(
+                @com.fasterxml.jackson.annotation.JsonProperty("tps") String tps, 
+                @com.fasterxml.jackson.annotation.JsonProperty("memoryUsed") String memoryUsed, 
+                @com.fasterxml.jackson.annotation.JsonProperty("memoryMax") String memoryMax, 
+                @com.fasterxml.jackson.annotation.JsonProperty("memoryFree") String memoryFree, 
+                @com.fasterxml.jackson.annotation.JsonProperty("memoryUsedPercent") double memoryUsedPercent) {
             this.tps = tps;
             this.memoryUsed = memoryUsed;
             this.memoryMax = memoryMax;
