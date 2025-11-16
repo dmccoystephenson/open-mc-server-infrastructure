@@ -1,5 +1,6 @@
 package com.openmc.webapp.repository;
 
+import com.openmc.webapp.config.TestDataStorageConfig;
 import com.openmc.webapp.model.RetrievalRecord;
 import com.openmc.webapp.service.RconService;
 import org.junit.jupiter.api.*;
@@ -17,11 +18,13 @@ class RetrievalRecordRepositoryTest {
     
     private static final String TEST_DATA_FILE = "data/retrieval-history.json";
     private RetrievalRecordRepository repository;
+    private TestDataStorageConfig config;
     
     @BeforeEach
     void setUp() {
         cleanupDataFile();
-        repository = new RetrievalRecordRepository();
+        config = new TestDataStorageConfig();
+        repository = new RetrievalRecordRepository(config);
     }
     
     @AfterEach
@@ -82,7 +85,7 @@ class RetrievalRecordRepositoryTest {
     @Test
     @DisplayName("Should filter out records older than retention period")
     void shouldFilterOutRecordsOlderThanRetentionPeriod() {
-        RetrievalRecordRepository shortRetentionRepository = new RetrievalRecordRepository(Duration.ofDays(1));
+        RetrievalRecordRepository shortRetentionRepository = new RetrievalRecordRepository(config, Duration.ofDays(1));
         
         List<RetrievalRecord> records = new ArrayList<>();
         RconService.ResourceUsage resourceUsage = new RconService.ResourceUsage("20.0", "1024MB", "2048MB", "1024MB", 50.0);

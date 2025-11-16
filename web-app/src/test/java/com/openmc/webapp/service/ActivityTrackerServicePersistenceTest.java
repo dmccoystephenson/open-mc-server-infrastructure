@@ -1,6 +1,7 @@
 package com.openmc.webapp.service;
 
 import com.openmc.webapp.config.ServerConfig;
+import com.openmc.webapp.config.TestDataStorageConfig;
 import com.openmc.webapp.model.ActivityTrackerSnapshot;
 import com.openmc.webapp.repository.ActivityTrackerSnapshotRepository;
 import org.junit.jupiter.api.*;
@@ -16,13 +17,15 @@ class ActivityTrackerServicePersistenceTest {
     private static final String TEST_DATA_FILE = "data/activity-tracker-history.json";
     private ServerConfig serverConfig;
     private ActivityTrackerSnapshotRepository repository;
+    private TestDataStorageConfig config;
     
     @BeforeEach
     void setUp() {
         cleanupDataFile();
         serverConfig = new ServerConfig();
         serverConfig.setActivityTrackerEnabled(false); // Disable to prevent actual API calls
-        repository = new ActivityTrackerSnapshotRepository();
+        config = new TestDataStorageConfig();
+        repository = new ActivityTrackerSnapshotRepository(config);
     }
     
     @AfterEach

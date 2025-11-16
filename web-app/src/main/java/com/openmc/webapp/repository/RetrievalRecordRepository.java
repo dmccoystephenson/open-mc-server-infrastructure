@@ -1,5 +1,6 @@
 package com.openmc.webapp.repository;
 
+import com.openmc.webapp.config.DataStorageConfig;
 import com.openmc.webapp.model.RetrievalRecord;
 import org.springframework.stereotype.Component;
 
@@ -13,14 +14,15 @@ import java.time.Instant;
 @Component
 public class RetrievalRecordRepository extends JsonRepository<RetrievalRecord> {
     
-    private static final String DATA_FILE = "data/retrieval-history.json";
+    private static final String FILENAME = "retrieval-history.json";
     
-    public RetrievalRecordRepository() {
-        super(DATA_FILE, RetrievalRecord[].class);
+    @org.springframework.beans.factory.annotation.Autowired
+    public RetrievalRecordRepository(DataStorageConfig config) {
+        super(config.getFilePath(FILENAME), RetrievalRecord[].class);
     }
     
-    public RetrievalRecordRepository(Duration retentionPeriod) {
-        super(DATA_FILE, RetrievalRecord[].class, retentionPeriod);
+    public RetrievalRecordRepository(DataStorageConfig config, Duration retentionPeriod) {
+        super(config.getFilePath(FILENAME), RetrievalRecord[].class, retentionPeriod);
     }
     
     @Override

@@ -1,5 +1,6 @@
 package com.openmc.webapp.repository;
 
+import com.openmc.webapp.config.TestDataStorageConfig;
 import com.openmc.webapp.model.ActivityTrackerSnapshot;
 import com.openmc.webapp.model.ActivityTrackerStats;
 import com.openmc.webapp.model.LeaderboardEntry;
@@ -19,11 +20,13 @@ class ActivityTrackerSnapshotRepositoryTest {
     
     private static final String TEST_DATA_FILE = "data/activity-tracker-history.json";
     private ActivityTrackerSnapshotRepository repository;
+    private TestDataStorageConfig config;
     
     @BeforeEach
     void setUp() {
         cleanupDataFile();
-        repository = new ActivityTrackerSnapshotRepository();
+        config = new TestDataStorageConfig();
+        repository = new ActivityTrackerSnapshotRepository(config);
     }
     
     @AfterEach
@@ -87,7 +90,7 @@ class ActivityTrackerSnapshotRepositoryTest {
     @Test
     @DisplayName("Should filter out snapshots older than retention period")
     void shouldFilterOutSnapshotsOlderThanRetentionPeriod() {
-        ActivityTrackerSnapshotRepository shortRetentionRepository = new ActivityTrackerSnapshotRepository(Duration.ofDays(1));
+        ActivityTrackerSnapshotRepository shortRetentionRepository = new ActivityTrackerSnapshotRepository(config, Duration.ofDays(1));
         
         List<ActivityTrackerSnapshot> snapshots = new ArrayList<>();
         ActivityTrackerStats stats = new ActivityTrackerStats(10, 50);

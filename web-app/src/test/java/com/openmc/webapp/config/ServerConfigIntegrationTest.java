@@ -10,8 +10,9 @@ import static org.junit.jupiter.api.Assertions.*;
 
 @SpringBootTest
 @TestPropertySource(properties = {
-    "ADMIN_USERNAME=testuser",
-    "ADMIN_PASSWORD=testpass123"
+    "minecraft.server.admin-username=testuser",
+    "minecraft.server.admin-password=testpass123",
+    "data.storage.base-directory=data"
 })
 @DisplayName("ServerConfig Integration Tests - Environment Variable Binding")
 class ServerConfigIntegrationTest {

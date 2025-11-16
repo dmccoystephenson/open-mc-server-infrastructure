@@ -1,5 +1,6 @@
 package com.openmc.webapp.repository;
 
+import com.openmc.webapp.config.DataStorageConfig;
 import com.openmc.webapp.model.ActivityTrackerSnapshot;
 import org.springframework.stereotype.Component;
 
@@ -13,14 +14,15 @@ import java.time.Instant;
 @Component
 public class ActivityTrackerSnapshotRepository extends JsonRepository<ActivityTrackerSnapshot> {
     
-    private static final String DATA_FILE = "data/activity-tracker-history.json";
+    private static final String FILENAME = "activity-tracker-history.json";
     
-    public ActivityTrackerSnapshotRepository() {
-        super(DATA_FILE, ActivityTrackerSnapshot[].class);
+    @org.springframework.beans.factory.annotation.Autowired
+    public ActivityTrackerSnapshotRepository(DataStorageConfig config) {
+        super(config.getFilePath(FILENAME), ActivityTrackerSnapshot[].class);
     }
     
-    public ActivityTrackerSnapshotRepository(Duration retentionPeriod) {
-        super(DATA_FILE, ActivityTrackerSnapshot[].class, retentionPeriod);
+    public ActivityTrackerSnapshotRepository(DataStorageConfig config, Duration retentionPeriod) {
+        super(config.getFilePath(FILENAME), ActivityTrackerSnapshot[].class, retentionPeriod);
     }
     
     @Override

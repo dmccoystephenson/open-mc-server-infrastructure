@@ -47,6 +47,8 @@ services:
     container_name: ${WEB_CONTAINER_NAME:-open-mc-webapp}
     expose:
       - "8080"
+    volumes:
+      - webapp-data:/app/data
     depends_on:
       - mcserver
     environment:
@@ -66,6 +68,7 @@ services:
       - DASHBOARD_SUBTITLE=${DASHBOARD_SUBTITLE:-Server Management & Information}
       - DASHBOARD_PRIMARY_COLOR=${DASHBOARD_PRIMARY_COLOR:-#667eea}
       - DASHBOARD_SECONDARY_COLOR=${DASHBOARD_SECONDARY_COLOR:-#764ba2}
+      - DATA_STORAGE_PATH=${DATA_STORAGE_PATH:-/app/data}
 
   nginx:
     build:
@@ -133,4 +136,7 @@ services:
 volumes:
   mcserver:
     name: ${VOLUME_NAME:-mcserver}
+    external: false
+  webapp-data:
+    name: ${WEBAPP_VOLUME_NAME:-webapp-data}
     external: false

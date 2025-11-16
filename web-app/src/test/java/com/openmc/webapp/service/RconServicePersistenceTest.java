@@ -1,6 +1,7 @@
 package com.openmc.webapp.service;
 
 import com.openmc.webapp.config.ServerConfig;
+import com.openmc.webapp.config.TestDataStorageConfig;
 import com.openmc.webapp.model.RetrievalRecord;
 import com.openmc.webapp.repository.RetrievalRecordRepository;
 import org.junit.jupiter.api.*;
@@ -16,13 +17,15 @@ class RconServicePersistenceTest {
     private static final String TEST_DATA_FILE = "data/retrieval-history.json";
     private ServerConfig serverConfig;
     private RetrievalRecordRepository repository;
+    private TestDataStorageConfig config;
     
     @BeforeEach
     void setUp() {
         cleanupDataFile();
         serverConfig = new ServerConfig();
         serverConfig.setRefreshIntervalMs(1); // Very short interval for testing
-        repository = new RetrievalRecordRepository();
+        config = new TestDataStorageConfig();
+        repository = new RetrievalRecordRepository(config);
     }
     
     @AfterEach
