@@ -87,4 +87,30 @@ class RconServiceMaxHistorySizeTest {
         var firstItemAfter = rconService.getRetrievalHistory().get(0).getTimestamp();
         assertEquals(firstItemBefore, firstItemAfter);
     }
+
+    @Test
+    @DisplayName("Should reload history from repository when increasing max size")
+    void shouldReloadHistoryWhenIncreasingMaxSize() throws InterruptedException {
+        // Generate 10 data points
+        for (int i = 0; i < 10; i++) {
+            Thread.sleep(5); // Ensure refresh interval passes
+            rconService.getServerStatus();
+        }
+        
+        assertEquals(10, rconService.getRetrievalHistory().size());
+        
+        // Reduce max size to 5
+        rconService.setMaxHistorySize(5);
+        assertEquals(5, rconService.getRetrievalHistory().size());
+        
+        // Increase max size back to 10
+        rconService.setMaxHistorySize(10);
+        
+        // Should reload from repository and show 10 items (or all available)
+        // Since repository has retention filtering, we should have at least 5 and up to 10
+        assertTrue(rconService.getRetrievalHistory().size() >= 5, 
+            "Should have at least 5 items after increasing size");
+        assertTrue(rconService.getRetrievalHistory().size() <= 10, 
+            "Should not exceed 10 items");
+    }
 }

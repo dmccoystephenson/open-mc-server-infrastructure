@@ -59,9 +59,19 @@ public class RconService {
         if (maxHistorySize <= 0) {
             throw new IllegalArgumentException("Max history size must be greater than 0");
         }
+        
+        int oldSize = this.maxHistorySize;
         this.maxHistorySize = maxHistorySize;
         
-        // Trim history if new size is smaller
+        if (maxHistorySize > oldSize && maxHistorySize > retrievalHistory.size()) {
+            // If increasing size and we have fewer records than the new limit,
+            // reload from repository to get more historical data
+            retrievalHistory.clear();
+            List<RetrievalRecord> allRecords = repository.findAll();
+            retrievalHistory.addAll(allRecords);
+        }
+        
+        // Trim history if it exceeds new size
         while (retrievalHistory.size() > maxHistorySize) {
             retrievalHistory.removeLast();
         }
