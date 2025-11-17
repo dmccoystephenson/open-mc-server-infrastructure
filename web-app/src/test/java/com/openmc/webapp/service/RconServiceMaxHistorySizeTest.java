@@ -113,4 +113,32 @@ class RconServiceMaxHistorySizeTest {
         assertTrue(rconService.getRetrievalHistory().size() <= 10, 
             "Should not exceed 10 items");
     }
+
+    @Test
+    @DisplayName("Should show all 50 data points when slider is set to 50 with 50 records stored")
+    void shouldShow50DataPointsWhenSliderSetTo50() throws InterruptedException {
+        // Generate 50 data points
+        for (int i = 0; i < 50; i++) {
+            Thread.sleep(5); // Ensure refresh interval passes
+            rconService.getServerStatus();
+        }
+        
+        // Verify we have 10 (default max size) in memory
+        assertEquals(10, rconService.getRetrievalHistory().size());
+        
+        // Set max size to 50
+        rconService.setMaxHistorySize(50);
+        
+        // Should reload from repository and show all 50 items
+        assertEquals(50, rconService.getRetrievalHistory().size(), 
+            "Should show all 50 data points when slider is set to 50");
+        
+        // Verify the records are in correct order (most recent first)
+        var history = rconService.getRetrievalHistory();
+        for (int i = 0; i < history.size() - 1; i++) {
+            assertTrue(history.get(i).getTimestamp().isAfter(history.get(i + 1).getTimestamp()) ||
+                       history.get(i).getTimestamp().equals(history.get(i + 1).getTimestamp()),
+                "Records should be ordered from most recent to oldest");
+        }
+    }
 }

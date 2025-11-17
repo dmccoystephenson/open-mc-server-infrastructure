@@ -143,13 +143,17 @@ public class RconService {
     private synchronized void addRetrievalRecord(RetrievalRecord record) {
         retrievalHistory.addFirst(record);
         
-        // Keep only the last maxHistorySize records in memory
+        // Persist all records to storage (repository handles retention filtering)
+        // Load all from repository first to ensure we don't lose older records
+        List<RetrievalRecord> allRecords = new ArrayList<>(repository.findAll());
+        // Add new record to the beginning
+        allRecords.add(0, record);
+        repository.save(allRecords);
+        
+        // Keep only the last maxHistorySize records in memory for API responses
         while (retrievalHistory.size() > maxHistorySize) {
             retrievalHistory.removeLast();
         }
-        
-        // Persist to storage
-        repository.save(new ArrayList<>(retrievalHistory));
     }
     
     public synchronized List<RetrievalRecord> getRetrievalHistory() {

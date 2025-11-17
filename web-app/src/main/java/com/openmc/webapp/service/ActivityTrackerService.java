@@ -168,13 +168,17 @@ public class ActivityTrackerService {
     private synchronized void addSnapshot(ActivityTrackerSnapshot snapshot) {
         snapshotHistory.addFirst(snapshot);
         
-        // Keep only the last maxHistorySize snapshots in memory
+        // Persist all snapshots to storage (repository handles retention filtering)
+        // Load all from repository first to ensure we don't lose older snapshots
+        List<ActivityTrackerSnapshot> allSnapshots = new ArrayList<>(repository.findAll());
+        // Add new snapshot to the beginning
+        allSnapshots.add(0, snapshot);
+        repository.save(allSnapshots);
+        
+        // Keep only the last maxHistorySize snapshots in memory for API responses
         while (snapshotHistory.size() > maxHistorySize) {
             snapshotHistory.removeLast();
         }
-        
-        // Persist to storage
-        repository.save(new ArrayList<>(snapshotHistory));
     }
     
     /**
