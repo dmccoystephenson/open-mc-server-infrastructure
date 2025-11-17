@@ -280,6 +280,70 @@
             margin-bottom: 10px;
         }
         
+        .history-size-control {
+            background: #f9fafb;
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+        
+        .history-size-control label {
+            font-weight: 600;
+            color: #374151;
+            font-size: 14px;
+        }
+        
+        .history-size-control input[type="range"] {
+            flex: 1;
+            min-width: 150px;
+            height: 6px;
+            background: linear-gradient(to right, var(--primary-color), var(--secondary-color));
+            border-radius: 3px;
+            outline: none;
+            -webkit-appearance: none;
+        }
+        
+        .history-size-control input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: white;
+            cursor: pointer;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+            border: 2px solid var(--primary-color);
+        }
+        
+        .history-size-control input[type="range"]::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: white;
+            cursor: pointer;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+            border: 2px solid var(--primary-color);
+        }
+        
+        .history-size-value {
+            font-weight: 700;
+            color: var(--primary-color);
+            font-size: 16px;
+            min-width: 35px;
+            text-align: center;
+        }
+        
+        .history-size-info {
+            font-size: 12px;
+            color: #6b7280;
+            width: 100%;
+            margin-top: 5px;
+        }
+        
         .leaderboard-table {
             width: 100%;
             border-collapse: collapse;
@@ -541,7 +605,14 @@
         
         <div class="card">
             <h2>Data Visualization</h2>
-            <p style="color: #6b7280; margin-bottom: 15px;">Historical server metrics from the last 10 data retrievals</p>
+            <p style="color: #6b7280; margin-bottom: 15px;">Historical server metrics</p>
+            
+            <div class="history-size-control">
+                <label for="historySizeSlider">History Size:</label>
+                <input type="range" id="historySizeSlider" min="5" max="50" value="10" step="1">
+                <span class="history-size-value" id="historySizeValue">10</span>
+                <div class="history-size-info">Adjust to view more historical data points (session only)</div>
+            </div>
             
             <div style="margin-bottom: 30px;">
                 <h3 class="chart-section-title">Player Activity Over Time</h3>
@@ -995,6 +1066,57 @@
                     container.innerHTML = '<div style="text-align: center; padding: 40px; color: #ef4444;">Error loading leaderboard</div>';
                 }
             }
+        }
+        
+        // History size control
+        async function updateHistorySize(newSize) {
+            try {
+                const response = await fetch('/api/history/max-size', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ maxSize: newSize })
+                });
+                
+                const result = await response.json();
+                if (result.success) {
+                    console.log('History size updated to:', newSize);
+                    // Reload history to show updated data
+                    await loadHistory();
+                } else {
+                    console.error('Failed to update history size:', result.error);
+                }
+            } catch (error) {
+                console.error('Failed to update history size:', error);
+            }
+        }
+        
+        // Initialize history size slider
+        const historySizeSlider = document.getElementById('historySizeSlider');
+        const historySizeValue = document.getElementById('historySizeValue');
+        
+        if (historySizeSlider && historySizeValue) {
+            // Fetch current max size on load
+            fetch('/api/history/max-size')
+                .then(response => response.json())
+                .then(data => {
+                    const currentSize = data.maxSize || 10;
+                    historySizeSlider.value = currentSize;
+                    historySizeValue.textContent = currentSize;
+                })
+                .catch(error => console.error('Failed to fetch current history size:', error));
+            
+            // Update display value as slider moves
+            historySizeSlider.addEventListener('input', (e) => {
+                historySizeValue.textContent = e.target.value;
+            });
+            
+            // Update backend when slider is released
+            historySizeSlider.addEventListener('change', (e) => {
+                const newSize = parseInt(e.target.value, 10);
+                updateHistorySize(newSize);
+            });
         }
         
         // Load history on page load
