@@ -25,13 +25,14 @@ import java.util.List;
 public class ActivityTrackerService {
     
     private static final Logger logger = LoggerFactory.getLogger(ActivityTrackerService.class);
-    private static final int MAX_HISTORY_SIZE = 10;
+    private static final int DEFAULT_MAX_HISTORY_SIZE = 10;
     private static final long CACHE_DURATION_MS = 300000; // 5 minutes
     
     private final ServerConfig serverConfig;
     private final RestTemplate restTemplate;
     private final Repository<ActivityTrackerSnapshot> repository;
     private final LinkedList<ActivityTrackerSnapshot> snapshotHistory = new LinkedList<>();
+    private int maxHistorySize = DEFAULT_MAX_HISTORY_SIZE;
     
     private ActivityTrackerStats cachedStats;
     private List<LeaderboardEntry> cachedLeaderboard;
@@ -49,7 +50,7 @@ public class ActivityTrackerService {
         List<ActivityTrackerSnapshot> loadedSnapshots = repository.findAll();
         if (!loadedSnapshots.isEmpty()) {
             snapshotHistory.addAll(loadedSnapshots);
-            while (snapshotHistory.size() > MAX_HISTORY_SIZE) {
+            while (snapshotHistory.size() > maxHistorySize) {
                 snapshotHistory.removeLast();
             }
             
@@ -167,8 +168,8 @@ public class ActivityTrackerService {
     private synchronized void addSnapshot(ActivityTrackerSnapshot snapshot) {
         snapshotHistory.addFirst(snapshot);
         
-        // Keep only the last MAX_HISTORY_SIZE snapshots in memory
-        while (snapshotHistory.size() > MAX_HISTORY_SIZE) {
+        // Keep only the last maxHistorySize snapshots in memory
+        while (snapshotHistory.size() > maxHistorySize) {
             snapshotHistory.removeLast();
         }
         
@@ -208,6 +209,30 @@ public class ActivityTrackerService {
      */
     public Instant getLastFetchTime() {
         return lastFetchTime;
+    }
+    
+    /**
+     * Get the current max history size
+     * @return Current max history size
+     */
+    public synchronized int getMaxHistorySize() {
+        return maxHistorySize;
+    }
+    
+    /**
+     * Set the max history size (session-only, not persisted)
+     * @param maxHistorySize New max history size (must be > 0)
+     */
+    public synchronized void setMaxHistorySize(int maxHistorySize) {
+        if (maxHistorySize <= 0) {
+            throw new IllegalArgumentException("Max history size must be greater than 0");
+        }
+        this.maxHistorySize = maxHistorySize;
+        
+        // Trim history if new size is smaller
+        while (snapshotHistory.size() > maxHistorySize) {
+            snapshotHistory.removeLast();
+        }
     }
     
     // Scheduled task to fetch data every 30 minutes regardless of user visits

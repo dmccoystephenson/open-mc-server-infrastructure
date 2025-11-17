@@ -104,6 +104,33 @@ public class ServerController {
         return Map.of("history", rconService.getRetrievalHistory());
     }
     
+    @GetMapping("/api/history/max-size")
+    @ResponseBody
+    public Map<String, Integer> getHistoryMaxSize() {
+        return Map.of("maxSize", rconService.getMaxHistorySize());
+    }
+    
+    @PostMapping("/api/history/max-size")
+    @ResponseBody
+    public Map<String, Object> setHistoryMaxSize(@RequestBody Map<String, Integer> payload) {
+        Integer maxSize = payload.get("maxSize");
+        
+        if (maxSize == null) {
+            return Map.of("success", false, "error", "maxSize is required");
+        }
+        
+        if (maxSize <= 0) {
+            return Map.of("success", false, "error", "maxSize must be greater than 0");
+        }
+        
+        try {
+            rconService.setMaxHistorySize(maxSize);
+            return Map.of("success", true, "maxSize", maxSize);
+        } catch (IllegalArgumentException e) {
+            return Map.of("success", false, "error", e.getMessage());
+        }
+    }
+    
     @GetMapping("/api/activity-tracker/stats")
     @ResponseBody
     public ActivityTrackerStats getActivityTrackerStats() {
@@ -132,5 +159,32 @@ public class ServerController {
         boolean enabled = activityTrackerService.isEnabled();
         logger.debug("API request: /api/activity-tracker/enabled - returning: {}", enabled);
         return Map.of("enabled", enabled);
+    }
+    
+    @GetMapping("/api/activity-tracker/history/max-size")
+    @ResponseBody
+    public Map<String, Integer> getActivityTrackerHistoryMaxSize() {
+        return Map.of("maxSize", activityTrackerService.getMaxHistorySize());
+    }
+    
+    @PostMapping("/api/activity-tracker/history/max-size")
+    @ResponseBody
+    public Map<String, Object> setActivityTrackerHistoryMaxSize(@RequestBody Map<String, Integer> payload) {
+        Integer maxSize = payload.get("maxSize");
+        
+        if (maxSize == null) {
+            return Map.of("success", false, "error", "maxSize is required");
+        }
+        
+        if (maxSize <= 0) {
+            return Map.of("success", false, "error", "maxSize must be greater than 0");
+        }
+        
+        try {
+            activityTrackerService.setMaxHistorySize(maxSize);
+            return Map.of("success", true, "maxSize", maxSize);
+        } catch (IllegalArgumentException e) {
+            return Map.of("success", false, "error", e.getMessage());
+        }
     }
 }

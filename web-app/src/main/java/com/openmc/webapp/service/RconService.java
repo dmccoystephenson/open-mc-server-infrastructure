@@ -17,13 +17,14 @@ import java.util.List;
 @Service
 public class RconService {
     
-    private static final int MAX_HISTORY_SIZE = 10;
+    private static final int DEFAULT_MAX_HISTORY_SIZE = 10;
     
     private final ServerConfig serverConfig;
     private final Repository<RetrievalRecord> repository;
     private ServerStatus cachedStatus;
     private Instant lastFetchTime;
     private final LinkedList<RetrievalRecord> retrievalHistory = new LinkedList<>();
+    private int maxHistorySize = DEFAULT_MAX_HISTORY_SIZE;
     
     public RconService(ServerConfig serverConfig, Repository<RetrievalRecord> repository) {
         this.serverConfig = serverConfig;
@@ -34,11 +35,35 @@ public class RconService {
     private void loadHistoricalData() {
         List<RetrievalRecord> loadedRecords = repository.findAll();
         if (!loadedRecords.isEmpty()) {
-            // Add loaded records to history, keeping only the most recent MAX_HISTORY_SIZE
+            // Add loaded records to history, keeping only the most recent maxHistorySize
             retrievalHistory.addAll(loadedRecords);
-            while (retrievalHistory.size() > MAX_HISTORY_SIZE) {
+            while (retrievalHistory.size() > maxHistorySize) {
                 retrievalHistory.removeLast();
             }
+        }
+    }
+    
+    /**
+     * Get the current max history size
+     * @return Current max history size
+     */
+    public synchronized int getMaxHistorySize() {
+        return maxHistorySize;
+    }
+    
+    /**
+     * Set the max history size (session-only, not persisted)
+     * @param maxHistorySize New max history size (must be > 0)
+     */
+    public synchronized void setMaxHistorySize(int maxHistorySize) {
+        if (maxHistorySize <= 0) {
+            throw new IllegalArgumentException("Max history size must be greater than 0");
+        }
+        this.maxHistorySize = maxHistorySize;
+        
+        // Trim history if new size is smaller
+        while (retrievalHistory.size() > maxHistorySize) {
+            retrievalHistory.removeLast();
         }
     }
     
@@ -108,8 +133,8 @@ public class RconService {
     private synchronized void addRetrievalRecord(RetrievalRecord record) {
         retrievalHistory.addFirst(record);
         
-        // Keep only the last MAX_HISTORY_SIZE records in memory
-        while (retrievalHistory.size() > MAX_HISTORY_SIZE) {
+        // Keep only the last maxHistorySize records in memory
+        while (retrievalHistory.size() > maxHistorySize) {
             retrievalHistory.removeLast();
         }
         
