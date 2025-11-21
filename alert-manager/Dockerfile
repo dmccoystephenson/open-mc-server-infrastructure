@@ -4,9 +4,12 @@ FROM gradle:8.5-jdk21 AS builder
 
 WORKDIR /build
 
-# Copy build files
+# Copy build files for dependency resolution
 COPY build.gradle .
 COPY settings.gradle .
+
+# Download dependencies (this layer will be cached unless build files change)
+RUN gradle dependencies --no-daemon || true
 
 # Copy source code
 COPY src src/
