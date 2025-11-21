@@ -1,20 +1,21 @@
 # Multi-stage build for alert-manager
 # Stage 1: Build the application
-FROM eclipse-temurin:21-jdk AS builder
+FROM gradle:8.5-jdk21 AS builder
 
 WORKDIR /build
 
-# Copy gradle wrapper and build files
-COPY gradlew .
-COPY gradle gradle/
+# Copy build files for dependency resolution
 COPY build.gradle .
 COPY settings.gradle .
+
+# Download dependencies (this layer will be cached unless build files change)
+RUN gradle dependencies --no-daemon || true
 
 # Copy source code
 COPY src src/
 
 # Build the application (skip tests for faster builds)
-RUN ./gradlew clean build -x test
+RUN gradle clean build -x test --no-daemon
 
 # Stage 2: Create the runtime image
 FROM eclipse-temurin:21-jre
