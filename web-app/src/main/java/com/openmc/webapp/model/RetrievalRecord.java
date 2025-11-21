@@ -1,5 +1,7 @@
 package com.openmc.webapp.model;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.openmc.webapp.service.RconService.ResourceUsage;
 import java.time.Instant;
 
@@ -9,7 +11,12 @@ public class RetrievalRecord {
     private final int playerCount;
     private final ResourceUsage resourceUsage;
     
-    public RetrievalRecord(Instant timestamp, boolean success, int playerCount, ResourceUsage resourceUsage) {
+    @JsonCreator
+    public RetrievalRecord(
+            @JsonProperty("timestamp") Instant timestamp, 
+            @JsonProperty("success") boolean success, 
+            @JsonProperty("playerCount") int playerCount, 
+            @JsonProperty("resourceUsage") ResourceUsage resourceUsage) {
         this.timestamp = timestamp;
         this.success = success;
         this.playerCount = playerCount;

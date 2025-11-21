@@ -1,6 +1,7 @@
 package com.openmc.webapp.service;
 
 import com.openmc.webapp.config.ServerConfig;
+import com.openmc.webapp.repository.InMemoryRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.DisplayName;
@@ -23,7 +24,7 @@ class RconServiceTest {
     void setUp() {
         MockitoAnnotations.openMocks(this);
         serverConfig = new ServerConfig();
-        rconService = new RconService(serverConfig);
+        rconService = new RconService(serverConfig, new InMemoryRepository<>());
     }
 
     @Test

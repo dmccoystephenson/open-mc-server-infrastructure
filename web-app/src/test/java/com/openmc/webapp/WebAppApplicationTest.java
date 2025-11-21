@@ -11,7 +11,8 @@ import org.springframework.test.context.TestPropertySource;
     "minecraft.server.rcon-port=25575",
     "minecraft.server.rcon-password=test",
     "minecraft.server.admin-username=admin",
-    "minecraft.server.admin-password=admin"
+    "minecraft.server.admin-password=admin",
+    "data.storage.base-directory=data"
 })
 @DisplayName("WebAppApplication Tests")
 class WebAppApplicationTest {

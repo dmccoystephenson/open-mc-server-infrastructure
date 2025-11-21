@@ -3,6 +3,7 @@ package com.openmc.webapp.service;
 import com.openmc.webapp.config.ServerConfig;
 import com.openmc.webapp.model.RetrievalRecord;
 import com.openmc.webapp.rcon.RconClient;
+import com.openmc.webapp.repository.Repository;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
@@ -16,15 +17,64 @@ import java.util.List;
 @Service
 public class RconService {
     
-    private static final int MAX_HISTORY_SIZE = 10;
+    private static final int DEFAULT_MAX_HISTORY_SIZE = 10;
     
     private final ServerConfig serverConfig;
+    private final Repository<RetrievalRecord> repository;
     private ServerStatus cachedStatus;
     private Instant lastFetchTime;
     private final LinkedList<RetrievalRecord> retrievalHistory = new LinkedList<>();
+    private int maxHistorySize = DEFAULT_MAX_HISTORY_SIZE;
     
-    public RconService(ServerConfig serverConfig) {
+    public RconService(ServerConfig serverConfig, Repository<RetrievalRecord> repository) {
         this.serverConfig = serverConfig;
+        this.repository = repository;
+        loadHistoricalData();
+    }
+    
+    private void loadHistoricalData() {
+        List<RetrievalRecord> loadedRecords = repository.findAll();
+        if (!loadedRecords.isEmpty()) {
+            // Add loaded records to history, keeping only the most recent maxHistorySize
+            retrievalHistory.addAll(loadedRecords);
+            while (retrievalHistory.size() > maxHistorySize) {
+                retrievalHistory.removeLast();
+            }
+        }
+    }
+    
+    /**
+     * Get the current max history size
+     * @return Current max history size
+     */
+    public synchronized int getMaxHistorySize() {
+        return maxHistorySize;
+    }
+    
+    /**
+     * Set the max history size (session-only, not persisted)
+     * @param maxHistorySize New max history size (must be > 0)
+     */
+    public synchronized void setMaxHistorySize(int maxHistorySize) {
+        if (maxHistorySize <= 0) {
+            throw new IllegalArgumentException("Max history size must be greater than 0");
+        }
+        
+        int oldSize = this.maxHistorySize;
+        this.maxHistorySize = maxHistorySize;
+        
+        if (maxHistorySize > oldSize && maxHistorySize > retrievalHistory.size()) {
+            // If increasing size and we have fewer records than the new limit,
+            // reload from repository to get more historical data
+            retrievalHistory.clear();
+            List<RetrievalRecord> allRecords = repository.findAll();
+            retrievalHistory.addAll(allRecords);
+        }
+        
+        // Trim history if it exceeds new size
+        while (retrievalHistory.size() > maxHistorySize) {
+            retrievalHistory.removeLast();
+        }
     }
     
     public String sendCommand(String command) {
@@ -93,8 +143,15 @@ public class RconService {
     private synchronized void addRetrievalRecord(RetrievalRecord record) {
         retrievalHistory.addFirst(record);
         
-        // Keep only the last MAX_HISTORY_SIZE records
-        while (retrievalHistory.size() > MAX_HISTORY_SIZE) {
+        // Persist all records to storage (repository handles retention filtering)
+        // Load all from repository first to ensure we don't lose older records
+        List<RetrievalRecord> allRecords = new ArrayList<>(repository.findAll());
+        // Add new record to the beginning
+        allRecords.add(0, record);
+        repository.save(allRecords);
+        
+        // Keep only the last maxHistorySize records in memory for API responses
+        while (retrievalHistory.size() > maxHistorySize) {
             retrievalHistory.removeLast();
         }
     }
@@ -306,7 +363,13 @@ public class RconService {
         private final String memoryFree;
         private final double memoryUsedPercent;
         
-        public ResourceUsage(String tps, String memoryUsed, String memoryMax, String memoryFree, double memoryUsedPercent) {
+        @com.fasterxml.jackson.annotation.JsonCreator
+        public ResourceUsage(
+                @com.fasterxml.jackson.annotation.JsonProperty("tps") String tps, 
+                @com.fasterxml.jackson.annotation.JsonProperty("memoryUsed") String memoryUsed, 
+                @com.fasterxml.jackson.annotation.JsonProperty("memoryMax") String memoryMax, 
+                @com.fasterxml.jackson.annotation.JsonProperty("memoryFree") String memoryFree, 
+                @com.fasterxml.jackson.annotation.JsonProperty("memoryUsedPercent") double memoryUsedPercent) {
             this.tps = tps;
             this.memoryUsed = memoryUsed;
             this.memoryMax = memoryMax;
