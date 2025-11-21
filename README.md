@@ -36,23 +36,15 @@ An open, community-agnostic, Docker-based Minecraft server infrastructure runnin
    # Edit .env with your settings (see Configuration section)
    ```
 
-3. **Build the applications**
-   ```bash
-   chmod +x build-webapp.sh build-backup-manager.sh build-alert-manager.sh
-   ./build-webapp.sh
-   ./build-backup-manager.sh
-   ./build-alert-manager.sh
-   ```
-
-4. **Start the server**
+3. **Start the server**
    ```bash
    chmod +x up.sh down.sh
    ./up.sh
    ```
    
-   **Note**: The first build will take 10-15 minutes as it downloads and compiles Spigot from source.
+   **Note**: The first build will take 10-15 minutes as it downloads and compiles Spigot from source. The JARs for all services will be built automatically during the Docker build process.
 
-5. **Connect to your server**
+4. **Connect to your server**
    - Server address: `localhost:25565` (or your server's IP)
    - Web Dashboard: `https://localhost:8443` (or your server's IP with port 8443)
    - The server will take a few minutes to build on first run
