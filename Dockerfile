@@ -17,10 +17,6 @@ FROM base as builder
 # Accept Minecraft version and server type as build arguments
 ARG MINECRAFT_VERSION=1.21.10
 ARG SERVER_TYPE=spigot
-# ATM10 version and file IDs (can be overridden for updates)
-ARG ATM10_VERSION=1.15
-ARG ATM10_FILE_ID1=5847
-ARG ATM10_FILE_ID2=596
 
 # Build server
 WORKDIR /mcserver-build
@@ -32,13 +28,19 @@ RUN if [ "$SERVER_TYPE" = "spigot" ]; then \
         java -jar BuildTools.jar --rev ${MINECRAFT_VERSION}; \
     fi
 
-# Copy Forge installation script
+# For Forge: Copy user-provided ATM10 server files and installation script
+# User must manually download ATM10 server files and place them in forge-server/ directory
 COPY ./resources/install-forge-atm10.sh /tmp/install-forge-atm10.sh
 RUN chmod +x /tmp/install-forge-atm10.sh
 
-# Download and install Forge server with ATM10
+# Copy user-provided Forge/ATM10 files (required for SERVER_TYPE=forge)
+# For Spigot builds, create an empty directory so COPY doesn't fail
+RUN mkdir -p /tmp/forge-server
+COPY ./forge-server/ /tmp/forge-server/
+
+# Install Forge server with ATM10 from user-provided files
 RUN if [ "$SERVER_TYPE" = "forge" ]; then \
-        /tmp/install-forge-atm10.sh "${ATM10_VERSION}" "${ATM10_FILE_ID1}" "${ATM10_FILE_ID2}"; \
+        /tmp/install-forge-atm10.sh; \
     fi
 
 FROM base as final

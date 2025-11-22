@@ -30,3 +30,7 @@ nginx/ssl/
 
 # Backup directories
 backups/
+
+# User-provided Forge/ATM10 server files
+forge-server/
+!forge-server/.gitkeep

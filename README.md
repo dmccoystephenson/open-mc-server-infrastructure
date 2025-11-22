@@ -104,15 +104,46 @@ The Activity Tracker data will automatically refresh with the server status upda
 
 ## Forge Server with ATM10
 
-The infrastructure supports running a Forge server with **All the Mods 10 (ATM10)** pre-installed. This allows you to run a modded Minecraft server with over 400+ mods.
+The infrastructure supports running a Forge server with **All the Mods 10 (ATM10)**. This allows you to run a modded Minecraft server with over 400+ mods.
 
-### Choosing Forge Server
+**IMPORTANT**: CurseForge does not allow automated downloads. You must manually download and provide the ATM10 server files before building.
 
-To use a Forge server instead of Spigot:
+### Setting Up Forge Server
 
-1. Set `SERVER_TYPE=forge` in your `.env` file
-2. The server will use Minecraft 1.21.1 (required by ATM10)
-3. All the Mods 10 will be automatically installed with all its mods
+To use a Forge server instead of Spigot, follow these steps:
+
+1. **Download ATM10 Server Files**:
+   - Visit [All the Mods 10 on CurseForge](https://www.curseforge.com/minecraft/modpacks/all-the-mods-10/files)
+   - Find the latest version and download the **Server Files** (not the client modpack)
+   - The file will typically be named something like `Server-Files-X.XX.zip`
+
+2. **Place Files in Build Context**:
+   ```bash
+   # Create the directory
+   mkdir -p forge-server
+   
+   # Move the downloaded file (rename it to atm10-server.zip)
+   mv ~/Downloads/Server-Files-*.zip forge-server/atm10-server.zip
+   ```
+   
+   Your directory structure should look like:
+   ```
+   project-root/
+     ├── forge-server/
+     │   └── atm10-server.zip
+     ├── Dockerfile
+     ├── compose.yml
+     └── ... other files
+   ```
+
+3. **Configure Environment**:
+   - Set `SERVER_TYPE=forge` in your `.env` file
+   - The server will use Minecraft 1.21.1 (required by ATM10)
+
+4. **Build and Start**:
+   ```bash
+   ./up.sh
+   ```
 
 ### Connecting to Forge/ATM10 Server
 
@@ -170,25 +201,31 @@ It is **strongly recommended** to set `OVERWRITE_EXISTING_SERVER=true` when swit
 
 When a new version of All the Mods 10 is released, you can update your Forge server:
 
-1. Find the new ATM10 version information:
-   - Visit the [ATM10 CurseForge page](https://www.curseforge.com/minecraft/modpacks/all-the-mods-10)
-   - Find the server files download for the version you want
-   - Note the version number and file IDs from the download URL
+1. **Download New Version**:
+   - Visit the [ATM10 CurseForge page](https://www.curseforge.com/minecraft/modpacks/all-the-mods-10/files)
+   - Download the new **Server Files** version
 
-2. Update using Docker build arguments:
+2. **Replace the Files**:
    ```bash
-   # Example: Update to ATM10 version 1.16
-   docker compose build --build-arg ATM10_VERSION=1.16 \
-                        --build-arg ATM10_FILE_ID1=5XXX \
-                        --build-arg ATM10_FILE_ID2=XXX \
-                        mcserver
+   # Backup old version (optional)
+   mv forge-server/atm10-server.zip forge-server/atm10-server-old.zip
+   
+   # Place new version
+   mv ~/Downloads/Server-Files-*.zip forge-server/atm10-server.zip
    ```
 
-3. Set `OVERWRITE_EXISTING_SERVER=true` in your `.env` file (this will create a fresh world with the new modpack version)
+3. **Set Fresh Start**:
+   - Set `OVERWRITE_EXISTING_SERVER=true` in your `.env` file
+   - This will create a fresh world with the new modpack version
 
-4. Start the server: `./up.sh`
+4. **Rebuild and Start**:
+   ```bash
+   ./down.sh
+   docker compose build
+   ./up.sh
+   ```
 
-**Note**: The server will detect version changes and notify you in the logs if you try to start without `OVERWRITE_EXISTING_SERVER=true`. Modpack updates often change world generation and mod configurations, so a fresh start is recommended.
+**Note**: Modpack updates often change world generation and mod configurations, so a fresh start is recommended. If you try to use an existing world with a new modpack version, you may experience crashes or corrupted data.
 
 ## Configuration
 
@@ -196,7 +233,7 @@ Copy `sample.env` to `.env` and modify the following settings:
 
 ### Essential Settings
 - `SERVER_TYPE`: Server software type - `spigot` for plugin support or `forge` for mod support with ATM10 (default: `spigot`)
-- `MINECRAFT_VERSION`: Minecraft version for Spigot (default: 1.21.10). Note: Forge/ATM10 uses a fixed version (1.21.1) determined by the modpack. To update ATM10 to a newer version, see the "Updating ATM10 Version" section below
+- `MINECRAFT_VERSION`: Minecraft version for Spigot (default: 1.21.10). Note: Forge/ATM10 uses the version included in the server files you download (typically 1.21.1)
 - `OPERATOR_UUID`: Your Minecraft player UUID (get from [mcuuid.net](https://mcuuid.net/))
 - `OPERATOR_NAME`: Your Minecraft username
 - `SERVER_MOTD`: Message displayed in the server list
