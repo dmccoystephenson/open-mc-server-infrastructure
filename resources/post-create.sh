@@ -196,6 +196,21 @@ accept_eula() {
 
 # Function: Create server properties
 create_server_properties() {
+    # Check if server.properties already exists (e.g., from ATM10 pack)
+    if [ -f "$SERVER_DIR/server.properties" ]; then
+        log "server.properties already exists - updating key settings only..."
+        # Update key settings in existing file
+        sed -i "s/^motd=.*/motd=${SERVER_MOTD}/" "$SERVER_DIR/server.properties" 2>/dev/null || true
+        sed -i "s/^max-players=.*/max-players=${MAX_PLAYERS}/" "$SERVER_DIR/server.properties" 2>/dev/null || true
+        sed -i "s/^difficulty=.*/difficulty=${DIFFICULTY}/" "$SERVER_DIR/server.properties" 2>/dev/null || true
+        sed -i "s/^gamemode=.*/gamemode=${GAMEMODE}/" "$SERVER_DIR/server.properties" 2>/dev/null || true
+        sed -i "s/^pvp=.*/pvp=${PVP_ENABLED}/" "$SERVER_DIR/server.properties" 2>/dev/null || true
+        sed -i "s/^online-mode=.*/online-mode=${ONLINE_MODE}/" "$SERVER_DIR/server.properties" 2>/dev/null || true
+        sed -i "s/^rcon.password=.*/rcon.password=${RCON_PASSWORD}/" "$SERVER_DIR/server.properties" 2>/dev/null || true
+        sed -i "s/^enable-rcon=.*/enable-rcon=true/" "$SERVER_DIR/server.properties" 2>/dev/null || true
+        return
+    fi
+    
     log "Creating server.properties file..."
     cat <<EOF > "$SERVER_DIR"/server.properties
 #Minecraft server properties
