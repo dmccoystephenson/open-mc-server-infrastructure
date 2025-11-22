@@ -6,12 +6,14 @@ An open, community-agnostic, Docker-based Minecraft server infrastructure runnin
 
 ## Features
 
-- **Latest Minecraft Version**: Running Minecraft 1.21.10 with Spigot
+- **Multiple Server Types**: Support for both Spigot (plugins) and Forge (mods) servers
+  - **Spigot**: Running Minecraft 1.21.10 with plugin support
+  - **Forge**: Running Minecraft 1.21.1 with All the Mods 10 (ATM10) pre-installed
 - **Docker Containerized**: Easy deployment and management
 - **Web Dashboard**: Built-in Spring Boot web application for server management
 - **Automated Backups**: Scheduled backups with automatic cleanup and size management
 - **Alert Notifications**: Discord notifications for server events and admin alerts
-- **Configurable**: Environment-based configuration
+- **Configurable**: Environment-based configuration with easy server type switching
 - **Persistent Data**: Server data persists across container restarts
 - **Easy Management**: Simple scripts for starting and stopping the server
 - **RCON Support**: Send commands to the server remotely via web interface
@@ -34,6 +36,7 @@ An open, community-agnostic, Docker-based Minecraft server infrastructure runnin
    ```bash
    cp sample.env .env
    # Edit .env with your settings (see Configuration section)
+   # Set SERVER_TYPE=spigot for plugins or SERVER_TYPE=forge for mods
    ```
 
 3. **Start the server**
@@ -42,13 +45,14 @@ An open, community-agnostic, Docker-based Minecraft server infrastructure runnin
    ./up.sh
    ```
    
-   **Note**: The first build will take 10-15 minutes as it downloads and compiles Spigot from source. The JARs for all services will be built automatically during the Docker build process.
+   **Note**: The first build will take 10-15 minutes for Spigot (compiles from source) or 15-20 minutes for Forge with ATM10 (downloads mods). The JARs for all services will be built automatically during the Docker build process.
 
 4. **Connect to your server**
    - Server address: `localhost:25565` (or your server's IP)
    - Web Dashboard: `https://localhost:8443` (or your server's IP with port 8443)
    - The server will take a few minutes to build on first run
    - **Note**: You'll see a security warning for the self-signed certificate. This is expected for development. See the Security section for production setup.
+   - **For Forge/ATM10 servers**: See the "Forge Server with ATM10" section below for important connection information.
 
 ## Web Dashboard
 
@@ -98,11 +102,67 @@ To enable Activity Tracker integration:
 
 The Activity Tracker data will automatically refresh with the server status updates. If the Activity Tracker API is not available, the sections will be hidden without affecting other dashboard functionality.
 
+## Forge Server with ATM10
+
+The infrastructure supports running a Forge server with **All the Mods 10 (ATM10)** pre-installed. This allows you to run a modded Minecraft server with over 400+ mods.
+
+### Choosing Forge Server
+
+To use a Forge server instead of Spigot:
+
+1. Set `SERVER_TYPE=forge` in your `.env` file
+2. The server will use Minecraft 1.21.1 (required by ATM10)
+3. All the Mods 10 will be automatically installed with all its mods
+
+### Connecting to Forge/ATM10 Server
+
+**IMPORTANT**: To connect to a Forge server with ATM10, you must:
+
+1. **Install the ATM10 Client Modpack**: 
+   - Download and install the ATM10 client from [CurseForge](https://www.curseforge.com/minecraft/modpacks/all-the-mods-10) or through a launcher like CurseForge, Prism Launcher, or MultiMC
+   - The client and server mod versions must match for compatibility
+
+2. **Use the Correct Minecraft Version**:
+   - ATM10 requires Minecraft 1.21.1 with Forge
+   - Vanilla clients or other Minecraft versions will not be able to connect
+
+3. **Connection Address**:
+   - Server address: `localhost:25565` (or your server's IP)
+   - The connection process is the same as Spigot, but requires the modded client
+
+### Managing Mods
+
+- **Mods Location**: All mods are stored in `/mcserver/mods` inside the container
+- **Adding Mods**: Place additional compatible Forge 1.21.1 mods in the `deposit-box/mods` directory and copy them to the server's mods folder
+- **Removing Mods**: Remove mod files from the mods directory and restart the server
+- **Mod Compatibility**: Ensure all added mods are compatible with Forge 1.21.1 and ATM10
+
+### Forge Server Performance
+
+Modded servers require more resources than vanilla or Spigot servers:
+
+- **Recommended RAM**: 6-8GB minimum (set via `JAVA_OPTS=-Xmx6G -Xms4G` in `.env`)
+- **Startup Time**: Initial startup may take 5-10 minutes as mods initialize
+- **Storage**: ATM10 with mods requires approximately 2-3GB of disk space
+
+### Switching Between Server Types
+
+You can switch between Spigot and Forge servers:
+
+1. Stop the server: `./down.sh`
+2. Change `SERVER_TYPE` in your `.env` file
+3. Optional: Set `OVERWRITE_EXISTING_SERVER=true` to start fresh (this will delete your existing world)
+4. Rebuild and start: `./up.sh`
+
+**Warning**: Server types are not compatible. Worlds and data from a Spigot server cannot be directly used on a Forge server and vice versa.
+
 ## Configuration
 
 Copy `sample.env` to `.env` and modify the following settings:
 
 ### Essential Settings
+- `SERVER_TYPE`: Server software type - `spigot` for plugin support or `forge` for mod support with ATM10 (default: `spigot`)
+- `MINECRAFT_VERSION`: Minecraft version (1.21.10 for Spigot, automatically 1.21.1 for Forge/ATM10)
 - `OPERATOR_UUID`: Your Minecraft player UUID (get from [mcuuid.net](https://mcuuid.net/))
 - `OPERATOR_NAME`: Your Minecraft username
 - `SERVER_MOTD`: Message displayed in the server list
@@ -115,6 +175,7 @@ Copy `sample.env` to `.env` and modify the following settings:
 - `GAMEMODE`: Default game mode (survival, creative, adventure, spectator)
 - `PVP_ENABLED`: Enable/disable player vs player combat
 - `ONLINE_MODE`: Enable Mojang authentication (set to false for offline/cracked servers)
+- `JAVA_OPTS`: Java memory settings (e.g., `-Xmx6G -Xms4G` for 6GB max, 4GB initial - increase for Forge/ATM10)
 
 ### Docker Configuration (for Parallel Servers)
 

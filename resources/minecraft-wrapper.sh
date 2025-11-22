@@ -101,6 +101,7 @@ send_message() {
 SERVER_JAR="$1"
 SERVER_DIR="$2" 
 JAVA_OPTS="$3"
+SERVER_TYPE="${4:-spigot}"
 PID=""
 INPUT_FIFO="$SERVER_DIR/server_input"
 
@@ -188,9 +189,27 @@ FIFO_KEEPER_PID=$!
 
 # Start the Minecraft server and attach stdin to the named pipe
 log "Starting Minecraft server..."
-# shellcheck disable=SC2086  # Word splitting is intentional for JAVA_OPTS
-java $JAVA_OPTS -jar "$SERVER_JAR" nogui < "$INPUT_FIFO" &
-PID=$!
+log "Server Type: $SERVER_TYPE"
+
+if [ "$SERVER_TYPE" = "forge" ] && [ "$SERVER_JAR" = "run.sh" ]; then
+    # For Forge servers using run.sh, we need to modify the script to use our JAVA_OPTS
+    # and ensure it uses the FIFO for input
+    log "Starting Forge server using run.sh..."
+    
+    # Update user_jvm_args.txt with our JAVA_OPTS if it exists
+    if [ -f "$SERVER_DIR/user_jvm_args.txt" ]; then
+        echo "$JAVA_OPTS" > "$SERVER_DIR/user_jvm_args.txt"
+    fi
+    
+    # Execute the run.sh script with FIFO as input
+    bash "$SERVER_DIR/run.sh" < "$INPUT_FIFO" &
+    PID=$!
+else
+    # For Spigot and direct JAR execution
+    # shellcheck disable=SC2086  # Word splitting is intentional for JAVA_OPTS
+    java $JAVA_OPTS -jar "$SERVER_JAR" nogui < "$INPUT_FIFO" &
+    PID=$!
+fi
 
 log "Minecraft server started with PID: $PID"
 

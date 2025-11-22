@@ -80,36 +80,83 @@ validate_environment() {
 
 # Function: Setup server
 setup_server() {
+    local server_type="${SERVER_TYPE:-spigot}"
+    
     if [ -z "$(ls -A "$SERVER_DIR")" ] || [ "$OVERWRITE_EXISTING_SERVER" = "true" ]; then
-        log "Setting up new server..."
+        log "Setting up new $server_type server..."
         rm -rf "${SERVER_DIR:?}"/*
-        cp "$BUILD_DIR"/spigot-"${MINECRAFT_VERSION}".jar "$SERVER_DIR"/spigot-"${MINECRAFT_VERSION}".jar
-        mkdir -p "$SERVER_DIR"/plugins
+        
+        if [ "$server_type" = "spigot" ]; then
+            cp "$BUILD_DIR"/spigot-"${MINECRAFT_VERSION}".jar "$SERVER_DIR"/spigot-"${MINECRAFT_VERSION}".jar
+            mkdir -p "$SERVER_DIR"/plugins
+        elif [ "$server_type" = "forge" ]; then
+            # Copy Forge libraries and versions
+            cp -r "$BUILD_DIR"/libraries "$SERVER_DIR"/
+            cp -r "$BUILD_DIR"/versions "$SERVER_DIR"/
+            
+            # Copy ATM10 mods and configurations
+            if [ -d "$BUILD_DIR/mods" ]; then
+                cp -r "$BUILD_DIR"/mods "$SERVER_DIR"/
+                log "ATM10 mods installed successfully"
+            fi
+            if [ -d "$BUILD_DIR/config" ]; then
+                cp -r "$BUILD_DIR"/config "$SERVER_DIR"/
+            fi
+            if [ -d "$BUILD_DIR/defaultconfigs" ]; then
+                cp -r "$BUILD_DIR"/defaultconfigs "$SERVER_DIR"/
+            fi
+            if [ -d "$BUILD_DIR/kubejs" ]; then
+                cp -r "$BUILD_DIR"/kubejs "$SERVER_DIR"/
+            fi
+            if [ -d "$BUILD_DIR/packmenu" ]; then
+                cp -r "$BUILD_DIR"/packmenu "$SERVER_DIR"/
+            fi
+            
+            # Copy Forge run script if available
+            if [ -f "$BUILD_DIR/run.sh" ]; then
+                cp "$BUILD_DIR"/run.sh "$SERVER_DIR"/
+                chmod +x "$SERVER_DIR"/run.sh
+            fi
+            if [ -f "$BUILD_DIR/user_jvm_args.txt" ]; then
+                cp "$BUILD_DIR"/user_jvm_args.txt "$SERVER_DIR"/
+            fi
+        fi
     else
         log "Server is already set up."
         
-        # Check if we need to update the server JAR for a version upgrade
-        local new_jar="$BUILD_DIR/spigot-${MINECRAFT_VERSION}.jar"
-        local expected_jar="$SERVER_DIR/spigot-${MINECRAFT_VERSION}.jar"
-        
-        # Check if the expected JAR for this version exists
-        if [ ! -f "$expected_jar" ]; then
-            # The expected JAR doesn't exist, so we need to upgrade
-            log "Detected version change - updating server JAR to ${MINECRAFT_VERSION}..."
+        if [ "$server_type" = "spigot" ]; then
+            # Check if we need to update the server JAR for a version upgrade
+            local new_jar="$BUILD_DIR/spigot-${MINECRAFT_VERSION}.jar"
+            local expected_jar="$SERVER_DIR/spigot-${MINECRAFT_VERSION}.jar"
             
-            # Check if there are old version JARs to remove
-            if ls "$SERVER_DIR"/spigot-*.jar >/dev/null 2>&1; then
-                local old_jars
-                old_jars=$(find "$SERVER_DIR" -name "spigot-*.jar" -exec basename {} \;)
-                log "Removing old JAR(s): $old_jars"
-                rm -f "$SERVER_DIR"/spigot-*.jar
+            # Check if the expected JAR for this version exists
+            if [ ! -f "$expected_jar" ]; then
+                # The expected JAR doesn't exist, so we need to upgrade
+                log "Detected version change - updating server JAR to ${MINECRAFT_VERSION}..."
+                
+                # Check if there are old version JARs to remove
+                if ls "$SERVER_DIR"/spigot-*.jar >/dev/null 2>&1; then
+                    local old_jars
+                    old_jars=$(find "$SERVER_DIR" -name "spigot-*.jar" -exec basename {} \;)
+                    log "Removing old JAR(s): $old_jars"
+                    rm -f "$SERVER_DIR"/spigot-*.jar
+                fi
+                
+                # Copy new version JAR
+                cp "$new_jar" "$expected_jar"
+                log "Server JAR updated successfully to version ${MINECRAFT_VERSION}."
+            else
+                log "Server JAR is up to date (version ${MINECRAFT_VERSION})."
             fi
-            
-            # Copy new version JAR
-            cp "$new_jar" "$expected_jar"
-            log "Server JAR updated successfully to version ${MINECRAFT_VERSION}."
-        else
-            log "Server JAR is up to date (version ${MINECRAFT_VERSION})."
+        elif [ "$server_type" = "forge" ]; then
+            log "Forge server detected. Checking for updates..."
+            # For Forge, we may need to update libraries if version changes
+            # This is a simpler approach - just ensure libraries are present
+            if [ -d "$BUILD_DIR/libraries" ] && [ ! -d "$SERVER_DIR/libraries" ]; then
+                log "Installing Forge libraries..."
+                cp -r "$BUILD_DIR"/libraries "$SERVER_DIR"/
+                cp -r "$BUILD_DIR"/versions "$SERVER_DIR"/
+            fi
         fi
     fi
 }
@@ -214,11 +261,36 @@ EOF
 
 # Function: Start server
 start_server() {
-    log "Starting server with graceful shutdown wrapper..."
+    local server_type="${SERVER_TYPE:-spigot}"
+    local server_jar
+    
+    if [ "$server_type" = "spigot" ]; then
+        server_jar="spigot-${MINECRAFT_VERSION}.jar"
+    elif [ "$server_type" = "forge" ]; then
+        # For Forge, we use the run.sh script if available, or find the forge jar
+        if [ -f "$SERVER_DIR/run.sh" ]; then
+            server_jar="run.sh"
+        else
+            # Find the forge universal jar in libraries
+            server_jar=$(find "$SERVER_DIR/libraries/net/minecraftforge/forge" -name "forge-*-universal.jar" 2>/dev/null | head -1)
+            if [ -z "$server_jar" ]; then
+                log "ERROR: Could not find Forge server JAR"
+                exit 1
+            fi
+            server_jar=$(basename "$server_jar")
+        fi
+    else
+        log "ERROR: Unknown server type: $server_type"
+        exit 1
+    fi
+    
+    log "Starting $server_type server with graceful shutdown wrapper..."
+    log "Server JAR/Script: $server_jar"
     exec /resources/minecraft-wrapper.sh \
-        "spigot-${MINECRAFT_VERSION}.jar" \
+        "$server_jar" \
         "$SERVER_DIR" \
-        "${JAVA_OPTS:--Xmx2G -Xms1G}"
+        "${JAVA_OPTS:--Xmx2G -Xms1G}" \
+        "$server_type"
 }
 
 # Main Process
