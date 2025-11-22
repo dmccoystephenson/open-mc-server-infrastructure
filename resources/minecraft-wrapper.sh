@@ -197,23 +197,36 @@ if [ "$SERVER_TYPE" = "forge" ] && [ "$SERVER_JAR" = "run.sh" ]; then
     log "Starting Forge server using run.sh..."
     
     # Update user_jvm_args.txt with our JAVA_OPTS if provided
-    # Only update if file doesn't exist or if it doesn't contain our custom marker
+    # Use markers to allow updating JAVA_OPTS on server restart
     if [ -n "$JAVA_OPTS" ]; then
+        START_MARKER="# BEGIN Custom JVM arguments from JAVA_OPTS environment variable"
+        END_MARKER="# END Custom JVM arguments from JAVA_OPTS environment variable"
+        TMP_FILE="$(mktemp)"
+        
         if [ ! -f "$SERVER_DIR/user_jvm_args.txt" ]; then
-            # Create new file with our JAVA_OPTS
-            echo "# Custom JVM arguments from JAVA_OPTS environment variable" > "$SERVER_DIR/user_jvm_args.txt"
-            echo "$JAVA_OPTS" >> "$SERVER_DIR/user_jvm_args.txt"
-            log "Created user_jvm_args.txt with custom JAVA_OPTS"
-        elif ! grep -q "# Custom JVM arguments from JAVA_OPTS environment variable" "$SERVER_DIR/user_jvm_args.txt"; then
-            # File exists but doesn't have our custom args yet - append them
+            # Create new file with our JAVA_OPTS section
             {
-                echo ""
-                echo "# Custom JVM arguments from JAVA_OPTS environment variable"
+                echo "$START_MARKER"
                 echo "$JAVA_OPTS"
-            } >> "$SERVER_DIR/user_jvm_args.txt"
-            log "Appended custom JAVA_OPTS to existing user_jvm_args.txt"
+                echo "$END_MARKER"
+            } > "$SERVER_DIR/user_jvm_args.txt"
+            log "Created user_jvm_args.txt with custom JAVA_OPTS section"
         else
-            log "Custom JAVA_OPTS already present in user_jvm_args.txt, skipping update"
+            # Remove any existing custom section and insert the new one at the end
+            awk -v start="$START_MARKER" -v end="$END_MARKER" '
+                BEGIN {inblock=0}
+                $0==start {inblock=1; next}
+                $0==end {inblock=0; next}
+                !inblock {print}
+            ' "$SERVER_DIR/user_jvm_args.txt" > "$TMP_FILE"
+            {
+                cat "$TMP_FILE"
+                echo "$START_MARKER"
+                echo "$JAVA_OPTS"
+                echo "$END_MARKER"
+            } > "$SERVER_DIR/user_jvm_args.txt"
+            rm -f "$TMP_FILE"
+            log "Updated custom JAVA_OPTS section in user_jvm_args.txt"
         fi
     fi
     

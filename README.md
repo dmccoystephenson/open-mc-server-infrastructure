@@ -151,10 +151,44 @@ You can switch between Spigot and Forge servers:
 
 1. Stop the server: `./down.sh`
 2. Change `SERVER_TYPE` in your `.env` file
-3. Optional: Set `OVERWRITE_EXISTING_SERVER=true` to start fresh (this will delete your existing world)
+3. **IMPORTANT**: Set `OVERWRITE_EXISTING_SERVER=true` in your `.env` file to start fresh (this will delete your existing world)
 4. Rebuild and start: `./up.sh`
 
 **Warning**: Server types are not compatible. Worlds and data from a Spigot server cannot be directly used on a Forge server and vice versa.
+
+**What happens if you don't set `OVERWRITE_EXISTING_SERVER=true`?**
+
+If you switch server types without setting `OVERWRITE_EXISTING_SERVER=true`, the server will attempt to start using the existing world and data from the previous server type. This will likely result in:
+- Startup errors or crashes
+- Corrupted world data
+- Server failing to start completely
+- Data format incompatibility errors in the logs
+
+It is **strongly recommended** to set `OVERWRITE_EXISTING_SERVER=true` when switching server types to avoid these issues. Otherwise, you must manually backup and delete the old world data before starting the new server type.
+
+### Updating ATM10 Version
+
+When a new version of All the Mods 10 is released, you can update your Forge server:
+
+1. Find the new ATM10 version information:
+   - Visit the [ATM10 CurseForge page](https://www.curseforge.com/minecraft/modpacks/all-the-mods-10)
+   - Find the server files download for the version you want
+   - Note the version number and file IDs from the download URL
+
+2. Update using Docker build arguments:
+   ```bash
+   # Example: Update to ATM10 version 1.16
+   docker compose build --build-arg ATM10_VERSION=1.16 \
+                        --build-arg ATM10_FILE_ID1=5XXX \
+                        --build-arg ATM10_FILE_ID2=XXX \
+                        mcserver
+   ```
+
+3. Set `OVERWRITE_EXISTING_SERVER=true` in your `.env` file (this will create a fresh world with the new modpack version)
+
+4. Start the server: `./up.sh`
+
+**Note**: The server will detect version changes and notify you in the logs if you try to start without `OVERWRITE_EXISTING_SERVER=true`. Modpack updates often change world generation and mod configurations, so a fresh start is recommended.
 
 ## Configuration
 
@@ -162,7 +196,7 @@ Copy `sample.env` to `.env` and modify the following settings:
 
 ### Essential Settings
 - `SERVER_TYPE`: Server software type - `spigot` for plugin support or `forge` for mod support with ATM10 (default: `spigot`)
-- `MINECRAFT_VERSION`: Minecraft version for Spigot (default: 1.21.10). Note: Forge/ATM10 uses a fixed version (1.21.1) determined by the modpack
+- `MINECRAFT_VERSION`: Minecraft version for Spigot (default: 1.21.10). Note: Forge/ATM10 uses a fixed version (1.21.1) determined by the modpack. To update ATM10 to a newer version, see the "Updating ATM10 Version" section below
 - `OPERATOR_UUID`: Your Minecraft player UUID (get from [mcuuid.net](https://mcuuid.net/))
 - `OPERATOR_NAME`: Your Minecraft username
 - `SERVER_MOTD`: Message displayed in the server list

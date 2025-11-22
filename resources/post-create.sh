@@ -150,8 +150,31 @@ setup_server() {
             fi
         elif [ "$server_type" = "forge" ]; then
             log "Forge server detected. Checking for updates..."
-            # For Forge, we may need to update libraries if version changes
-            # This is a simpler approach - just ensure libraries are present
+            
+            # Check if this is a version/modpack upgrade by comparing a version marker
+            local version_marker="$SERVER_DIR/.atm10_version"
+            local build_version_file="$BUILD_DIR/.atm10_version"
+            
+            if [ -f "$build_version_file" ]; then
+                local build_version
+                build_version=$(cat "$build_version_file")
+                
+                if [ -f "$version_marker" ]; then
+                    local current_version
+                    current_version=$(cat "$version_marker")
+                    if [ "$build_version" != "$current_version" ]; then
+                        log "WARNING: ATM10 version change detected: $current_version -> $build_version"
+                        log "To apply this update, set OVERWRITE_EXISTING_SERVER=true to start fresh with the new version."
+                        log "Or manually backup and delete your world data to upgrade."
+                    fi
+                else
+                    # First time setup or no version marker
+                    log "Initializing ATM10 version marker: $build_version"
+                    echo "$build_version" > "$version_marker"
+                fi
+            fi
+            
+            # Ensure libraries are present
             if [ -d "$BUILD_DIR/libraries" ] && [ ! -d "$SERVER_DIR/libraries" ]; then
                 log "Installing Forge libraries..."
                 cp -r "$BUILD_DIR"/libraries "$SERVER_DIR"/
@@ -199,15 +222,60 @@ create_server_properties() {
     # Check if server.properties already exists (e.g., from ATM10 pack)
     if [ -f "$SERVER_DIR/server.properties" ]; then
         log "server.properties already exists - updating key settings only..."
-        # Update key settings in existing file
-        sed -i "s/^motd=.*/motd=${SERVER_MOTD}/" "$SERVER_DIR/server.properties" 2>/dev/null || true
-        sed -i "s/^max-players=.*/max-players=${MAX_PLAYERS}/" "$SERVER_DIR/server.properties" 2>/dev/null || true
-        sed -i "s/^difficulty=.*/difficulty=${DIFFICULTY}/" "$SERVER_DIR/server.properties" 2>/dev/null || true
-        sed -i "s/^gamemode=.*/gamemode=${GAMEMODE}/" "$SERVER_DIR/server.properties" 2>/dev/null || true
-        sed -i "s/^pvp=.*/pvp=${PVP_ENABLED}/" "$SERVER_DIR/server.properties" 2>/dev/null || true
-        sed -i "s/^online-mode=.*/online-mode=${ONLINE_MODE}/" "$SERVER_DIR/server.properties" 2>/dev/null || true
-        sed -i "s/^rcon.password=.*/rcon.password=${RCON_PASSWORD}/" "$SERVER_DIR/server.properties" 2>/dev/null || true
-        sed -i "s/^enable-rcon=.*/enable-rcon=true/" "$SERVER_DIR/server.properties" 2>/dev/null || true
+        # Update key settings in existing file, appending if property doesn't exist
+        # Escape special characters in variables for safe sed usage
+        safe_motd=$(printf '%s' "${SERVER_MOTD}" | sed 's/[&/\]/\\&/g')
+        safe_rcon_password=$(printf '%s' "${RCON_PASSWORD}" | sed 's/[&/\]/\\&/g')
+        
+        if grep -q "^motd=" "$SERVER_DIR/server.properties"; then
+            sed -i "s|^motd=.*|motd=${safe_motd}|" "$SERVER_DIR/server.properties"
+        else
+            echo "motd=${SERVER_MOTD}" >> "$SERVER_DIR/server.properties"
+        fi
+        
+        if grep -q "^max-players=" "$SERVER_DIR/server.properties"; then
+            sed -i "s/^max-players=.*/max-players=${MAX_PLAYERS}/" "$SERVER_DIR/server.properties"
+        else
+            echo "max-players=${MAX_PLAYERS}" >> "$SERVER_DIR/server.properties"
+        fi
+        
+        if grep -q "^difficulty=" "$SERVER_DIR/server.properties"; then
+            sed -i "s/^difficulty=.*/difficulty=${DIFFICULTY}/" "$SERVER_DIR/server.properties"
+        else
+            echo "difficulty=${DIFFICULTY}" >> "$SERVER_DIR/server.properties"
+        fi
+        
+        if grep -q "^gamemode=" "$SERVER_DIR/server.properties"; then
+            sed -i "s/^gamemode=.*/gamemode=${GAMEMODE}/" "$SERVER_DIR/server.properties"
+        else
+            echo "gamemode=${GAMEMODE}" >> "$SERVER_DIR/server.properties"
+        fi
+        
+        if grep -q "^pvp=" "$SERVER_DIR/server.properties"; then
+            sed -i "s/^pvp=.*/pvp=${PVP_ENABLED}/" "$SERVER_DIR/server.properties"
+        else
+            echo "pvp=${PVP_ENABLED}" >> "$SERVER_DIR/server.properties"
+        fi
+        
+        if grep -q "^online-mode=" "$SERVER_DIR/server.properties"; then
+            sed -i "s/^online-mode=.*/online-mode=${ONLINE_MODE}/" "$SERVER_DIR/server.properties"
+        else
+            echo "online-mode=${ONLINE_MODE}" >> "$SERVER_DIR/server.properties"
+        fi
+        
+        if grep -q "^rcon.password=" "$SERVER_DIR/server.properties"; then
+            sed -i "s|^rcon.password=.*|rcon.password=${safe_rcon_password}|" "$SERVER_DIR/server.properties"
+        else
+            echo "rcon.password=${RCON_PASSWORD}" >> "$SERVER_DIR/server.properties"
+        fi
+        
+        if grep -q "^enable-rcon=" "$SERVER_DIR/server.properties"; then
+            sed -i "s/^enable-rcon=.*/enable-rcon=true/" "$SERVER_DIR/server.properties"
+        else
+            echo "enable-rcon=true" >> "$SERVER_DIR/server.properties"
+        fi
+        
+        log "server.properties updated with custom settings"
         return
     fi
     
