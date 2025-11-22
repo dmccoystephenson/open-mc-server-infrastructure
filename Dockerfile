@@ -38,12 +38,14 @@ RUN if [ "$SERVER_TYPE" = "forge" ]; then \
         echo "Downloading All the Mods 10 server files (version ${ATM10_VERSION})..." && \
         (wget -O atm10-server.zip "https://mediafilez.forgecdn.net/files/${ATM10_FILE_ID1}/${ATM10_FILE_ID2}/Server-Files-${ATM10_VERSION}.zip" || \
          wget -O atm10-server.zip "https://edge.forgecdn.net/files/${ATM10_FILE_ID1}/${ATM10_FILE_ID2}/Server-Files-${ATM10_VERSION}.zip") || \
-        (echo "ERROR: Could not download ATM10 server files from any source." && \
-         echo "BUILD FAILED: ATM10 server files are required for SERVER_TYPE=forge." && \
-         echo "The server cannot be built without ATM10 mods and will NOT be compatible with ATM10 clients." && \
-         echo "Please check your network connection or verify the ATM10 version and file IDs." && \
-         echo "To update ATM10 version, use: --build-arg ATM10_VERSION=<version> --build-arg ATM10_FILE_ID1=<id1> --build-arg ATM10_FILE_ID2=<id2>" && \
-         exit 1); \
+        (cat <<'EOF'
+ERROR: Could not download ATM10 server files from any source.
+BUILD FAILED: ATM10 server files are required for SERVER_TYPE=forge.
+The server cannot be built without ATM10 mods and will NOT be compatible with ATM10 clients.
+Please check your network connection or verify the ATM10 version and file IDs.
+To update ATM10 version, use: --build-arg ATM10_VERSION=<version> --build-arg ATM10_FILE_ID1=<id1> --build-arg ATM10_FILE_ID2=<id2>
+EOF
+         && exit 1); \
         \
         if [ -f atm10-server.zip ]; then \
             echo "Extracting ATM10 server files..." && \

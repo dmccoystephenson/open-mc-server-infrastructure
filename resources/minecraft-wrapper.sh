@@ -201,7 +201,7 @@ if [ "$SERVER_TYPE" = "forge" ] && [ "$SERVER_JAR" = "run.sh" ]; then
     if [ -n "$JAVA_OPTS" ]; then
         START_MARKER="# BEGIN Custom JVM arguments from JAVA_OPTS environment variable"
         END_MARKER="# END Custom JVM arguments from JAVA_OPTS environment variable"
-        TMP_FILE="$(mktemp)"
+        TMP_FILE="$(mktemp -t minecraft_jvm_args.XXXXXX)"
         
         if [ ! -f "$SERVER_DIR/user_jvm_args.txt" ]; then
             # Create new file with our JAVA_OPTS section

@@ -224,13 +224,13 @@ create_server_properties() {
         log "server.properties already exists - updating key settings only..."
         # Update key settings in existing file, appending if property doesn't exist
         # Escape special characters in variables for safe sed usage
-        safe_motd=$(printf '%s' "${SERVER_MOTD}" | sed 's/[&/\]/\\&/g')
-        safe_rcon_password=$(printf '%s' "${RCON_PASSWORD}" | sed 's/[&/\]/\\&/g')
+        safe_motd=$(printf '%s' "${SERVER_MOTD}" | sed 's/[&/\\]/\\&/g')
+        safe_rcon_password=$(printf '%s' "${RCON_PASSWORD}" | sed 's/[&/\\]/\\&/g')
         
         if grep -q "^motd=" "$SERVER_DIR/server.properties"; then
             sed -i "s|^motd=.*|motd=${safe_motd}|" "$SERVER_DIR/server.properties"
         else
-            echo "motd=${SERVER_MOTD}" >> "$SERVER_DIR/server.properties"
+            echo "motd=${safe_motd}" >> "$SERVER_DIR/server.properties"
         fi
         
         if grep -q "^max-players=" "$SERVER_DIR/server.properties"; then
@@ -266,7 +266,7 @@ create_server_properties() {
         if grep -q "^rcon.password=" "$SERVER_DIR/server.properties"; then
             sed -i "s|^rcon.password=.*|rcon.password=${safe_rcon_password}|" "$SERVER_DIR/server.properties"
         else
-            echo "rcon.password=${RCON_PASSWORD}" >> "$SERVER_DIR/server.properties"
+            echo "rcon.password=${safe_rcon_password}" >> "$SERVER_DIR/server.properties"
         fi
         
         if grep -q "^enable-rcon=" "$SERVER_DIR/server.properties"; then
