@@ -282,17 +282,13 @@ start_server() {
     if [ "$server_type" = "spigot" ]; then
         server_jar="spigot-${MINECRAFT_VERSION}.jar"
     elif [ "$server_type" = "forge" ]; then
-        # For Forge, we use the run.sh script if available, or find the forge jar
+        # For Forge servers, use the run.sh script which handles all the classpath setup
         if [ -f "$SERVER_DIR/run.sh" ]; then
             server_jar="run.sh"
         else
-            # Find the forge universal jar in libraries
-            server_jar=$(find "$SERVER_DIR/libraries/net/minecraftforge/forge" -name "forge-*-universal.jar" 2>/dev/null | head -1)
-            if [ -z "$server_jar" ]; then
-                log "ERROR: Could not find Forge server JAR"
-                exit 1
-            fi
-            server_jar=$(basename "$server_jar")
+            log "ERROR: Could not find Forge run.sh script"
+            log "Forge servers require the run.sh script from the server pack"
+            exit 1
         fi
     else
         log "ERROR: Unknown server type: $server_type"

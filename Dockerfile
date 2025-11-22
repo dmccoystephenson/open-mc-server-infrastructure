@@ -33,7 +33,7 @@ RUN if [ "$SERVER_TYPE" = "forge" ]; then \
         # Download ATM10 server files which includes Forge installer
         echo "Downloading All the Mods 10 server files..." && \
         ATM10_VERSION="1.15" && \
-        wget --no-check-certificate -O atm10-server.zip "https://mediafilez.forgecdn.net/files/5847/596/Server-Files-1.15.zip" || \
+        wget -O atm10-server.zip "https://mediafilez.forgecdn.net/files/5847/596/Server-Files-1.15.zip" || \
         wget -O atm10-server.zip "https://edge.forgecdn.net/files/5847/596/Server-Files-1.15.zip" || \
         (echo "Warning: Could not download ATM10 server files from primary sources" && \
          echo "Setting up basic Forge server instead..." && \

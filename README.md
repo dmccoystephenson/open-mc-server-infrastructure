@@ -162,7 +162,7 @@ Copy `sample.env` to `.env` and modify the following settings:
 
 ### Essential Settings
 - `SERVER_TYPE`: Server software type - `spigot` for plugin support or `forge` for mod support with ATM10 (default: `spigot`)
-- `MINECRAFT_VERSION`: Minecraft version (1.21.10 for Spigot, automatically 1.21.1 for Forge/ATM10)
+- `MINECRAFT_VERSION`: Minecraft version for Spigot (default: 1.21.10). Note: Forge/ATM10 uses a fixed version (1.21.1) determined by the modpack
 - `OPERATOR_UUID`: Your Minecraft player UUID (get from [mcuuid.net](https://mcuuid.net/))
 - `OPERATOR_NAME`: Your Minecraft username
 - `SERVER_MOTD`: Message displayed in the server list

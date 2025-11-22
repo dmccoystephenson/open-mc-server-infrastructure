@@ -196,9 +196,19 @@ if [ "$SERVER_TYPE" = "forge" ] && [ "$SERVER_JAR" = "run.sh" ]; then
     # and ensure it uses the FIFO for input
     log "Starting Forge server using run.sh..."
     
-    # Update user_jvm_args.txt with our JAVA_OPTS if it exists
-    if [ -f "$SERVER_DIR/user_jvm_args.txt" ]; then
-        echo "$JAVA_OPTS" > "$SERVER_DIR/user_jvm_args.txt"
+    # Update user_jvm_args.txt with our JAVA_OPTS if provided
+    # Preserve existing args and append ours if they don't conflict
+    if [ -n "$JAVA_OPTS" ]; then
+        if [ -f "$SERVER_DIR/user_jvm_args.txt" ]; then
+            # Create backup of original
+            cp "$SERVER_DIR/user_jvm_args.txt" "$SERVER_DIR/user_jvm_args.txt.bak"
+            # Add our JAVA_OPTS to the file, preserving existing content
+            echo "# Custom JVM arguments from JAVA_OPTS environment variable" >> "$SERVER_DIR/user_jvm_args.txt"
+            echo "$JAVA_OPTS" >> "$SERVER_DIR/user_jvm_args.txt"
+        else
+            # Create new file with our JAVA_OPTS
+            echo "$JAVA_OPTS" > "$SERVER_DIR/user_jvm_args.txt"
+        fi
     fi
     
     # Execute the run.sh script with FIFO as input
