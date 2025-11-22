@@ -224,8 +224,9 @@ create_server_properties() {
         log "server.properties already exists - updating key settings only..."
         # Update key settings in existing file, appending if property doesn't exist
         # Escape special characters in variables for safe sed usage
-        safe_motd=$(printf '%s' "${SERVER_MOTD}" | sed 's/[&/\\]/\\&/g')
-        safe_rcon_password=$(printf '%s' "${RCON_PASSWORD}" | sed 's/[&/\\]/\\&/g')
+        # When using | as delimiter, we only need to escape &, |, and \
+        safe_motd=$(printf '%s' "${SERVER_MOTD}" | sed 's/[&|\\]/\\&/g')
+        safe_rcon_password=$(printf '%s' "${RCON_PASSWORD}" | sed 's/[&|\\]/\\&/g')
         
         if grep -q "^motd=" "$SERVER_DIR/server.properties"; then
             sed -i "s|^motd=.*|motd=${safe_motd}|" "$SERVER_DIR/server.properties"
