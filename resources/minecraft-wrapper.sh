@@ -197,17 +197,23 @@ if [ "$SERVER_TYPE" = "forge" ] && [ "$SERVER_JAR" = "run.sh" ]; then
     log "Starting Forge server using run.sh..."
     
     # Update user_jvm_args.txt with our JAVA_OPTS if provided
-    # Preserve existing args and append ours if they don't conflict
+    # Only update if file doesn't exist or if it doesn't contain our custom marker
     if [ -n "$JAVA_OPTS" ]; then
-        if [ -f "$SERVER_DIR/user_jvm_args.txt" ]; then
-            # Create backup of original
-            cp "$SERVER_DIR/user_jvm_args.txt" "$SERVER_DIR/user_jvm_args.txt.bak"
-            # Add our JAVA_OPTS to the file, preserving existing content
-            echo "# Custom JVM arguments from JAVA_OPTS environment variable" >> "$SERVER_DIR/user_jvm_args.txt"
-            echo "$JAVA_OPTS" >> "$SERVER_DIR/user_jvm_args.txt"
-        else
+        if [ ! -f "$SERVER_DIR/user_jvm_args.txt" ]; then
             # Create new file with our JAVA_OPTS
-            echo "$JAVA_OPTS" > "$SERVER_DIR/user_jvm_args.txt"
+            echo "# Custom JVM arguments from JAVA_OPTS environment variable" > "$SERVER_DIR/user_jvm_args.txt"
+            echo "$JAVA_OPTS" >> "$SERVER_DIR/user_jvm_args.txt"
+            log "Created user_jvm_args.txt with custom JAVA_OPTS"
+        elif ! grep -q "# Custom JVM arguments from JAVA_OPTS environment variable" "$SERVER_DIR/user_jvm_args.txt"; then
+            # File exists but doesn't have our custom args yet - append them
+            {
+                echo ""
+                echo "# Custom JVM arguments from JAVA_OPTS environment variable"
+                echo "$JAVA_OPTS"
+            } >> "$SERVER_DIR/user_jvm_args.txt"
+            log "Appended custom JAVA_OPTS to existing user_jvm_args.txt"
+        else
+            log "Custom JAVA_OPTS already present in user_jvm_args.txt, skipping update"
         fi
     fi
     
