@@ -11,7 +11,6 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 
 import java.io.BufferedReader;
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.file.DirectoryStream;
@@ -25,12 +24,14 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
 
 @Service
 @Slf4j
 public class BackupService {
 
     private static final DateTimeFormatter BACKUP_DIR_FORMAT = DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss");
+    private static final Pattern ERROR_PATTERN = Pattern.compile(".*(error|warning|cannot|failed).*", Pattern.CASE_INSENSITIVE);
 
     @Value("${backup.directory:/backups}")
     private String backupDirectory;
@@ -139,7 +140,7 @@ public class BackupService {
             try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
                 String line;
                 while ((line = reader.readLine()) != null) {
-                    if (line.toLowerCase().matches(".*(error|warning|cannot|failed).*")) {
+                    if (ERROR_PATTERN.matcher(line).matches()) {
                         log.warn("tar: {}", line);
                     }
                 }

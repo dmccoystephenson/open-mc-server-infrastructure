@@ -177,8 +177,8 @@ main() {
     local backup_container
     backup_container=$(get_env_value "BACKUP_CONTAINER_NAME" "open-mc-backup-manager")
     
-    # Check if a recent backup exists (within last hour)
-    recent_backup=$(find ./backups -maxdepth 1 -type d -name "backup-*" -newermt "1 hour ago" 2>/dev/null | head -1)
+    # Check if a recent backup exists (within last 60 minutes)
+    recent_backup=$(find ./backups -maxdepth 1 -type d -name "backup-*" -mmin -60 2>/dev/null | head -1)
     
     if [ -n "$recent_backup" ] && [ -f "$recent_backup/mcserver-backup.tar.gz" ]; then
         log_info "Using recent backup: $recent_backup"
