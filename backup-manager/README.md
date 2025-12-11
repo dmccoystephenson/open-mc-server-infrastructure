@@ -87,13 +87,59 @@ docker logs -f ${BACKUP_CONTAINER_NAME}
 
 ## Manual Backup Trigger
 
-The backup-manager runs backups on a schedule. To create a backup immediately, you can restart the container:
+### Option 1: Using the Trigger Script (Recommended)
+
+The easiest way to trigger a manual backup is using the included script:
+
+```bash
+./trigger-backup.sh
+```
+
+This script calls the backup-manager REST API to initiate an immediate backup. The backup will be created and old backups will be cleaned up according to size limits.
+
+### Option 2: Using the REST API Directly
+
+You can also trigger a backup using curl or any HTTP client:
+
+```bash
+curl -X POST http://localhost:8091/api/backups/trigger
+```
+
+**Response (success):**
+```json
+{
+  "success": true,
+  "message": "Backup completed successfully",
+  "backupPath": "/backups/backup-20241211-120000"
+}
+```
+
+**Response (failure):**
+```json
+{
+  "success": false,
+  "message": "Backup failed: Volume 'mcserver' does not exist!"
+}
+```
+
+### Option 3: Restart the Container
+
+Alternatively, wait for the next scheduled backup time or restart the container:
 
 ```bash
 docker restart open-mc-backup-manager
 ```
 
-Alternatively, wait for the next scheduled backup time.
+## REST API
+
+The backup-manager exposes a REST API on port 8091 (configurable via `BACKUP_PORT`).
+
+### Endpoints
+
+**POST /api/backups/trigger**
+- Triggers an immediate backup
+- Returns JSON response with backup status and location
+- HTTP 200 on success, 500 on failure
 
 ## Volume Mounts
 
@@ -108,6 +154,7 @@ The backup-manager container has access to:
 
 - The container requires access to the Docker socket to run backup commands
 - The Minecraft server volume is mounted read-only for safety
+- The REST API is exposed on localhost by default (port 8091)
 - Backups are created using temporary Docker containers with the ubuntu image
 
 ## Troubleshooting

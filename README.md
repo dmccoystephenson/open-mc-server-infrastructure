@@ -243,14 +243,19 @@ See [backup-manager/README.md](backup-manager/README.md) for detailed configurat
 
 The backup-manager service automatically creates backups on a schedule (default: 2 AM daily). Backups are stored in the `./backups/` directory with timestamped names like `backup-20241211-020000`.
 
-To ensure a fresh backup exists before performing maintenance:
+To trigger a manual backup immediately:
 
 ```bash
-# Wait for the next scheduled backup or restart the backup-manager to trigger one
+./trigger-backup.sh
+```
+
+This script uses the backup-manager REST API to create an immediate backup. Alternatively, you can restart the backup-manager container:
+
+```bash
 docker restart open-mc-backup-manager
 ```
 
-Alternatively, use Docker commands to manually copy server data:
+Or use Docker commands to manually copy server data:
 
 ```bash
 docker cp open-mc-server:/mcserver ./backup/

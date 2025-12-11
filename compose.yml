@@ -90,6 +90,8 @@ services:
     image: open-mc-server-backup-manager
     restart: always
     container_name: ${BACKUP_CONTAINER_NAME:-open-mc-backup-manager}
+    ports:
+      - "${BACKUP_PORT:-8091}:8091"
     volumes:
       - mcserver:/mcserver:ro
       - ./backups:/backups
