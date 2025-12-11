@@ -86,23 +86,25 @@ docker compose down
 
 Create a backup of all server data from the persistent volume. This is your safety net in case something goes wrong.
 
-#### Option A: Using Backup Script (Recommended)
+#### Option A: Using Backup Manager (Recommended)
 
-The simplest way to create a backup is using the dedicated backup script:
+The backup-manager service automatically creates scheduled backups (default: 2 AM daily). Before upgrading, ensure a recent backup exists:
 
 ```bash
-./backup.sh
+# Check for recent backups
+ls -lth ./backups/
+
+# If no recent backup, restart backup-manager to trigger one
+docker restart open-mc-backup-manager
+
+# Wait a few moments and verify the backup was created
+ls -lth ./backups/
 ```
 
-The script will:
-- Automatically create a timestamped backup directory
-- Create a compressed tarball of all server data
-- Display the backup location and size
-- Show instructions for restoration
-
 **Benefits:**
-- Single command execution
 - Automatic timestamping
+- Integrated with alert system
+- Compressed tarball format
 - Size verification
 - Built-in restoration instructions
 

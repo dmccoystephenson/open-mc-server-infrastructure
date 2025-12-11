@@ -171,30 +171,33 @@ main() {
     
     # Step 2: Create backup
     log_info "Step 2/6: Creating backup..."
-    if [ ! -f ./backup.sh ]; then
-        log_error "backup.sh script not found! Cannot continue without backup capability."
-        exit 1
+    
+    # Use the most recent backup or create new one manually
+    # Since backup.sh is being replaced with Java, we'll use the backup-manager
+    local backup_container
+    backup_container=$(get_env_value "BACKUP_CONTAINER_NAME" "open-mc-backup-manager")
+    
+    # Check if a recent backup exists (within last hour)
+    recent_backup=$(find ./backups -maxdepth 1 -type d -name "backup-*" -newermt "1 hour ago" 2>/dev/null | head -1)
+    
+    if [ -n "$recent_backup" ] && [ -f "$recent_backup/mcserver-backup.tar.gz" ]; then
+        log_info "Using recent backup: $recent_backup"
+        backup_dir="$recent_backup"
+    else
+        log_info "No recent backup found, using latest available backup..."
+        backup_dir=$(ls -td ./backups/backup-* 2>/dev/null | head -1)
+        
+        if [ -z "$backup_dir" ] || [ ! -f "$backup_dir/mcserver-backup.tar.gz" ]; then
+            log_error "No valid backup found!"
+            log_info "Please ensure the backup-manager has created at least one backup."
+            log_info "You can check backup-manager logs: docker logs $backup_container"
+            exit 1
+        fi
+        
+        log_info "Using backup: $backup_dir"
     fi
     
-    # Run the backup script and capture its output to get the backup directory
-    backup_output=$(./backup.sh 2>&1)
-    backup_result=$?
-    
-    # Display the backup script output
-    echo "$backup_output"
-    
-    if [ "$backup_result" -ne 0 ]; then
-        log_error "Backup failed! Aborting upgrade."
-        exit 1
-    fi
-    
-    # Extract backup directory from the output (last line that contains "backups/backup-")
-    backup_dir=$(echo "$backup_output" | grep -o './backups/backup-[0-9]\{8\}-[0-9]\{6\}' | tail -1)
-    
-    if [ -z "$backup_dir" ]; then
-        log_error "Could not determine backup directory location. Aborting upgrade."
-        exit 1
-    fi
+    log_success "Backup verified: $backup_dir"
     echo ""
     
     # Step 3: Update version in .env
