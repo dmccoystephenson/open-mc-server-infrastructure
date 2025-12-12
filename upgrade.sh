@@ -159,41 +159,62 @@ main() {
     send_alert "Server Upgrade Started" "Starting upgrade from $current_version to $new_version" "INFO" "ALERTS_UPGRADE_START"
     echo ""
     
-    # Step 1: Stop the server
-    log_info "Step 1/6: Stopping the server..."
+    # Step 1: Ensure backup exists
+    log_info "Step 1/6: Checking for backup..."
+    
+    # Check if a recent backup exists (within last 60 minutes)
+    recent_backup=$(find ./backups -maxdepth 1 -type d -name "backup-*" -mmin -60 2>/dev/null | head -1)
+    
+    if [ -n "$recent_backup" ] && [ -f "$recent_backup/mcserver-backup.tar.gz" ]; then
+        log_info "Using recent backup: $recent_backup"
+        backup_dir="$recent_backup"
+    else
+        log_info "No recent backup found, checking for any existing backup..."
+        backup_dir=$(ls -td ./backups/backup-* 2>/dev/null | head -1)
+        
+        if [ -z "$backup_dir" ] || [ ! -f "$backup_dir/mcserver-backup.tar.gz" ]; then
+            log_warning "No valid backup found. Creating a new backup..."
+            
+            # Check if trigger-backup.sh exists
+            if [ ! -f ./trigger-backup.sh ]; then
+                log_error "trigger-backup.sh script not found!"
+                log_info "Please ensure trigger-backup.sh is available to create a backup."
+                exit 1
+            fi
+            
+            # Trigger a new backup (while services are still running)
+            log_info "Running trigger-backup.sh to create a backup before upgrade..."
+            echo ""
+            if ! ./trigger-backup.sh; then
+                log_error "Backup creation failed! Cannot proceed with upgrade without a backup."
+                exit 1
+            fi
+            echo ""
+            
+            # Get the most recent backup that was just created
+            backup_dir=$(ls -td ./backups/backup-* 2>/dev/null | head -1)
+            
+            if [ -z "$backup_dir" ] || [ ! -f "$backup_dir/mcserver-backup.tar.gz" ]; then
+                log_error "Backup creation succeeded but backup file not found!"
+                exit 1
+            fi
+            
+            log_success "Backup created successfully: $backup_dir"
+        else
+            log_info "Using existing backup: $backup_dir"
+        fi
+    fi
+    
+    log_success "Backup verified: $backup_dir"
+    echo ""
+    
+    # Step 2: Stop the server
+    log_info "Step 2/6: Stopping the server..."
     if is_server_running; then
         ./down.sh
         log_success "Server stopped successfully"
     else
         log_info "Server is not running, skipping stop step"
-    fi
-    echo ""
-    
-    # Step 2: Create backup
-    log_info "Step 2/6: Creating backup..."
-    if [ ! -f ./backup.sh ]; then
-        log_error "backup.sh script not found! Cannot continue without backup capability."
-        exit 1
-    fi
-    
-    # Run the backup script and capture its output to get the backup directory
-    backup_output=$(./backup.sh 2>&1)
-    backup_result=$?
-    
-    # Display the backup script output
-    echo "$backup_output"
-    
-    if [ "$backup_result" -ne 0 ]; then
-        log_error "Backup failed! Aborting upgrade."
-        exit 1
-    fi
-    
-    # Extract backup directory from the output (last line that contains "backups/backup-")
-    backup_dir=$(echo "$backup_output" | grep -o './backups/backup-[0-9]\{8\}-[0-9]\{6\}' | tail -1)
-    
-    if [ -z "$backup_dir" ]; then
-        log_error "Could not determine backup directory location. Aborting upgrade."
-        exit 1
     fi
     echo ""
     

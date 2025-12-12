@@ -4,8 +4,10 @@ An automated backup management system for the Minecraft server infrastructure. T
 
 ## Features
 
-- **Scheduled Backups**: Automatically runs the `backup.sh` script once a day (default: 2 AM)
+- **Scheduled Backups**: Automatically creates backups of the Minecraft server once a day (default: 2 AM)
 - **Size Management**: Monitors backup directory size and removes oldest backups when exceeding limit
+- **Docker Integration**: Uses Docker commands to create compressed tar.gz backups from the server volume
+- **Alert Integration**: Sends notifications to the alert-manager for backup success and failures
 - **Configurable**: Customize backup schedule, size limits, and paths via environment variables
 - **Containerized**: Runs in its own Docker container with access to Docker socket for backup operations
 
@@ -18,6 +20,9 @@ The following environment variables can be configured in `.env`:
 - `BACKUP_CONTAINER_NAME`: Container name (default: `open-mc-backup-manager`)
 - `BACKUP_MAX_SIZE_MB`: Maximum size of backups directory in MB (default: `10240` = 10GB)
 - `BACKUP_SCHEDULE`: Cron expression for backup schedule (default: `0 0 2 * * ?` = 2 AM daily)
+- `VOLUME_NAME`: Name of the Docker volume containing Minecraft server data (default: `mcserver`)
+- `ALERTS_BACKUP_SUCCESS`: Enable alerts for successful backups (default: `true`)
+- `ALERTS_BACKUP_FAILURE`: Enable alerts for failed backups (default: `true`)
 
 ### Cron Expression Format
 
@@ -35,9 +40,10 @@ Examples:
 ## How It Works
 
 1. **Scheduled Execution**: The backup manager uses Spring's `@Scheduled` annotation to trigger backups
-2. **Backup Script**: Executes the `backup.sh` script which creates timestamped backups
+2. **Docker Backup**: Executes Docker commands to create compressed tar.gz backups from the Minecraft server volume
 3. **Size Monitoring**: After each backup, checks the total size of the backups directory
 4. **Cleanup**: If the directory exceeds the size limit, removes oldest backups first until under limit
+5. **Alerts**: Sends notifications to the alert-manager for both successful and failed backup operations
 
 ## Building
 
@@ -45,12 +51,6 @@ Build the backup-manager application:
 
 ```bash
 cd backup-manager
-./build.sh
-```
-
-Or manually:
-
-```bash
 ./gradlew clean build
 ```
 
@@ -87,11 +87,59 @@ docker logs -f ${BACKUP_CONTAINER_NAME}
 
 ## Manual Backup Trigger
 
-To trigger a manual backup (useful for testing), you can restart the container or wait for the scheduled time.
+### Option 1: Using the Trigger Script (Recommended)
 
-For immediate testing, you can modify the schedule temporarily:
-1. Update `BACKUP_SCHEDULE` in `.env` to run soon (e.g., `0 */5 * * * ?` for every 5 minutes)
-2. Restart the backup-manager container: `docker restart open-mc-backup-manager`
+The easiest way to trigger a manual backup is using the included script:
+
+```bash
+./trigger-backup.sh
+```
+
+This script calls the backup-manager REST API to initiate an immediate backup. The backup will be created and old backups will be cleaned up according to size limits.
+
+### Option 2: Using the REST API Directly
+
+You can also trigger a backup using curl or any HTTP client:
+
+```bash
+curl -X POST http://localhost:8091/api/backups/trigger
+```
+
+**Response (success):**
+```json
+{
+  "success": true,
+  "message": "Backup completed successfully",
+  "backupPath": "/backups/backup-20241211-120000"
+}
+```
+
+**Response (failure):**
+```json
+{
+  "success": false,
+  "message": "Backup failed: Volume 'mcserver' does not exist!"
+}
+```
+
+### Option 3: Restart the Container
+
+Alternatively, wait for the next scheduled backup time or restart the container:
+
+```bash
+docker restart open-mc-backup-manager
+```
+
+## REST API
+
+The backup-manager exposes a REST API on port 8091 (configurable via `BACKUP_PORT`).
+
+### Endpoints
+
+**POST /api/backups/trigger**
+- Triggers an immediate backup
+- Returns JSON response with backup status and location
+- HTTP 200 on success, 500 on failure
 
 ## Volume Mounts
 
@@ -99,15 +147,15 @@ The backup-manager container has access to:
 
 - `/mcserver` - Read-only access to the Minecraft server volume
 - `/backups` - Read-write access to the backups directory on the host
-- `/backup.sh` - Read-only access to the backup script
 - `/.env` - Read-only access to environment configuration
 - `/var/run/docker.sock` - Docker socket for executing backup operations
 
 ## Security Notes
 
-- The container requires access to the Docker socket to run the backup script
+- The container requires access to the Docker socket to run backup commands
 - The Minecraft server volume is mounted read-only for safety
-- Only the backup script and its dependencies need write access
+- The REST API is exposed on localhost by default (port 8091)
+- Backups are created using temporary Docker containers with the ubuntu image
 
 ## Troubleshooting
 
@@ -123,8 +171,10 @@ The backup-manager container has access to:
 2. Verify backups are being created with correct naming pattern (`backup-*`)
 3. Check container logs for cleanup messages
 
-### Backup Script Fails
+### Backup Creation Fails
 
 1. Ensure Docker is accessible from within the container
 2. Verify the Minecraft server volume exists and is accessible
-3. Check that the `backup.sh` script has correct permissions
+3. Check that the ubuntu Docker image is available
+4. Ensure sufficient disk space for backups
+

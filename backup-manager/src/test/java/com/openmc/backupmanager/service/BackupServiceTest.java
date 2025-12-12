@@ -7,26 +7,36 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.web.client.RestTemplate;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doNothing;
 
 @SpringBootTest
 @TestPropertySource(properties = {
-    "backup.script.path=/tmp/test-backup.sh",
     "backup.directory=/tmp/test-backups",
-    "backup.max.size.mb=1"
+    "backup.max.size.mb=1",
+    "volume.name=test-volume",
+    "alerts.backup.success=false",
+    "alerts.backup.failure=false"
 })
 @DisplayName("BackupService Tests")
 class BackupServiceTest {
 
     @Autowired
     private BackupService backupService;
+
+    @MockBean
+    private RestTemplate restTemplate;
 
     @TempDir
     Path tempDir;
@@ -105,5 +115,25 @@ class BackupServiceTest {
         // At least one should be deleted due to size limit
         assertFalse(backup1Exists && backup2Exists, 
             "At least one backup should be deleted when exceeding size limit");
+    }
+
+    @Test
+    @DisplayName("Should format file size correctly")
+    void shouldFormatFileSize() {
+        assertEquals("500B", ReflectionTestUtils.invokeMethod(backupService, "formatFileSize", 500L));
+        assertEquals("1.5K", ReflectionTestUtils.invokeMethod(backupService, "formatFileSize", 1536L));
+        assertEquals("2.0M", ReflectionTestUtils.invokeMethod(backupService, "formatFileSize", 2L * 1024 * 1024));
+        assertEquals("1.5G", ReflectionTestUtils.invokeMethod(backupService, "formatFileSize", 
+            (long)(1.5 * 1024 * 1024 * 1024)));
+    }
+
+    @Test
+    @DisplayName("Should handle alert sending gracefully when disabled")
+    void shouldHandleDisabledAlerts() {
+        // Alerts are disabled in test properties
+        // This should not throw an exception
+        assertDoesNotThrow(() -> 
+            ReflectionTestUtils.invokeMethod(backupService, "sendAlert", 
+                "Test", "Message", "INFO", false));
     }
 }

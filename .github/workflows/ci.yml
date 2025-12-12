@@ -32,13 +32,13 @@ jobs:
         echo "🔍 Validating shell script syntax..."
         bash -n up.sh
         bash -n down.sh
-        bash -n backup.sh
         bash -n upgrade.sh
+        bash -n trigger-backup.sh
         bash -n resources/post-create.sh
         bash -n resources/minecraft-wrapper.sh
         
         echo "🔍 Running ShellCheck linter..."
-        shellcheck up.sh down.sh backup.sh upgrade.sh resources/*.sh scripts/*.sh
+        shellcheck up.sh down.sh upgrade.sh trigger-backup.sh resources/*.sh scripts/*.sh
         
     - name: Validate Docker configuration
       run: |
