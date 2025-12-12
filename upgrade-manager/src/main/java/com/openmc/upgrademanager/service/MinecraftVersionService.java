@@ -108,18 +108,17 @@ public class MinecraftVersionService {
 
     /**
      * Get the latest stable Minecraft version
-     * This is a simplified implementation. In production, you would call the Minecraft version manifest API
+     * TODO: Implement full Minecraft version manifest API integration
+     * This would call: https://launchermeta.mojang.com/mc/game/version_manifest.json
+     * and parse the JSON to get the latest release version
      */
     public String getLatestMinecraftVersion() {
         try {
-            // Note: This is a simplified implementation
-            // In a real scenario, you would call: https://launchermeta.mojang.com/mc/game/version_manifest.json
-            // and parse the JSON to get the latest release version
-            
             log.info("Checking for latest Minecraft version...");
             
-            // For now, we'll just return null to indicate we can't determine the latest version
-            // without implementing full JSON parsing
+            // For now, we return null to indicate we can't determine the latest version
+            // without implementing full JSON parsing from the Minecraft version manifest API
+            // This is intentional to avoid false alerts and requires future implementation
             return null;
             
         } catch (Exception e) {

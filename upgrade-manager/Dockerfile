@@ -9,7 +9,4 @@ FROM eclipse-temurin:21-jre
 WORKDIR /app
 COPY --from=build /app/build/libs/*.jar app.jar
 
-# Copy shell scripts that might be needed for upgrade operations
-COPY --from=build /app /workdir
-
 ENTRYPOINT ["java", "-jar", "app.jar"]
