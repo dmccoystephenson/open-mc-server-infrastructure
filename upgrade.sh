@@ -159,18 +159,8 @@ main() {
     send_alert "Server Upgrade Started" "Starting upgrade from $current_version to $new_version" "INFO" "ALERTS_UPGRADE_START"
     echo ""
     
-    # Step 1: Stop the server
-    log_info "Step 1/6: Stopping the server..."
-    if is_server_running; then
-        ./down.sh
-        log_success "Server stopped successfully"
-    else
-        log_info "Server is not running, skipping stop step"
-    fi
-    echo ""
-    
-    # Step 2: Create backup
-    log_info "Step 2/6: Creating backup..."
+    # Step 1: Ensure backup exists
+    log_info "Step 1/6: Checking for backup..."
     
     # Check if a recent backup exists (within last 60 minutes)
     recent_backup=$(find ./backups -maxdepth 1 -type d -name "backup-*" -mmin -60 2>/dev/null | head -1)
@@ -192,7 +182,7 @@ main() {
                 exit 1
             fi
             
-            # Trigger a new backup
+            # Trigger a new backup (while services are still running)
             log_info "Running trigger-backup.sh to create a backup before upgrade..."
             echo ""
             if ! ./trigger-backup.sh; then
@@ -216,6 +206,16 @@ main() {
     fi
     
     log_success "Backup verified: $backup_dir"
+    echo ""
+    
+    # Step 2: Stop the server
+    log_info "Step 2/6: Stopping the server..."
+    if is_server_running; then
+        ./down.sh
+        log_success "Server stopped successfully"
+    else
+        log_info "Server is not running, skipping stop step"
+    fi
     echo ""
     
     # Step 3: Update version in .env
