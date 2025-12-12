@@ -132,6 +132,40 @@ services:
       - MINECRAFT_RCON_PASSWORD=${RCON_PASSWORD:-minecraft}
       - MINECRAFT_RCON_ENABLED=${MINECRAFT_RCON_ENABLED:-true}
 
+  upgrade-manager:
+    build:
+      context: ./upgrade-manager
+    image: open-mc-server-upgrade-manager
+    restart: always
+    container_name: ${UPGRADE_CONTAINER_NAME:-open-mc-upgrade-manager}
+    ports:
+      - "${UPGRADE_PORT:-8092}:8092"
+    volumes:
+      - ./.env:/.env
+      - ./backups:/backups
+      - ./up.sh:/up.sh:ro
+      - ./down.sh:/down.sh:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      alert-manager:
+        condition: service_healthy
+      backup-manager:
+        condition: service_started
+    environment:
+      - ENV_FILE_PATH=/.env
+      - BACKUP_DIRECTORY=/backups
+      - BACKUP_MANAGER_URL=http://backup-manager:8091/api/backups/trigger
+      - CONTAINER_NAME=${CONTAINER_NAME:-open-mc-server}
+      - ALERT_MANAGER_URL=http://alert-manager:8090/api/alerts
+      # Alert configuration
+      - ALERTS_UPGRADE_START=${ALERTS_UPGRADE_START:-true}
+      - ALERTS_UPGRADE_COMPLETE=${ALERTS_UPGRADE_COMPLETE:-true}
+      - ALERTS_UPGRADE_FAILURE=${ALERTS_UPGRADE_FAILURE:-true}
+      - ALERTS_VERSION_CHECK=${ALERTS_VERSION_CHECK:-true}
+      # Version check configuration
+      - VERSION_CHECK_ENABLED=${VERSION_CHECK_ENABLED:-true}
+      - VERSION_CHECK_SCHEDULE=${VERSION_CHECK_SCHEDULE:-0 0 3 * * ?}
+
 volumes:
   mcserver:
     name: ${VOLUME_NAME:-mcserver}
