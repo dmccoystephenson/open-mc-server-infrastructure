@@ -172,11 +172,6 @@ main() {
     # Step 2: Create backup
     log_info "Step 2/6: Creating backup..."
     
-    # Use the most recent backup or create new one manually
-    # Since backup.sh is being replaced with Java, we'll use the backup-manager
-    local backup_container
-    backup_container=$(get_env_value "BACKUP_CONTAINER_NAME" "open-mc-backup-manager")
-    
     # Check if a recent backup exists (within last 60 minutes)
     recent_backup=$(find ./backups -maxdepth 1 -type d -name "backup-*" -mmin -60 2>/dev/null | head -1)
     
@@ -184,17 +179,40 @@ main() {
         log_info "Using recent backup: $recent_backup"
         backup_dir="$recent_backup"
     else
-        log_info "No recent backup found, using latest available backup..."
+        log_info "No recent backup found, checking for any existing backup..."
         backup_dir=$(ls -td ./backups/backup-* 2>/dev/null | head -1)
         
         if [ -z "$backup_dir" ] || [ ! -f "$backup_dir/mcserver-backup.tar.gz" ]; then
-            log_error "No valid backup found!"
-            log_info "Please ensure the backup-manager has created at least one backup."
-            log_info "You can check backup-manager logs: docker logs $backup_container"
-            exit 1
+            log_warning "No valid backup found. Creating a new backup..."
+            
+            # Check if trigger-backup.sh exists
+            if [ ! -f ./trigger-backup.sh ]; then
+                log_error "trigger-backup.sh script not found!"
+                log_info "Please ensure trigger-backup.sh is available to create a backup."
+                exit 1
+            fi
+            
+            # Trigger a new backup
+            log_info "Running trigger-backup.sh to create a backup before upgrade..."
+            echo ""
+            if ! ./trigger-backup.sh; then
+                log_error "Backup creation failed! Cannot proceed with upgrade without a backup."
+                exit 1
+            fi
+            echo ""
+            
+            # Get the most recent backup that was just created
+            backup_dir=$(ls -td ./backups/backup-* 2>/dev/null | head -1)
+            
+            if [ -z "$backup_dir" ] || [ ! -f "$backup_dir/mcserver-backup.tar.gz" ]; then
+                log_error "Backup creation succeeded but backup file not found!"
+                exit 1
+            fi
+            
+            log_success "Backup created successfully: $backup_dir"
+        else
+            log_info "Using existing backup: $backup_dir"
         fi
-        
-        log_info "Using backup: $backup_dir"
     fi
     
     log_success "Backup verified: $backup_dir"
