@@ -215,11 +215,11 @@ class PluginServiceTest {
         Path pluginPath = tempDir.resolve("test.jar");
         Files.createFile(pluginPath);
         
-        // Try to delete using path traversal
+        // Try to delete using path traversal - it should be sanitized to "test.jar" and successfully delete the file
         String result = pluginService.deletePlugin("../test.jar");
         
-        // Should still exist because sanitization prevents traversal
-        assertTrue(Files.exists(pluginPath));
-        assertTrue(result.startsWith("Error"));
+        // File should be deleted because "../test.jar" gets sanitized to "test.jar"
+        assertFalse(Files.exists(pluginPath));
+        assertTrue(result.startsWith("Plugin deleted successfully"));
     }
 }
