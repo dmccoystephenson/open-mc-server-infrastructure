@@ -90,7 +90,7 @@ public class ServerController {
         if (!validateCredentials(username, password)) {
             alertNotificationService.sendWarningAlert(
                 "Admin Authentication Failed",
-                String.format("Failed authentication attempt from user: %s", username)
+                "Failed authentication attempt for admin command endpoint"
             );
             return Map.of("result", "Error: Invalid username or password");
         }
@@ -213,7 +213,7 @@ public class ServerController {
         if (!validateCredentials(username, password)) {
             alertNotificationService.sendWarningAlert(
                 "Plugin List Authentication Failed",
-                String.format("Failed authentication attempt from user: %s", username)
+                "Failed authentication attempt for plugin list endpoint"
             );
             return Map.of("success", false, "error", "Invalid username or password");
         }
@@ -240,7 +240,7 @@ public class ServerController {
         if (!validateCredentials(username, password)) {
             alertNotificationService.sendWarningAlert(
                 "Plugin Upload Authentication Failed",
-                String.format("Failed authentication attempt from user: %s", username)
+                "Failed authentication attempt for plugin upload endpoint"
             );
             return Map.of("success", false, "error", "Invalid username or password");
         }
@@ -276,7 +276,7 @@ public class ServerController {
         if (!validateCredentials(username, password)) {
             alertNotificationService.sendWarningAlert(
                 "Plugin Delete Authentication Failed",
-                String.format("Failed authentication attempt from user: %s", username)
+                "Failed authentication attempt for plugin deletion endpoint"
             );
             return Map.of("success", false, "error", "Invalid username or password");
         }

@@ -76,6 +76,11 @@ public class PluginService {
             return "Error: File must be a .jar file";
         }
         
+        // Reject any filename containing path separators to prevent traversal
+        if (filename.contains("/") || filename.contains("\\") || filename.contains("..")) {
+            return "Error: Invalid filename";
+        }
+        
         // Validate JAR file structure
         if (!isValidJarFile(file)) {
             return "Error: File is not a valid JAR file";
@@ -94,21 +99,29 @@ public class PluginService {
                 logger.info("Created plugins directory: {}", pluginsDir);
             }
             
-            Path targetPath = pluginsPath.resolve(filename);
+            // Normalize paths and ensure the target is directly within the plugins directory
+            Path pluginsPathNormalized = pluginsPath.toAbsolutePath().normalize();
+            Path targetPath = pluginsPathNormalized.resolve(filename);
+            Path targetPathNormalized = targetPath.normalize();
+            
+            if (!pluginsPathNormalized.equals(targetPathNormalized.getParent())) {
+                logger.warn("Attempted plugin upload with invalid target path: {}", targetPathNormalized);
+                return "Error: Invalid plugin path";
+            }
             
             // Check if file already exists
-            if (Files.exists(targetPath)) {
+            if (Files.exists(targetPathNormalized)) {
                 return "Error: Plugin file already exists. Please delete it first.";
             }
             
             // Save the file
-            Files.copy(file.getInputStream(), targetPath);
+            Files.copy(file.getInputStream(), targetPathNormalized);
             logger.info("Plugin uploaded successfully: {}", filename);
             return "Plugin uploaded successfully: " + filename;
             
         } catch (IOException e) {
             logger.error("Error uploading plugin: {}", filename, e);
-            return "Error uploading plugin: " + e.getMessage();
+            return "Error uploading plugin: " + filename;
         }
     }
     
@@ -170,23 +183,23 @@ public class PluginService {
                 return "Error: Invalid file path";
             }
             
-            String sanitizedFilename = pluginPath.getFileName().toString();
+            String resolvedFilename = pluginPath.getFileName().toString();
             
             if (!Files.exists(pluginPath)) {
-                return "Error: Plugin file does not exist: " + sanitizedFilename;
+                return "Error: Plugin file does not exist: " + resolvedFilename;
             }
             
             if (!Files.isRegularFile(pluginPath)) {
-                return "Error: Not a regular file: " + sanitizedFilename;
+                return "Error: Not a regular file: " + resolvedFilename;
             }
             
             Files.delete(pluginPath);
-            logger.info("Plugin deleted successfully: {}", sanitizedFilename);
-            return "Plugin deleted successfully: " + sanitizedFilename;
+            logger.info("Plugin deleted successfully: {}", resolvedFilename);
+            return "Plugin deleted successfully: " + resolvedFilename;
             
         } catch (IOException e) {
             logger.error("Error deleting plugin: {}", filename, e);
-            return "Error deleting plugin: " + e.getMessage();
+            return "Error deleting plugin: " + filename;
         }
     }
 }

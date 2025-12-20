@@ -241,11 +241,10 @@ class PluginServiceTest {
         
         String result = pluginService.uploadPlugin(file);
         
-        // Filename gets sanitized to "evil.jar" and upload succeeds
-        assertTrue(result.startsWith("Plugin uploaded successfully"));
-        assertTrue(Files.exists(tempDir.resolve("evil.jar")));
-        // Verify the path was sanitized and file wasn't created outside plugins directory
-        assertFalse(Files.exists(tempDir.resolve("../../evil.jar")));
+        // Should be rejected due to path separators in filename
+        assertTrue(result.startsWith("Error"));
+        assertTrue(result.contains("Invalid filename"));
+        assertFalse(Files.exists(tempDir.resolve("evil.jar")));
     }
     
     @Test

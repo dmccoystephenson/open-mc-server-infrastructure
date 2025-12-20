@@ -3,12 +3,14 @@ package com.openmc.webapp.service;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -28,8 +30,11 @@ public class AlertNotificationService {
     
     private final RestTemplate restTemplate;
     
-    public AlertNotificationService() {
-        this.restTemplate = new RestTemplate();
+    public AlertNotificationService(RestTemplateBuilder restTemplateBuilder) {
+        this.restTemplate = restTemplateBuilder
+                .setConnectTimeout(Duration.ofSeconds(5))
+                .setReadTimeout(Duration.ofSeconds(10))
+                .build();
     }
     
     /**
@@ -68,6 +73,9 @@ public class AlertNotificationService {
     
     /**
      * Sends an INFO level alert
+     * 
+     * @param title Alert title
+     * @param message Alert message
      */
     public void sendInfoAlert(String title, String message) {
         sendAlert(title, message, "INFO");
@@ -75,6 +83,9 @@ public class AlertNotificationService {
     
     /**
      * Sends a WARNING level alert
+     * 
+     * @param title Alert title
+     * @param message Alert message
      */
     public void sendWarningAlert(String title, String message) {
         sendAlert(title, message, "WARNING");
@@ -82,6 +93,9 @@ public class AlertNotificationService {
     
     /**
      * Sends an ERROR level alert
+     * 
+     * @param title Alert title
+     * @param message Alert message
      */
     public void sendErrorAlert(String title, String message) {
         sendAlert(title, message, "ERROR");
