@@ -404,12 +404,19 @@
                     html += `
                         <div class="plugin-item">
                             <span class="plugin-name">${escapeHtml(plugin)}</span>
-                            <button class="btn-danger" onclick="deletePlugin('${escapeHtml(plugin)}')">Delete</button>
+                            <button class="btn-danger" data-plugin-name="${escapeHtml(plugin)}">Delete</button>
                         </div>
                     `;
                 });
                 html += '</div>';
                 container.innerHTML = html;
+                
+                // Add event listeners to delete buttons
+                container.querySelectorAll('.btn-danger').forEach(button => {
+                    button.addEventListener('click', function() {
+                        deletePlugin(this.getAttribute('data-plugin-name'));
+                    });
+                });
             } catch (error) {
                 container.innerHTML = `<div class="empty-state" style="color: #ef4444;">Error: ${error.message}</div>`;
             }

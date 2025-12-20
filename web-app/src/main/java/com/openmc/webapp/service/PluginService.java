@@ -11,7 +11,6 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -96,7 +95,7 @@ public class PluginService {
             }
             
             // Save the file
-            Files.copy(file.getInputStream(), targetPath, StandardCopyOption.REPLACE_EXISTING);
+            Files.copy(file.getInputStream(), targetPath);
             logger.info("Plugin uploaded successfully: {}", filename);
             return "Plugin uploaded successfully: " + filename;
             
@@ -136,7 +135,9 @@ public class PluginService {
             }
             
             // Verify the file is in the plugins directory (prevent directory traversal)
-            if (!pluginPath.toRealPath().getParent().equals(Paths.get(pluginsDir).toRealPath())) {
+            Path normalizedPluginPath = pluginPath.normalize();
+            Path normalizedPluginsDir = Paths.get(pluginsDir).normalize();
+            if (!normalizedPluginPath.getParent().equals(normalizedPluginsDir)) {
                 return "Error: Invalid file path";
             }
             
