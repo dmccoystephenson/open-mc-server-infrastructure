@@ -49,6 +49,7 @@ services:
       - "8080"
     volumes:
       - webapp-data:/app/data
+      - mcserver:/mcserver
     depends_on:
       - mcserver
     environment:

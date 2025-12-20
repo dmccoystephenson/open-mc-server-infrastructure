@@ -4,12 +4,14 @@ import com.openmc.webapp.config.ServerConfig;
 import com.openmc.webapp.model.ActivityTrackerStats;
 import com.openmc.webapp.model.LeaderboardEntry;
 import com.openmc.webapp.service.ActivityTrackerService;
+import com.openmc.webapp.service.PluginService;
 import com.openmc.webapp.service.RconService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.Map;
@@ -22,12 +24,15 @@ public class ServerController {
     private final RconService rconService;
     private final ServerConfig serverConfig;
     private final ActivityTrackerService activityTrackerService;
+    private final PluginService pluginService;
     
     public ServerController(RconService rconService, ServerConfig serverConfig, 
-                          ActivityTrackerService activityTrackerService) {
+                          ActivityTrackerService activityTrackerService,
+                          PluginService pluginService) {
         this.rconService = rconService;
         this.serverConfig = serverConfig;
         this.activityTrackerService = activityTrackerService;
+        this.pluginService = pluginService;
     }
     
     @GetMapping("/")
@@ -159,5 +164,52 @@ public class ServerController {
         boolean enabled = activityTrackerService.isEnabled();
         logger.debug("API request: /api/activity-tracker/enabled - returning: {}", enabled);
         return Map.of("enabled", enabled);
+    }
+    
+    @GetMapping("/api/plugins/list")
+    @ResponseBody
+    public Map<String, Object> listPlugins(@RequestParam String username, @RequestParam String password) {
+        // Validate credentials
+        if (!serverConfig.getAdminUsername().equals(username) || 
+            !serverConfig.getAdminPassword().equals(password)) {
+            return Map.of("success", false, "error", "Invalid username or password");
+        }
+        
+        List<String> plugins = pluginService.listPlugins();
+        return Map.of("success", true, "plugins", plugins);
+    }
+    
+    @PostMapping("/api/plugins/upload")
+    @ResponseBody
+    public Map<String, Object> uploadPlugin(@RequestParam String username, 
+                                           @RequestParam String password,
+                                           @RequestParam("file") MultipartFile file) {
+        // Validate credentials
+        if (!serverConfig.getAdminUsername().equals(username) || 
+            !serverConfig.getAdminPassword().equals(password)) {
+            return Map.of("success", false, "error", "Invalid username or password");
+        }
+        
+        String result = pluginService.uploadPlugin(file);
+        boolean success = !result.startsWith("Error");
+        return Map.of("success", success, "message", result);
+    }
+    
+    @PostMapping("/api/plugins/delete")
+    @ResponseBody
+    public Map<String, Object> deletePlugin(@RequestBody Map<String, String> payload) {
+        String username = payload.get("username");
+        String password = payload.get("password");
+        String filename = payload.get("filename");
+        
+        // Validate credentials
+        if (!serverConfig.getAdminUsername().equals(username) || 
+            !serverConfig.getAdminPassword().equals(password)) {
+            return Map.of("success", false, "error", "Invalid username or password");
+        }
+        
+        String result = pluginService.deletePlugin(filename);
+        boolean success = !result.startsWith("Error");
+        return Map.of("success", success, "message", result);
     }
 }
