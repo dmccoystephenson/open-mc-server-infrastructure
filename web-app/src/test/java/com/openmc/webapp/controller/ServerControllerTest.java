@@ -2,6 +2,7 @@ package com.openmc.webapp.controller;
 
 import com.openmc.webapp.config.ServerConfig;
 import com.openmc.webapp.service.ActivityTrackerService;
+import com.openmc.webapp.service.AlertNotificationService;
 import com.openmc.webapp.service.PluginService;
 import com.openmc.webapp.service.RconService;
 import org.junit.jupiter.api.BeforeEach;
@@ -22,6 +23,8 @@ import java.util.Map;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.times;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 import static org.hamcrest.Matchers.containsString;
@@ -44,6 +47,9 @@ class ServerControllerTest {
     
     @MockBean
     private PluginService pluginService;
+    
+    @MockBean
+    private AlertNotificationService alertNotificationService;
 
     private RconService.ServerStatus mockStatus;
 
@@ -123,6 +129,12 @@ class ServerControllerTest {
                         .content("{\"username\":\"admin\",\"password\":\"admin\",\"command\":\"list\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.result").exists());
+        
+        // Verify alert was sent
+        verify(alertNotificationService, times(1)).sendInfoAlert(
+            anyString(), 
+            anyString()
+        );
     }
 
     @Test
@@ -153,6 +165,12 @@ class ServerControllerTest {
                         .content("{\"username\":\"wrong\",\"password\":\"wrong\",\"command\":\"list\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.result").value(containsString("Invalid username or password")));
+        
+        // Verify warning alert was sent for failed authentication
+        verify(alertNotificationService, times(1)).sendWarningAlert(
+            anyString(), 
+            anyString()
+        );
     }
 
     @Test
@@ -220,6 +238,12 @@ class ServerControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.message").value(containsString("uploaded successfully")));
+        
+        // Verify alert was sent for successful upload
+        verify(alertNotificationService, times(1)).sendInfoAlert(
+            anyString(), 
+            anyString()
+        );
     }
     
     @Test
@@ -239,6 +263,12 @@ class ServerControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(false))
                 .andExpect(jsonPath("$.error").value(containsString("Invalid username or password")));
+        
+        // Verify warning alert was sent for failed authentication
+        verify(alertNotificationService, times(1)).sendWarningAlert(
+            anyString(), 
+            anyString()
+        );
     }
     
     @Test
@@ -252,6 +282,12 @@ class ServerControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.message").value(containsString("deleted successfully")));
+        
+        // Verify alert was sent for successful deletion
+        verify(alertNotificationService, times(1)).sendInfoAlert(
+            anyString(), 
+            anyString()
+        );
     }
     
     @Test
@@ -263,5 +299,11 @@ class ServerControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(false))
                 .andExpect(jsonPath("$.error").value(containsString("Invalid username or password")));
+        
+        // Verify warning alert was sent for failed authentication
+        verify(alertNotificationService, times(1)).sendWarningAlert(
+            anyString(), 
+            anyString()
+        );
     }
 }

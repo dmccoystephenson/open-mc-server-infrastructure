@@ -4,6 +4,7 @@ import com.openmc.webapp.config.ServerConfig;
 import com.openmc.webapp.model.ActivityTrackerStats;
 import com.openmc.webapp.model.LeaderboardEntry;
 import com.openmc.webapp.service.ActivityTrackerService;
+import com.openmc.webapp.service.AlertNotificationService;
 import com.openmc.webapp.service.PluginService;
 import com.openmc.webapp.service.RconService;
 import org.slf4j.Logger;
@@ -27,14 +28,17 @@ public class ServerController {
     private final ServerConfig serverConfig;
     private final ActivityTrackerService activityTrackerService;
     private final PluginService pluginService;
+    private final AlertNotificationService alertNotificationService;
     
     public ServerController(RconService rconService, ServerConfig serverConfig, 
                           ActivityTrackerService activityTrackerService,
-                          PluginService pluginService) {
+                          PluginService pluginService,
+                          AlertNotificationService alertNotificationService) {
         this.rconService = rconService;
         this.serverConfig = serverConfig;
         this.activityTrackerService = activityTrackerService;
         this.pluginService = pluginService;
+        this.alertNotificationService = alertNotificationService;
     }
     
     @GetMapping("/")
@@ -76,11 +80,18 @@ public class ServerController {
         
         // Validate credentials
         if (username == null || password == null) {
+            alertNotificationService.sendWarningAlert(
+                "Admin Authentication Failed",
+                "Failed authentication attempt - missing credentials"
+            );
             return Map.of("result", "Error: Username and password are required");
         }
         
-        if (!serverConfig.getAdminUsername().equals(username) || 
-            !serverConfig.getAdminPassword().equals(password)) {
+        if (!validateCredentials(username, password)) {
+            alertNotificationService.sendWarningAlert(
+                "Admin Authentication Failed",
+                String.format("Failed authentication attempt from user: %s", username)
+            );
             return Map.of("result", "Error: Invalid username or password");
         }
         
@@ -90,6 +101,13 @@ public class ServerController {
         }
         
         String result = rconService.sendCommand(command);
+        
+        // Send alert for successful command execution
+        alertNotificationService.sendInfoAlert(
+            "Server Command Executed",
+            String.format("User '%s' executed command: %s", username, command)
+        );
+        
         return Map.of("result", result);
     }
     
@@ -193,6 +211,10 @@ public class ServerController {
         
         // Validate credentials
         if (!validateCredentials(username, password)) {
+            alertNotificationService.sendWarningAlert(
+                "Plugin List Authentication Failed",
+                String.format("Failed authentication attempt from user: %s", username)
+            );
             return Map.of("success", false, "error", "Invalid username or password");
         }
         
@@ -216,11 +238,23 @@ public class ServerController {
         
         // Validate credentials
         if (!validateCredentials(username, password)) {
+            alertNotificationService.sendWarningAlert(
+                "Plugin Upload Authentication Failed",
+                String.format("Failed authentication attempt from user: %s", username)
+            );
             return Map.of("success", false, "error", "Invalid username or password");
         }
         
         String result = pluginService.uploadPlugin(file);
         boolean success = !result.startsWith("Error");
+        
+        if (success) {
+            alertNotificationService.sendInfoAlert(
+                "Plugin Uploaded Successfully",
+                String.format("User '%s' uploaded plugin: %s", username, file.getOriginalFilename())
+            );
+        }
+        
         return Map.of("success", success, "message", result);
     }
     
@@ -240,11 +274,23 @@ public class ServerController {
         
         // Validate credentials
         if (!validateCredentials(username, password)) {
+            alertNotificationService.sendWarningAlert(
+                "Plugin Delete Authentication Failed",
+                String.format("Failed authentication attempt from user: %s", username)
+            );
             return Map.of("success", false, "error", "Invalid username or password");
         }
         
         String result = pluginService.deletePlugin(filename);
         boolean success = !result.startsWith("Error");
+        
+        if (success) {
+            alertNotificationService.sendInfoAlert(
+                "Plugin Deleted Successfully",
+                String.format("User '%s' deleted plugin: %s", username, filename)
+            );
+        }
+        
         return Map.of("success", success, "message", result);
     }
 }
