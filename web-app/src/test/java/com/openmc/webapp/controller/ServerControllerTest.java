@@ -181,9 +181,9 @@ class ServerControllerTest {
         List<String> plugins = Arrays.asList("plugin1.jar", "plugin2.jar");
         when(pluginService.listPlugins()).thenReturn(plugins);
         
-        mockMvc.perform(get("/api/plugins/list")
-                        .param("username", "admin")
-                        .param("password", "admin"))
+        mockMvc.perform(post("/api/plugins/list")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"username\":\"admin\",\"password\":\"admin\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.plugins[0]").value("plugin1.jar"))
@@ -193,9 +193,9 @@ class ServerControllerTest {
     @Test
     @DisplayName("Should reject list plugins with invalid credentials")
     void shouldRejectListPluginsWithInvalidCredentials() throws Exception {
-        mockMvc.perform(get("/api/plugins/list")
-                        .param("username", "wrong")
-                        .param("password", "wrong"))
+        mockMvc.perform(post("/api/plugins/list")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"username\":\"wrong\",\"password\":\"wrong\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(false))
                 .andExpect(jsonPath("$.error").value(containsString("Invalid username or password")));

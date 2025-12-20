@@ -8,6 +8,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -15,6 +16,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import java.util.zip.ZipInputStream;
 
 @Service
 public class PluginService {
@@ -74,6 +76,11 @@ public class PluginService {
             return "Error: File must be a .jar file";
         }
         
+        // Validate JAR file structure
+        if (!isValidJarFile(file)) {
+            return "Error: File is not a valid JAR file";
+        }
+        
         // Sanitize filename to prevent directory traversal
         filename = new File(filename).getName();
         
@@ -106,6 +113,22 @@ public class PluginService {
     }
     
     /**
+     * Validates that the uploaded file is a valid JAR file by checking its structure
+     * @param file The file to validate
+     * @return true if valid JAR file, false otherwise
+     */
+    private boolean isValidJarFile(MultipartFile file) {
+        try (InputStream is = file.getInputStream();
+             ZipInputStream zis = new ZipInputStream(is)) {
+            // Try to read the first entry - if it fails, it's not a valid ZIP/JAR
+            return zis.getNextEntry() != null;
+        } catch (Exception e) {
+            logger.warn("File validation failed: {}", e.getMessage());
+            return false;
+        }
+    }
+    
+    /**
      * Delete a plugin file from the plugins directory
      * @param filename The name of the plugin file to delete
      * @return Success message or error message
@@ -115,35 +138,35 @@ public class PluginService {
             return "Error: Filename is required";
         }
         
-        // Sanitize filename to prevent directory traversal
-        filename = new File(filename).getName();
-        
         if (!filename.endsWith(".jar")) {
             return "Error: File must be a .jar file";
         }
         
         String pluginsDir = serverConfig.getPluginsDirectory();
-        Path pluginPath = Paths.get(pluginsDir).resolve(filename);
         
         try {
-            if (!Files.exists(pluginPath)) {
-                return "Error: Plugin file does not exist: " + filename;
-            }
+            // Resolve and normalize paths to prevent directory traversal
+            Path pluginsDirPath = Paths.get(pluginsDir).toAbsolutePath().normalize();
+            Path pluginPath = pluginsDirPath.resolve(filename).normalize();
             
-            if (!Files.isRegularFile(pluginPath)) {
-                return "Error: Not a regular file: " + filename;
-            }
-            
-            // Verify the file is in the plugins directory (prevent directory traversal)
-            Path normalizedPluginPath = pluginPath.normalize();
-            Path normalizedPluginsDir = Paths.get(pluginsDir).normalize();
-            if (!normalizedPluginPath.getParent().equals(normalizedPluginsDir)) {
+            // Ensure the resolved path is within the plugins directory
+            if (!pluginPath.startsWith(pluginsDirPath)) {
                 return "Error: Invalid file path";
             }
             
+            String sanitizedFilename = pluginPath.getFileName().toString();
+            
+            if (!Files.exists(pluginPath)) {
+                return "Error: Plugin file does not exist: " + sanitizedFilename;
+            }
+            
+            if (!Files.isRegularFile(pluginPath)) {
+                return "Error: Not a regular file: " + sanitizedFilename;
+            }
+            
             Files.delete(pluginPath);
-            logger.info("Plugin deleted successfully: {}", filename);
-            return "Plugin deleted successfully: " + filename;
+            logger.info("Plugin deleted successfully: {}", sanitizedFilename);
+            return "Plugin deleted successfully: " + sanitizedFilename;
             
         } catch (IOException e) {
             logger.error("Error deleting plugin: {}", filename, e);

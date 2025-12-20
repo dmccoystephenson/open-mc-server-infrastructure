@@ -7,10 +7,14 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.springframework.mock.web.MockMultipartFile;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.jar.JarOutputStream;
+import java.util.jar.Manifest;
+import java.util.zip.ZipEntry;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -28,6 +32,25 @@ class PluginServiceTest {
         serverConfig = new ServerConfig();
         serverConfig.setPluginsDirectory(tempDir.toString());
         pluginService = new PluginService(serverConfig);
+    }
+    
+    /**
+     * Creates a valid minimal JAR file content for testing
+     */
+    private byte[] createValidJarContent() throws IOException {
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        Manifest manifest = new Manifest();
+        manifest.getMainAttributes().putValue("Manifest-Version", "1.0");
+        
+        try (JarOutputStream jos = new JarOutputStream(baos, manifest)) {
+            // Add a simple entry
+            ZipEntry entry = new ZipEntry("test.txt");
+            jos.putNextEntry(entry);
+            jos.write("test".getBytes());
+            jos.closeEntry();
+        }
+        
+        return baos.toByteArray();
     }
     
     @Test
@@ -66,12 +89,12 @@ class PluginServiceTest {
     
     @Test
     @DisplayName("Should upload valid jar file")
-    void shouldUploadValidJarFile() {
+    void shouldUploadValidJarFile() throws IOException {
         MockMultipartFile file = new MockMultipartFile(
             "file", 
             "test-plugin.jar", 
             "application/java-archive", 
-            "test content".getBytes()
+            createValidJarContent()
         );
         
         String result = pluginService.uploadPlugin(file);
@@ -122,6 +145,22 @@ class PluginServiceTest {
     }
     
     @Test
+    @DisplayName("Should reject invalid JAR content")
+    void shouldRejectInvalidJarContent() {
+        MockMultipartFile file = new MockMultipartFile(
+            "file", 
+            "fake-plugin.jar", 
+            "application/java-archive", 
+            "not a valid jar file content".getBytes()
+        );
+        
+        String result = pluginService.uploadPlugin(file);
+        
+        assertTrue(result.startsWith("Error"));
+        assertTrue(result.contains("not a valid JAR file"));
+    }
+    
+    @Test
     @DisplayName("Should reject file that already exists")
     void shouldRejectFileThatAlreadyExists() throws IOException {
         // Create existing file
@@ -131,7 +170,7 @@ class PluginServiceTest {
             "file", 
             "existing.jar", 
             "application/java-archive", 
-            "test content".getBytes()
+            createValidJarContent()
         );
         
         String result = pluginService.uploadPlugin(file);
@@ -192,34 +231,35 @@ class PluginServiceTest {
     
     @Test
     @DisplayName("Should sanitize filename on upload to prevent directory traversal")
-    void shouldSanitizeFilenameOnUpload() {
+    void shouldSanitizeFilenameOnUpload() throws IOException {
         MockMultipartFile file = new MockMultipartFile(
             "file", 
             "../../../evil.jar", 
             "application/java-archive", 
-            "test content".getBytes()
+            createValidJarContent()
         );
         
         String result = pluginService.uploadPlugin(file);
         
-        // Should succeed and create file with sanitized name
+        // Filename gets sanitized to "evil.jar" and upload succeeds
         assertTrue(result.startsWith("Plugin uploaded successfully"));
         assertTrue(Files.exists(tempDir.resolve("evil.jar")));
-        assertFalse(Files.exists(tempDir.resolve("../../../evil.jar")));
+        // Verify the path was sanitized and file wasn't created outside plugins directory
+        assertFalse(Files.exists(tempDir.resolve("../../evil.jar")));
     }
     
     @Test
-    @DisplayName("Should sanitize filename on delete to prevent directory traversal")
-    void shouldSanitizeFilenameOnDelete() throws IOException {
+    @DisplayName("Should reject directory traversal attempt on delete")
+    void shouldRejectDirectoryTraversalOnDelete() throws IOException {
         // Create a test file in the temp directory
         Path pluginPath = tempDir.resolve("test.jar");
         Files.createFile(pluginPath);
         
-        // Try to delete using path traversal - it should be sanitized to "test.jar" and successfully delete the file
+        // Try to delete using path traversal - should be rejected
         String result = pluginService.deletePlugin("../test.jar");
         
-        // File should be deleted because "../test.jar" gets sanitized to "test.jar"
-        assertFalse(Files.exists(pluginPath));
-        assertTrue(result.startsWith("Plugin deleted successfully"));
+        // File should still exist because path traversal was rejected
+        assertTrue(Files.exists(pluginPath));
+        assertTrue(result.startsWith("Error"));
     }
 }

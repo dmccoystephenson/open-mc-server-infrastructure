@@ -386,11 +386,20 @@
             container.innerHTML = '<div class="empty-state">Loading plugins...</div>';
             
             try {
-                const response = await fetch(`/api/plugins/list?username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}`);
+                const response = await fetch('/api/plugins/list', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        username: username,
+                        password: password
+                    })
+                });
                 const data = await response.json();
                 
                 if (!data.success) {
-                    container.innerHTML = `<div class="empty-state" style="color: #ef4444;">${data.error}</div>`;
+                    container.innerHTML = `<div class="empty-state" style="color: #ef4444;">${escapeHtml(data.error)}</div>`;
                     return;
                 }
                 
@@ -418,7 +427,7 @@
                     });
                 });
             } catch (error) {
-                container.innerHTML = `<div class="empty-state" style="color: #ef4444;">Error: ${error.message}</div>`;
+                container.innerHTML = `<div class="empty-state" style="color: #ef4444;">Error: ${escapeHtml(error.message)}</div>`;
             }
         }
         

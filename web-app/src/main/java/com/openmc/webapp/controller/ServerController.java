@@ -13,8 +13,10 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.security.MessageDigest;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 @Controller
 public class ServerController {
@@ -166,12 +168,31 @@ public class ServerController {
         return Map.of("enabled", enabled);
     }
     
-    @GetMapping("/api/plugins/list")
+    /**
+     * Validates admin credentials using constant-time comparison to prevent timing attacks
+     */
+    private boolean validateCredentials(String username, String password) {
+        String adminUsername = serverConfig.getAdminUsername();
+        String adminPassword = serverConfig.getAdminPassword();
+        
+        // Check for null values
+        if (username == null || password == null || adminUsername == null || adminPassword == null) {
+            return false;
+        }
+        
+        // Use constant-time comparison to prevent timing attacks
+        return MessageDigest.isEqual(username.getBytes(), adminUsername.getBytes()) &&
+               MessageDigest.isEqual(password.getBytes(), adminPassword.getBytes());
+    }
+    
+    @PostMapping("/api/plugins/list")
     @ResponseBody
-    public Map<String, Object> listPlugins(@RequestParam String username, @RequestParam String password) {
+    public Map<String, Object> listPlugins(@RequestBody Map<String, String> payload) {
+        String username = payload.get("username");
+        String password = payload.get("password");
+        
         // Validate credentials
-        if (!serverConfig.getAdminUsername().equals(username) || 
-            !serverConfig.getAdminPassword().equals(password)) {
+        if (!validateCredentials(username, password)) {
             return Map.of("success", false, "error", "Invalid username or password");
         }
         
@@ -181,12 +202,20 @@ public class ServerController {
     
     @PostMapping("/api/plugins/upload")
     @ResponseBody
-    public Map<String, Object> uploadPlugin(@RequestParam String username, 
-                                           @RequestParam String password,
-                                           @RequestParam("file") MultipartFile file) {
+    public Map<String, Object> uploadPlugin(@RequestParam(required = false) String username, 
+                                           @RequestParam(required = false) String password,
+                                           @RequestParam(value = "file", required = false) MultipartFile file) {
+        // Validate required parameters
+        if (username == null || username.isEmpty() || password == null || password.isEmpty()) {
+            return Map.of("success", false, "error", "Missing username or password");
+        }
+        
+        if (file == null || file.isEmpty()) {
+            return Map.of("success", false, "error", "No file provided");
+        }
+        
         // Validate credentials
-        if (!serverConfig.getAdminUsername().equals(username) || 
-            !serverConfig.getAdminPassword().equals(password)) {
+        if (!validateCredentials(username, password)) {
             return Map.of("success", false, "error", "Invalid username or password");
         }
         
@@ -202,9 +231,15 @@ public class ServerController {
         String password = payload.get("password");
         String filename = payload.get("filename");
         
+        // Validate required parameters are present
+        if (username == null || username.isEmpty() || 
+            password == null || password.isEmpty() ||
+            filename == null || filename.isEmpty()) {
+            return Map.of("success", false, "error", "Missing required parameters");
+        }
+        
         // Validate credentials
-        if (!serverConfig.getAdminUsername().equals(username) || 
-            !serverConfig.getAdminPassword().equals(password)) {
+        if (!validateCredentials(username, password)) {
             return Map.of("success", false, "error", "Invalid username or password");
         }
         
