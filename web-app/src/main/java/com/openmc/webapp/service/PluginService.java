@@ -120,8 +120,19 @@ public class PluginService {
     private boolean isValidJarFile(MultipartFile file) {
         try (InputStream is = file.getInputStream();
              ZipInputStream zis = new ZipInputStream(is)) {
-            // Try to read the first entry - if it fails, it's not a valid ZIP/JAR
-            return zis.getNextEntry() != null;
+            // Check that it's a valid ZIP and look for JAR-specific structure
+            java.util.zip.ZipEntry entry;
+            boolean hasManifest = false;
+            
+            while ((entry = zis.getNextEntry()) != null) {
+                // Check for META-INF/MANIFEST.MF which is required for JAR files
+                if ("META-INF/MANIFEST.MF".equals(entry.getName())) {
+                    hasManifest = true;
+                    break;
+                }
+            }
+            
+            return hasManifest;
         } catch (Exception e) {
             logger.warn("File validation failed: {}", e.getMessage());
             return false;
@@ -142,6 +153,11 @@ public class PluginService {
             return "Error: File must be a .jar file";
         }
         
+        // Reject any filename containing path separators to prevent traversal
+        if (filename.contains("/") || filename.contains("\\") || filename.contains("..")) {
+            return "Error: Invalid filename";
+        }
+        
         String pluginsDir = serverConfig.getPluginsDirectory();
         
         try {
@@ -149,8 +165,8 @@ public class PluginService {
             Path pluginsDirPath = Paths.get(pluginsDir).toAbsolutePath().normalize();
             Path pluginPath = pluginsDirPath.resolve(filename).normalize();
             
-            // Ensure the resolved path is within the plugins directory
-            if (!pluginPath.startsWith(pluginsDirPath)) {
+            // Ensure the file is directly in the plugins directory (not in a subdirectory)
+            if (!pluginPath.getParent().equals(pluginsDirPath)) {
                 return "Error: Invalid file path";
             }
             
