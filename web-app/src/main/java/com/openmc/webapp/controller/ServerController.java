@@ -1,6 +1,10 @@
 package com.openmc.webapp.controller;
 
 import com.openmc.webapp.config.ServerConfig;
+import com.openmc.webapp.dto.PluginDeleteRequest;
+import com.openmc.webapp.dto.PluginListRequest;
+import com.openmc.webapp.dto.PluginListResponse;
+import com.openmc.webapp.dto.PluginOperationResponse;
 import com.openmc.webapp.model.ActivityTrackerStats;
 import com.openmc.webapp.model.LeaderboardEntry;
 import com.openmc.webapp.service.ActivityTrackerService;
@@ -205,35 +209,32 @@ public class ServerController {
     
     @PostMapping("/api/plugins/list")
     @ResponseBody
-    public Map<String, Object> listPlugins(@RequestBody Map<String, String> payload) {
-        String username = payload.get("username");
-        String password = payload.get("password");
-        
+    public PluginListResponse listPlugins(@RequestBody PluginListRequest request) {
         // Validate credentials
-        if (!validateCredentials(username, password)) {
+        if (!validateCredentials(request.getUsername(), request.getPassword())) {
             alertNotificationService.sendWarningAlert(
                 "Plugin List Authentication Failed",
                 "Failed authentication attempt for plugin list endpoint"
             );
-            return Map.of("success", false, "error", "Invalid username or password");
+            return PluginListResponse.error("Invalid username or password");
         }
         
         List<String> plugins = pluginService.listPlugins();
-        return Map.of("success", true, "plugins", plugins);
+        return PluginListResponse.success(plugins);
     }
     
     @PostMapping("/api/plugins/upload")
     @ResponseBody
-    public Map<String, Object> uploadPlugin(@RequestParam(required = false) String username, 
-                                           @RequestParam(required = false) String password,
-                                           @RequestParam(value = "file", required = false) MultipartFile file) {
+    public PluginOperationResponse uploadPlugin(@RequestParam(required = false) String username, 
+                                                @RequestParam(required = false) String password,
+                                                @RequestParam(value = "file", required = false) MultipartFile file) {
         // Validate required parameters
         if (username == null || username.isEmpty() || password == null || password.isEmpty()) {
-            return Map.of("success", false, "error", "Missing username or password");
+            return PluginOperationResponse.error("Missing username or password");
         }
         
         if (file == null || file.isEmpty()) {
-            return Map.of("success", false, "error", "No file provided");
+            return PluginOperationResponse.error("No file provided");
         }
         
         // Validate credentials
@@ -242,7 +243,7 @@ public class ServerController {
                 "Plugin Upload Authentication Failed",
                 "Failed authentication attempt for plugin upload endpoint"
             );
-            return Map.of("success", false, "error", "Invalid username or password");
+            return PluginOperationResponse.error("Invalid username or password");
         }
         
         String result = pluginService.uploadPlugin(file);
@@ -253,44 +254,42 @@ public class ServerController {
                 "Plugin Uploaded Successfully",
                 String.format("User '%s' uploaded plugin: %s", username, file.getOriginalFilename())
             );
+            return PluginOperationResponse.success(result);
+        } else {
+            return PluginOperationResponse.error(result);
         }
-        
-        return Map.of("success", success, "message", result);
     }
     
     @PostMapping("/api/plugins/delete")
     @ResponseBody
-    public Map<String, Object> deletePlugin(@RequestBody Map<String, String> payload) {
-        String username = payload.get("username");
-        String password = payload.get("password");
-        String filename = payload.get("filename");
-        
+    public PluginOperationResponse deletePlugin(@RequestBody PluginDeleteRequest request) {
         // Validate required parameters are present
-        if (username == null || username.isEmpty() || 
-            password == null || password.isEmpty() ||
-            filename == null || filename.isEmpty()) {
-            return Map.of("success", false, "error", "Missing required parameters");
+        if (request.getUsername() == null || request.getUsername().isEmpty() || 
+            request.getPassword() == null || request.getPassword().isEmpty() ||
+            request.getFilename() == null || request.getFilename().isEmpty()) {
+            return PluginOperationResponse.error("Missing required parameters");
         }
         
         // Validate credentials
-        if (!validateCredentials(username, password)) {
+        if (!validateCredentials(request.getUsername(), request.getPassword())) {
             alertNotificationService.sendWarningAlert(
                 "Plugin Delete Authentication Failed",
                 "Failed authentication attempt for plugin deletion endpoint"
             );
-            return Map.of("success", false, "error", "Invalid username or password");
+            return PluginOperationResponse.error("Invalid username or password");
         }
         
-        String result = pluginService.deletePlugin(filename);
+        String result = pluginService.deletePlugin(request.getFilename());
         boolean success = !result.startsWith("Error");
         
         if (success) {
             alertNotificationService.sendInfoAlert(
                 "Plugin Deleted Successfully",
-                String.format("User '%s' deleted plugin: %s", username, filename)
+                String.format("User '%s' deleted plugin: %s", request.getUsername(), request.getFilename())
             );
+            return PluginOperationResponse.success(result);
+        } else {
+            return PluginOperationResponse.error(result);
         }
-        
-        return Map.of("success", success, "message", result);
     }
 }
