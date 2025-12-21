@@ -23,6 +23,7 @@ public class ServerConfig {
     private String dashboardSubtitle = "Server Management & Information";
     private String dashboardPrimaryColor = "#667eea";
     private String dashboardSecondaryColor = "#764ba2";
+    private String pluginsDirectory = "/mcserver/plugins";
     
     // Getters and setters
     public String getHost() {
@@ -151,5 +152,13 @@ public class ServerConfig {
     
     public void setDashboardSecondaryColor(String dashboardSecondaryColor) {
         this.dashboardSecondaryColor = dashboardSecondaryColor;
+    }
+    
+    public String getPluginsDirectory() {
+        return pluginsDirectory;
+    }
+    
+    public void setPluginsDirectory(String pluginsDirectory) {
+        this.pluginsDirectory = pluginsDirectory;
     }
 }

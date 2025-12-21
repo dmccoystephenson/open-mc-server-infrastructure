@@ -159,6 +159,91 @@
         .command-output.show {
             display: block;
         }
+        
+        .plugins-list {
+            margin-top: 15px;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        
+        .plugin-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 15px;
+            border-bottom: 1px solid #e5e7eb;
+            background: white;
+        }
+        
+        .plugin-item:last-child {
+            border-bottom: none;
+        }
+        
+        .plugin-item:hover {
+            background: #f9fafb;
+        }
+        
+        .plugin-name {
+            font-family: 'Courier New', monospace;
+            color: #333;
+        }
+        
+        .btn-danger {
+            background: #ef4444;
+            color: white;
+            padding: 6px 12px;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            font-size: 0.9em;
+            font-weight: 600;
+        }
+        
+        .btn-danger:hover {
+            background: #dc2626;
+        }
+        
+        .file-input-wrapper {
+            position: relative;
+            overflow: hidden;
+            display: inline-block;
+        }
+        
+        .file-input-wrapper input[type=file] {
+            position: absolute;
+            left: -9999px;
+        }
+        
+        .file-input-label {
+            display: inline-block;
+            padding: 12px 24px;
+            cursor: pointer;
+            background: var(--gradient-bg);
+            color: white;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        
+        .file-input-label:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+        
+        .upload-section {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            margin-top: 15px;
+            flex-wrap: wrap;
+        }
+        
+        .empty-state {
+            padding: 40px 20px;
+            text-align: center;
+            color: #9ca3af;
+        }
     </style>
 </head>
 <body>
@@ -173,20 +258,28 @@
             <a href="/admin" class="active">Admin</a>
         </div>
         
+        <!-- Credentials Card -->
         <div class="card">
-            <h2>Admin Console</h2>
+            <h2>Authentication</h2>
+            <p style="color: #6b7280; margin-bottom: 15px;">Enter your admin credentials to access all admin features</p>
+            <input type="text" 
+                   id="usernameInput" 
+                   class="command-input" 
+                   placeholder="Admin username" 
+                   style="margin-bottom: 10px;"
+                   required>
+            <input type="password" 
+                   id="passwordInput" 
+                   class="command-input" 
+                   placeholder="Admin password" 
+                   required>
+        </div>
+        
+        <!-- Server Commands Card -->
+        <div class="card">
+            <h2>Server Commands</h2>
             <p style="color: #6b7280; margin-bottom: 15px;">Send commands to the server using RCON</p>
             <form class="command-form" onsubmit="sendCommand(event)">
-                <input type="text" 
-                       id="usernameInput" 
-                       class="command-input" 
-                       placeholder="Admin username" 
-                       required>
-                <input type="password" 
-                       id="passwordInput" 
-                       class="command-input" 
-                       placeholder="Admin password" 
-                       required>
                 <div class="command-row">
                     <input type="text" 
                            id="commandInput" 
@@ -198,22 +291,56 @@
             </form>
             <div id="commandOutput" class="command-output"></div>
         </div>
+        
+        <!-- Plugin Management Card -->
+        <div class="card">
+            <h2>Plugin Management</h2>
+            <p style="color: #6b7280; margin-bottom: 15px;">Upload and manage server plugins</p>
+            
+            <div class="upload-section">
+                <div class="file-input-wrapper">
+                    <label for="pluginFileInput" class="file-input-label">
+                        Choose Plugin File (.jar)
+                    </label>
+                    <input type="file" 
+                           id="pluginFileInput" 
+                           accept=".jar"
+                           onchange="updateFileName(this)">
+                </div>
+                <span id="selectedFileName" style="color: #6b7280;"></span>
+                <button onclick="uploadPlugin()" class="btn btn-primary">Upload Plugin</button>
+                <button onclick="refreshPlugins()" class="btn btn-primary">Refresh List</button>
+            </div>
+            
+            <div id="pluginsListContainer" style="margin-top: 20px;">
+                <div class="empty-state">Click "Refresh List" to load plugins</div>
+            </div>
+        </div>
     </div>
     
     <script>
+        function getCredentials() {
+            const username = document.getElementById('usernameInput').value.trim();
+            const password = document.getElementById('passwordInput').value.trim();
+            return { username, password };
+        }
+        
         async function sendCommand(event) {
             event.preventDefault();
             
-            const usernameInput = document.getElementById('usernameInput');
-            const passwordInput = document.getElementById('passwordInput');
             const commandInput = document.getElementById('commandInput');
             const output = document.getElementById('commandOutput');
             
-            const username = usernameInput.value.trim();
-            const password = passwordInput.value.trim();
+            const { username, password } = getCredentials();
             const command = commandInput.value.trim();
             
-            if (!username || !password || !command) return;
+            if (!username || !password) {
+                output.textContent = 'Error: Please enter username and password above';
+                output.classList.add('show');
+                return;
+            }
+            
+            if (!command) return;
             
             output.textContent = 'Sending command...';
             output.classList.add('show');
@@ -236,6 +363,157 @@
             } catch (error) {
                 output.textContent = 'Error: ' + error.message;
             }
+        }
+        
+        function updateFileName(input) {
+            const fileNameSpan = document.getElementById('selectedFileName');
+            if (input.files.length > 0) {
+                fileNameSpan.textContent = input.files[0].name;
+            } else {
+                fileNameSpan.textContent = '';
+            }
+        }
+        
+        async function refreshPlugins() {
+            const { username, password } = getCredentials();
+            
+            if (!username || !password) {
+                alert('Please enter username and password above');
+                return;
+            }
+            
+            const container = document.getElementById('pluginsListContainer');
+            container.innerHTML = '<div class="empty-state">Loading plugins...</div>';
+            
+            try {
+                const response = await fetch('/api/plugins/list', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        username: username,
+                        password: password
+                    })
+                });
+                const data = await response.json();
+                
+                if (!data.success) {
+                    container.innerHTML = `<div class="empty-state" style="color: #ef4444;">${escapeHtml(data.error)}</div>`;
+                    return;
+                }
+                
+                if (data.plugins.length === 0) {
+                    container.innerHTML = '<div class="empty-state">No plugins found</div>';
+                    return;
+                }
+                
+                let html = '<div class="plugins-list">';
+                data.plugins.forEach(plugin => {
+                    html += `
+                        <div class="plugin-item">
+                            <span class="plugin-name">${escapeHtml(plugin)}</span>
+                            <button class="btn-danger" data-plugin-name="${escapeHtml(plugin)}">Delete</button>
+                        </div>
+                    `;
+                });
+                html += '</div>';
+                container.innerHTML = html;
+                
+                // Add event listeners to delete buttons
+                container.querySelectorAll('.btn-danger').forEach(button => {
+                    button.addEventListener('click', function() {
+                        deletePlugin(this.getAttribute('data-plugin-name'));
+                    });
+                });
+            } catch (error) {
+                container.innerHTML = `<div class="empty-state" style="color: #ef4444;">Error: ${escapeHtml(error.message)}</div>`;
+            }
+        }
+        
+        async function uploadPlugin() {
+            const { username, password } = getCredentials();
+            
+            if (!username || !password) {
+                alert('Please enter username and password above');
+                return;
+            }
+            
+            const fileInput = document.getElementById('pluginFileInput');
+            if (!fileInput.files.length) {
+                alert('Please select a plugin file');
+                return;
+            }
+            
+            const formData = new FormData();
+            formData.append('username', username);
+            formData.append('password', password);
+            formData.append('file', fileInput.files[0]);
+            
+            try {
+                const response = await fetch('/api/plugins/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert(data.message);
+                    fileInput.value = '';
+                    document.getElementById('selectedFileName').textContent = '';
+                    refreshPlugins();
+                } else {
+                    alert(data.error || data.message);
+                }
+            } catch (error) {
+                alert('Error uploading plugin: ' + error.message);
+            }
+        }
+        
+        async function deletePlugin(filename) {
+            const safeFilename = escapeHtml(String(filename));
+            if (!confirm(`Are you sure you want to delete ${safeFilename}?`)) {
+                return;
+            }
+            
+            const { username, password } = getCredentials();
+            
+            if (!username || !password) {
+                alert('Please enter username and password above');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/plugins/delete', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        username: username,
+                        password: password,
+                        filename: filename
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert(data.message);
+                    refreshPlugins();
+                } else {
+                    alert(data.error || data.message);
+                }
+            } catch (error) {
+                alert('Error deleting plugin: ' + error.message);
+            }
+        }
+        
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
         }
     </script>
 </body>

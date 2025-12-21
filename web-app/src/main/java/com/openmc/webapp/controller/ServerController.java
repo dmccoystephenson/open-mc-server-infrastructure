@@ -1,18 +1,27 @@
 package com.openmc.webapp.controller;
 
 import com.openmc.webapp.config.ServerConfig;
+import com.openmc.webapp.dto.PluginDeleteRequest;
+import com.openmc.webapp.dto.PluginListRequest;
+import com.openmc.webapp.dto.PluginListResponse;
+import com.openmc.webapp.dto.PluginOperationResponse;
 import com.openmc.webapp.model.ActivityTrackerStats;
 import com.openmc.webapp.model.LeaderboardEntry;
 import com.openmc.webapp.service.ActivityTrackerService;
+import com.openmc.webapp.service.AlertNotificationService;
+import com.openmc.webapp.service.PluginService;
 import com.openmc.webapp.service.RconService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.security.MessageDigest;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 @Controller
 public class ServerController {
@@ -22,12 +31,18 @@ public class ServerController {
     private final RconService rconService;
     private final ServerConfig serverConfig;
     private final ActivityTrackerService activityTrackerService;
+    private final PluginService pluginService;
+    private final AlertNotificationService alertNotificationService;
     
     public ServerController(RconService rconService, ServerConfig serverConfig, 
-                          ActivityTrackerService activityTrackerService) {
+                          ActivityTrackerService activityTrackerService,
+                          PluginService pluginService,
+                          AlertNotificationService alertNotificationService) {
         this.rconService = rconService;
         this.serverConfig = serverConfig;
         this.activityTrackerService = activityTrackerService;
+        this.pluginService = pluginService;
+        this.alertNotificationService = alertNotificationService;
     }
     
     @GetMapping("/")
@@ -69,11 +84,18 @@ public class ServerController {
         
         // Validate credentials
         if (username == null || password == null) {
+            alertNotificationService.sendWarningAlert(
+                "Admin Authentication Failed",
+                "Failed authentication attempt - missing credentials"
+            );
             return Map.of("result", "Error: Username and password are required");
         }
         
-        if (!serverConfig.getAdminUsername().equals(username) || 
-            !serverConfig.getAdminPassword().equals(password)) {
+        if (!validateCredentials(username, password)) {
+            alertNotificationService.sendWarningAlert(
+                "Admin Authentication Failed",
+                "Failed authentication attempt for admin command endpoint"
+            );
             return Map.of("result", "Error: Invalid username or password");
         }
         
@@ -83,6 +105,13 @@ public class ServerController {
         }
         
         String result = rconService.sendCommand(command);
+        
+        // Send alert for successful command execution
+        alertNotificationService.sendInfoAlert(
+            "Server Command Executed",
+            String.format("User '%s' executed command: %s", username, command)
+        );
+        
         return Map.of("result", result);
     }
     
@@ -159,5 +188,108 @@ public class ServerController {
         boolean enabled = activityTrackerService.isEnabled();
         logger.debug("API request: /api/activity-tracker/enabled - returning: {}", enabled);
         return Map.of("enabled", enabled);
+    }
+    
+    /**
+     * Validates admin credentials using constant-time comparison to prevent timing attacks
+     */
+    private boolean validateCredentials(String username, String password) {
+        String adminUsername = serverConfig.getAdminUsername();
+        String adminPassword = serverConfig.getAdminPassword();
+        
+        // Check for null values
+        if (username == null || password == null || adminUsername == null || adminPassword == null) {
+            return false;
+        }
+        
+        // Use constant-time comparison to prevent timing attacks
+        return MessageDigest.isEqual(username.getBytes(), adminUsername.getBytes()) &&
+               MessageDigest.isEqual(password.getBytes(), adminPassword.getBytes());
+    }
+    
+    @PostMapping("/api/plugins/list")
+    @ResponseBody
+    public PluginListResponse listPlugins(@RequestBody PluginListRequest request) {
+        // Validate credentials
+        if (!validateCredentials(request.getUsername(), request.getPassword())) {
+            alertNotificationService.sendWarningAlert(
+                "Plugin List Authentication Failed",
+                "Failed authentication attempt for plugin list endpoint"
+            );
+            return PluginListResponse.error("Invalid username or password");
+        }
+        
+        List<String> plugins = pluginService.listPlugins();
+        return PluginListResponse.success(plugins);
+    }
+    
+    @PostMapping("/api/plugins/upload")
+    @ResponseBody
+    public PluginOperationResponse uploadPlugin(@RequestParam(required = false) String username, 
+                                                @RequestParam(required = false) String password,
+                                                @RequestParam(value = "file", required = false) MultipartFile file) {
+        // Validate required parameters
+        if (username == null || username.isEmpty() || password == null || password.isEmpty()) {
+            return PluginOperationResponse.error("Missing username or password");
+        }
+        
+        if (file == null || file.isEmpty()) {
+            return PluginOperationResponse.error("No file provided");
+        }
+        
+        // Validate credentials
+        if (!validateCredentials(username, password)) {
+            alertNotificationService.sendWarningAlert(
+                "Plugin Upload Authentication Failed",
+                "Failed authentication attempt for plugin upload endpoint"
+            );
+            return PluginOperationResponse.error("Invalid username or password");
+        }
+        
+        String result = pluginService.uploadPlugin(file);
+        boolean success = !result.startsWith("Error");
+        
+        if (success) {
+            alertNotificationService.sendInfoAlert(
+                "Plugin Uploaded Successfully",
+                String.format("User '%s' uploaded plugin: %s", username, file.getOriginalFilename())
+            );
+            return PluginOperationResponse.success(result);
+        } else {
+            return PluginOperationResponse.error(result);
+        }
+    }
+    
+    @PostMapping("/api/plugins/delete")
+    @ResponseBody
+    public PluginOperationResponse deletePlugin(@RequestBody PluginDeleteRequest request) {
+        // Validate required parameters are present
+        if (request.getUsername() == null || request.getUsername().isEmpty() || 
+            request.getPassword() == null || request.getPassword().isEmpty() ||
+            request.getFilename() == null || request.getFilename().isEmpty()) {
+            return PluginOperationResponse.error("Missing required parameters");
+        }
+        
+        // Validate credentials
+        if (!validateCredentials(request.getUsername(), request.getPassword())) {
+            alertNotificationService.sendWarningAlert(
+                "Plugin Delete Authentication Failed",
+                "Failed authentication attempt for plugin deletion endpoint"
+            );
+            return PluginOperationResponse.error("Invalid username or password");
+        }
+        
+        String result = pluginService.deletePlugin(request.getFilename());
+        boolean success = !result.startsWith("Error");
+        
+        if (success) {
+            alertNotificationService.sendInfoAlert(
+                "Plugin Deleted Successfully",
+                String.format("User '%s' deleted plugin: %s", request.getUsername(), request.getFilename())
+            );
+            return PluginOperationResponse.success(result);
+        } else {
+            return PluginOperationResponse.error(result);
+        }
     }
 }
