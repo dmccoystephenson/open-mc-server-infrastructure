@@ -283,4 +283,44 @@ class PluginServiceTest {
         assertTrue(Files.exists(pluginPath));
         assertTrue(result.startsWith("Error"));
     }
+    
+    @Test
+    @DisplayName("Should handle MultipartFile that fails on multiple getInputStream calls")
+    void shouldHandleMultipleInputStreamReads() throws IOException {
+        // Create a mock MultipartFile that simulates disk-backed behavior
+        // where getInputStream() can only be called once
+        final byte[] jarContent = createValidJarContent();
+        final boolean[] inputStreamCalled = {false};
+        
+        MockMultipartFile file = new MockMultipartFile(
+            "file", 
+            "disk-backed-plugin.jar", 
+            "application/java-archive", 
+            jarContent
+        ) {
+            @Override
+            public java.io.InputStream getInputStream() throws IOException {
+                // Simulate disk-backed file behavior where second call would fail
+                if (inputStreamCalled[0]) {
+                    throw new IOException("InputStream already consumed (simulating disk-backed file)");
+                }
+                inputStreamCalled[0] = true;
+                return super.getInputStream();
+            }
+        };
+        
+        // The fix ensures we only call getBytes() once, not getInputStream() multiple times
+        String result = pluginService.uploadPlugin(file);
+        
+        // Should succeed because the fix reads bytes once and reuses them
+        assertTrue(result.startsWith("Plugin uploaded successfully"), 
+            "Upload should succeed even with disk-backed file. Result: " + result);
+        assertTrue(Files.exists(tempDir.resolve("disk-backed-plugin.jar")),
+            "File should be saved to disk");
+        
+        // Verify the file content is correct
+        byte[] savedContent = Files.readAllBytes(tempDir.resolve("disk-backed-plugin.jar"));
+        assertArrayEquals(jarContent, savedContent,
+            "Saved file content should match original");
+    }
 }
