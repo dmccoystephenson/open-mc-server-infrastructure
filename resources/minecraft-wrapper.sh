@@ -190,14 +190,12 @@ graceful_shutdown() {
         log "No server process found or already terminated."
     fi
     
-    # Clean up output pipe and monitor process
-    [ -p "$SERVER_OUTPUT_PIPE" ] && rm -f "$SERVER_OUTPUT_PIPE"
+    # Clean up monitor process first, then pipes
     if [ -n "${MONITOR_PID:-}" ]; then
         kill "$MONITOR_PID" 2>/dev/null || true
         wait "$MONITOR_PID" 2>/dev/null || true
     fi
-    
-    # Clean up input FIFO
+    [ -p "$SERVER_OUTPUT_PIPE" ] && rm -f "$SERVER_OUTPUT_PIPE"
     [ -p "$INPUT_FIFO" ] && rm -f "$INPUT_FIFO"
     
     exit 0
@@ -270,11 +268,11 @@ send_alert "Minecraft Server Started" "The Minecraft server has started successf
 wait "$PID"
 EXIT_CODE=$?
 
-# Close the output pipe to stop the monitor process
-[ -p "$SERVER_OUTPUT_PIPE" ] && rm -f "$SERVER_OUTPUT_PIPE"
-
-# Wait for monitor process to exit
+# Wait for monitor process to exit (it will get EOF when pipe closes)
 wait "$MONITOR_PID" 2>/dev/null || true
+
+# Clean up pipes
+[ -p "$SERVER_OUTPUT_PIPE" ] && rm -f "$SERVER_OUTPUT_PIPE"
 
 # Clean up FIFO keeper
 kill "$FIFO_KEEPER_PID" 2>/dev/null || true
