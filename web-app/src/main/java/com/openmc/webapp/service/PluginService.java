@@ -6,9 +6,9 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -22,6 +22,9 @@ import java.util.zip.ZipInputStream;
 public class PluginService {
     
     private static final Logger logger = LoggerFactory.getLogger(PluginService.class);
+    
+    // Maximum file size for plugin upload (100MB) to prevent memory issues
+    private static final long MAX_FILE_SIZE = 100 * 1024 * 1024;
     
     private final ServerConfig serverConfig;
     
@@ -81,8 +84,23 @@ public class PluginService {
             return "Error: Invalid filename";
         }
         
-        // Validate JAR file structure
-        if (!isValidJarFile(file)) {
+        // Check file size to prevent memory issues
+        if (file.getSize() > MAX_FILE_SIZE) {
+            logger.warn("Plugin upload rejected: file too large ({} bytes, max {} bytes)", file.getSize(), MAX_FILE_SIZE);
+            return "Error: File size exceeds maximum allowed size (100MB)";
+        }
+        
+        // Read file bytes once to avoid multiple InputStream reads
+        byte[] fileBytes;
+        try {
+            fileBytes = file.getBytes();
+        } catch (IOException e) {
+            logger.error("Error reading file bytes: {}", filename, e);
+            return "Error: Unable to read file";
+        }
+        
+        // Validate JAR file structure using the byte array
+        if (!isValidJarFile(fileBytes)) {
             return "Error: File is not a valid JAR file";
         }
         
@@ -114,8 +132,8 @@ public class PluginService {
                 return "Error: Plugin file already exists. Please delete it first.";
             }
             
-            // Save the file
-            Files.copy(file.getInputStream(), targetPathNormalized);
+            // Save the file using the byte array
+            Files.write(targetPathNormalized, fileBytes);
             logger.info("Plugin uploaded successfully: {}", filename);
             return "Plugin uploaded successfully: " + filename;
             
@@ -127,12 +145,12 @@ public class PluginService {
     
     /**
      * Validates that the uploaded file is a valid JAR file by checking its structure
-     * @param file The file to validate
+     * @param fileBytes The file bytes to validate
      * @return true if valid JAR file, false otherwise
      */
-    private boolean isValidJarFile(MultipartFile file) {
-        try (InputStream is = file.getInputStream();
-             ZipInputStream zis = new ZipInputStream(is)) {
+    private boolean isValidJarFile(byte[] fileBytes) {
+        try (ByteArrayInputStream bais = new ByteArrayInputStream(fileBytes);
+             ZipInputStream zis = new ZipInputStream(bais)) {
             // Check that it's a valid ZIP and look for JAR-specific structure
             java.util.zip.ZipEntry entry;
             boolean hasManifest = false;
