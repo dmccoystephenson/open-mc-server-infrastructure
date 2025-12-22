@@ -61,6 +61,8 @@ Initiates a server upgrade to a new Minecraft version.
 
 ## Usage
 
+⚠️ **Security Warning**: The upgrade endpoint performs administrative actions (stops server, modifies `.env`, rebuilds Docker images, accesses Docker socket) and **must not be exposed publicly**. Ensure it is only reachable from a trusted admin network/interface. For production deployments, implement authentication (e.g., via Spring Security with API tokens or a reverse proxy with authentication).
+
 ### Using curl
 
 ```bash
@@ -207,12 +209,23 @@ Run tests with:
 
 ## Security Considerations
 
+⚠️ **Critical**: The upgrade-manager API provides administrative control over the server and must be properly secured.
+
 - The upgrade-manager requires access to:
   - Docker socket (for container management)
   - `.env` file (for version updates)
   - File system (for backup verification)
-- Ensure the API is not publicly exposed without authentication
-- Consider implementing authentication/authorization for production use
+- **The API must not be publicly exposed without authentication**
+- Anyone who can access the API endpoint can:
+  - Stop and restart the server
+  - Modify the `.env` configuration file
+  - Trigger Docker builds
+  - Indirectly access the Docker daemon
+- For production deployments:
+  - Implement authentication/authorization (e.g., Spring Security with API tokens)
+  - Use a reverse proxy with authentication
+  - Restrict network access to trusted admin networks only
+  - Consider using VPN or SSH tunneling for remote access
 
 ## Future Enhancements
 

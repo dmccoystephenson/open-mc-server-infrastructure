@@ -171,7 +171,8 @@ public class UpgradeService {
             
             // Update or add MINECRAFT_VERSION
             if (content.contains("MINECRAFT_VERSION=")) {
-                content = content.replaceFirst("MINECRAFT_VERSION=.*", "MINECRAFT_VERSION=" + newVersion);
+                // Use literal replacement to avoid regex special characters in version string
+                content = content.replaceFirst(Pattern.quote("MINECRAFT_VERSION=") + ".*", "MINECRAFT_VERSION=" + newVersion);
             } else {
                 content += "\nMINECRAFT_VERSION=" + newVersion + "\n";
             }
@@ -287,7 +288,10 @@ public class UpgradeService {
             if (exitCode != 0) {
                 throw new UpgradeException("Failed to stop server, exit code: " + exitCode);
             }
-        } catch (IOException | InterruptedException e) {
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new UpgradeException("Failed to execute down.sh", e);
+        } catch (IOException e) {
             throw new UpgradeException("Failed to execute down.sh", e);
         }
     }
@@ -312,7 +316,10 @@ public class UpgradeService {
             if (exitCode != 0) {
                 throw new UpgradeException("Failed to start server, exit code: " + exitCode);
             }
-        } catch (IOException | InterruptedException e) {
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new UpgradeException("Failed to execute up.sh", e);
+        } catch (IOException e) {
             throw new UpgradeException("Failed to execute up.sh", e);
         }
     }
@@ -348,7 +355,10 @@ public class UpgradeService {
             if (exitCode != 0) {
                 throw new UpgradeException("Docker build failed with exit code: " + exitCode);
             }
-        } catch (IOException | InterruptedException e) {
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new UpgradeException("Failed to rebuild Docker image", e);
+        } catch (IOException e) {
             throw new UpgradeException("Failed to rebuild Docker image", e);
         }
     }
@@ -373,7 +383,10 @@ public class UpgradeService {
                     log.info("  {}", line);
                 }
             }
-        } catch (InterruptedException | IOException e) {
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            log.warn("Could not retrieve startup logs", e);
+        } catch (IOException e) {
             log.warn("Could not retrieve startup logs", e);
         }
     }

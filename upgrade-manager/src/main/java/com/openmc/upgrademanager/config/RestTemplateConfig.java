@@ -8,7 +8,7 @@ import org.springframework.web.client.RestTemplate;
 import java.time.Duration;
 
 /**
- * Configuration for RestTemplate bean used for HTTP requests to alert-manager
+ * Configuration for RestTemplate bean used for HTTP requests to alert-manager and backup-manager APIs
  */
 @Configuration
 public class RestTemplateConfig {
