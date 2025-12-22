@@ -11,6 +11,7 @@ import org.springframework.web.client.RestTemplate;
 
 import java.io.BufferedReader;
 import java.io.IOException;
+import java.util.concurrent.TimeUnit;
 import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -275,7 +276,14 @@ public class UpgradeService {
             pb.redirectErrorStream(true);
             Process process = pb.start();
             
-            int exitCode = process.waitFor();
+            // Wait up to 2 minutes for graceful shutdown (includes 45s grace period)
+            boolean finished = process.waitFor(2, TimeUnit.MINUTES);
+            if (!finished) {
+                process.destroyForcibly();
+                throw new UpgradeException("Server stop timed out after 2 minutes");
+            }
+            
+            int exitCode = process.exitValue();
             if (exitCode != 0) {
                 throw new UpgradeException("Failed to stop server, exit code: " + exitCode);
             }
@@ -293,7 +301,14 @@ public class UpgradeService {
             pb.redirectErrorStream(true);
             Process process = pb.start();
             
-            int exitCode = process.waitFor();
+            // Wait up to 5 minutes for startup (docker compose up can take time)
+            boolean finished = process.waitFor(5, TimeUnit.MINUTES);
+            if (!finished) {
+                process.destroyForcibly();
+                throw new UpgradeException("Server start timed out after 5 minutes");
+            }
+            
+            int exitCode = process.exitValue();
             if (exitCode != 0) {
                 throw new UpgradeException("Failed to start server, exit code: " + exitCode);
             }
@@ -307,8 +322,9 @@ public class UpgradeService {
      */
     void rebuildDockerImage() throws UpgradeException {
         try {
+            // Build only the mcserver service to avoid rebuilding all services
             ProcessBuilder pb = new ProcessBuilder(
-                    "docker", "compose", "-f", dockerComposeFile, "build", "--no-cache"
+                    "docker", "compose", "-f", dockerComposeFile, "build", "--no-cache", "mcserver"
             );
             pb.redirectErrorStream(true);
             Process process = pb.start();
@@ -321,7 +337,14 @@ public class UpgradeService {
                 }
             }
 
-            int exitCode = process.waitFor();
+            // Wait up to 30 minutes for Docker build (Spigot compilation takes 10-15 minutes)
+            boolean finished = process.waitFor(30, TimeUnit.MINUTES);
+            if (!finished) {
+                process.destroyForcibly();
+                throw new UpgradeException("Docker build timed out after 30 minutes");
+            }
+            
+            int exitCode = process.exitValue();
             if (exitCode != 0) {
                 throw new UpgradeException("Docker build failed with exit code: " + exitCode);
             }

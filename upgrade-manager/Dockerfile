@@ -7,6 +7,7 @@ WORKDIR /build
 # Copy build files for dependency resolution
 COPY build.gradle .
 COPY settings.gradle .
+COPY gradle gradle/
 
 # Download dependencies (this layer will be cached unless build files change)
 RUN gradle dependencies --no-daemon || true
