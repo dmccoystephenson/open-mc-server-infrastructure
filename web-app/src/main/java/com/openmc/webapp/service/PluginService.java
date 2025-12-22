@@ -23,6 +23,9 @@ public class PluginService {
     
     private static final Logger logger = LoggerFactory.getLogger(PluginService.class);
     
+    // Maximum file size for plugin upload (100MB) to prevent memory issues
+    private static final long MAX_FILE_SIZE = 100 * 1024 * 1024;
+    
     private final ServerConfig serverConfig;
     
     public PluginService(ServerConfig serverConfig) {
@@ -79,6 +82,12 @@ public class PluginService {
         // Reject any filename containing path separators to prevent traversal
         if (filename.contains("/") || filename.contains("\\") || filename.contains("..")) {
             return "Error: Invalid filename";
+        }
+        
+        // Check file size to prevent memory issues
+        if (file.getSize() > MAX_FILE_SIZE) {
+            logger.warn("Plugin upload rejected: file too large ({} bytes, max {} bytes)", file.getSize(), MAX_FILE_SIZE);
+            return "Error: File size exceeds maximum allowed size (100MB)";
         }
         
         // Read file bytes once to avoid multiple InputStream reads

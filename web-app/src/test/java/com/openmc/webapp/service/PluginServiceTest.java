@@ -145,6 +145,28 @@ class PluginServiceTest {
     }
     
     @Test
+    @DisplayName("Should reject file that exceeds size limit")
+    void shouldRejectFileThatExceedsSizeLimit() {
+        // Create a mock file that reports a size larger than 100MB
+        MockMultipartFile file = new MockMultipartFile(
+            "file", 
+            "large-plugin.jar", 
+            "application/java-archive", 
+            new byte[100]  // actual content is small
+        ) {
+            @Override
+            public long getSize() {
+                return 101L * 1024 * 1024;  // Report 101MB
+            }
+        };
+        
+        String result = pluginService.uploadPlugin(file);
+        
+        assertTrue(result.startsWith("Error"));
+        assertTrue(result.contains("exceeds maximum allowed size"));
+    }
+    
+    @Test
     @DisplayName("Should reject invalid JAR content")
     void shouldRejectInvalidJarContent() {
         MockMultipartFile file = new MockMultipartFile(
