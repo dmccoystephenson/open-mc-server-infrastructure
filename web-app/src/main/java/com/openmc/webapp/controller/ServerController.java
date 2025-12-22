@@ -13,6 +13,7 @@ import com.openmc.webapp.service.PluginService;
 import com.openmc.webapp.service.RconService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
@@ -207,7 +208,7 @@ public class ServerController {
                MessageDigest.isEqual(password.getBytes(), adminPassword.getBytes());
     }
     
-    @PostMapping("/api/plugins/list")
+    @PostMapping(value = "/api/plugins/list", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
     public PluginListResponse listPlugins(@RequestBody PluginListRequest request) {
         // Validate credentials
@@ -223,7 +224,7 @@ public class ServerController {
         return PluginListResponse.success(plugins);
     }
     
-    @PostMapping("/api/plugins/upload")
+    @PostMapping(value = "/api/plugins/upload", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
     public PluginOperationResponse uploadPlugin(@RequestParam(required = false) String username, 
                                                 @RequestParam(required = false) String password,
@@ -260,7 +261,7 @@ public class ServerController {
         }
     }
     
-    @PostMapping("/api/plugins/delete")
+    @PostMapping(value = "/api/plugins/delete", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
     public PluginOperationResponse deletePlugin(@RequestBody PluginDeleteRequest request) {
         // Validate required parameters are present
