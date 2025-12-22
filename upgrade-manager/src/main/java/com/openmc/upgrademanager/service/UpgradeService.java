@@ -11,13 +11,13 @@ import org.springframework.web.client.RestTemplate;
 
 import java.io.BufferedReader;
 import java.io.IOException;
-import java.util.concurrent.TimeUnit;
 import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -173,7 +173,7 @@ public class UpgradeService {
             if (content.contains("MINECRAFT_VERSION=")) {
                 content = content.replaceFirst("MINECRAFT_VERSION=.*", "MINECRAFT_VERSION=" + newVersion);
             } else {
-                content = content + "\nMINECRAFT_VERSION=" + newVersion + "\n";
+                content += "\nMINECRAFT_VERSION=" + newVersion + "\n";
             }
             
             Files.writeString(envFile, content);
