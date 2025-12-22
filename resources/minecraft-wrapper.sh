@@ -3,6 +3,15 @@
 # Based on proven patterns from docker-mc-lifecycle.sh
 set -euo pipefail
 
+# Variables
+SERVER_JAR="$1"
+SERVER_DIR="$2" 
+JAVA_OPTS="$3"
+PID=""
+INPUT_FIFO="$SERVER_DIR/server_input"
+LAST_OVERLOAD_ALERT=0
+OVERLOAD_ALERT_COOLDOWN=300  # 5 minutes cooldown between overload alerts
+
 # Function: Log with timestamp - ensure visibility in Docker logs
 log() {
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] [WRAPPER] $1"
@@ -97,12 +106,38 @@ send_message() {
     fi
 }
 
-# Variables
-SERVER_JAR="$1"
-SERVER_DIR="$2" 
-JAVA_OPTS="$3"
-PID=""
-INPUT_FIFO="$SERVER_DIR/server_input"
+# Function: Monitor server output for overload messages
+# shellcheck disable=SC2317  # Function called from monitor_server_output
+check_for_overload() {
+    local line="$1"
+    
+    # Check if line contains "Can't keep up!" message
+    if echo "$line" | grep -q "Can't keep up!"; then
+        local current_time
+        current_time=$(date +%s)
+        
+        # Check if we're still in cooldown period
+        if [ $((current_time - LAST_OVERLOAD_ALERT)) -gt $OVERLOAD_ALERT_COOLDOWN ]; then
+            log "Detected server overload message: $line"
+            
+            # Extract the timing information if available
+            local timing_info=""
+            if echo "$line" | grep -q "Running.*behind"; then
+                timing_info=$(echo "$line" | grep -oP "Running \K.*(?= behind)" || echo "")
+            fi
+            
+            local alert_message="Server performance warning detected. The server may be overloaded."
+            if [ -n "$timing_info" ]; then
+                alert_message="Server is overloaded and running $timing_info behind schedule."
+            fi
+            
+            send_alert "Server Overloaded" "$alert_message" "WARNING" "ALERTS_SERVER_OVERLOAD"
+            LAST_OVERLOAD_ALERT=$current_time
+        else
+            log "Overload detected but suppressed due to cooldown period"
+        fi
+    fi
+}
 
 # Function: Graceful shutdown  
 # shellcheck disable=SC2317  # Function called via signal trap
@@ -189,7 +224,12 @@ FIFO_KEEPER_PID=$!
 # Start the Minecraft server and attach stdin to the named pipe
 log "Starting Minecraft server..."
 # shellcheck disable=SC2086  # Word splitting is intentional for JAVA_OPTS
-java $JAVA_OPTS -jar "$SERVER_JAR" nogui < "$INPUT_FIFO" &
+{
+    java $JAVA_OPTS -jar "$SERVER_JAR" nogui < "$INPUT_FIFO" 2>&1 | while IFS= read -r line; do
+        echo "$line"
+        check_for_overload "$line"
+    done
+} &
 PID=$!
 
 log "Minecraft server started with PID: $PID"
