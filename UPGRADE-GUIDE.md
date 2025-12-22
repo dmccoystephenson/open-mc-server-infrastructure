@@ -29,9 +29,42 @@ This guide provides a comprehensive process for upgrading your Minecraft server 
 
 ## Upgrade Process
 
-### Automated Upgrade (Recommended)
+### API-Based Upgrade (Recommended)
 
-For a streamlined upgrade experience, use the automated upgrade script that handles all steps:
+The **upgrade-manager** service provides a REST API for managing version upgrades programmatically:
+
+```bash
+# Using the convenience script
+./trigger-upgrade.sh 1.21.10
+
+# Or use curl directly
+curl -X POST http://localhost:8092/api/upgrades/trigger \
+  -H "Content-Type: application/json" \
+  -d '{"newVersion": "1.21.10"}'
+```
+
+**Benefits:**
+- Programmatic control via REST API
+- Automated backup creation via backup-manager
+- Alert notifications via alert-manager
+- Full JSON response with upgrade status
+- Container-isolated execution
+- Consistent with other infrastructure services
+
+The upgrade-manager will:
+1. ✅ Verify or create a backup via backup-manager API
+2. ✅ Stop the server gracefully using `down.sh`
+3. ✅ Update the `MINECRAFT_VERSION` in `.env` file
+4. ✅ Rebuild the Docker image with the new version
+5. ✅ Start the server using `up.sh`
+6. ✅ Monitor startup and show recent logs
+7. ✅ Send alerts to alert-manager at each step
+
+See [upgrade-manager/README.md](upgrade-manager/README.md) for detailed API documentation.
+
+### Interactive Shell Script Upgrade
+
+For an interactive upgrade experience, use the original shell script:
 
 ```bash
 ./upgrade.sh
@@ -46,8 +79,7 @@ The script will:
 6. ✅ Start the server and show initial logs
 
 **Benefits:**
-- Single command execution
-- Automatic backup management
+- Interactive prompts and confirmation
 - Interactive prompts with confirmation
 - Progress feedback at each step
 - Summary with backup location

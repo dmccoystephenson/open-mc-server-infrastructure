@@ -116,6 +116,35 @@ services:
       - ALERTS_BACKUP_SUCCESS=${ALERTS_BACKUP_SUCCESS:-true}
       - ALERTS_BACKUP_FAILURE=${ALERTS_BACKUP_FAILURE:-true}
 
+  upgrade-manager:
+    build:
+      context: ./upgrade-manager
+    image: open-mc-server-upgrade-manager
+    restart: always
+    container_name: ${UPGRADE_CONTAINER_NAME:-open-mc-upgrade-manager}
+    ports:
+      - "${UPGRADE_PORT:-8092}:8092"
+    volumes:
+      - ./.env:/.env
+      - ./up.sh:/scripts/up.sh:ro
+      - ./down.sh:/scripts/down.sh:ro
+      - ./backups:/backups:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ${PWD}:/docker-compose-path:ro
+    depends_on:
+      backup-manager:
+        condition: service_started
+      alert-manager:
+        condition: service_healthy
+    environment:
+      - ENV_FILE_PATH=/.env
+      - DOCKER_COMPOSE_FILE=/docker-compose-path/compose.yml
+      - CONTAINER_NAME=${CONTAINER_NAME:-open-mc-server}
+      # Alert configuration
+      - ALERTS_UPGRADE_START=${ALERTS_UPGRADE_START:-true}
+      - ALERTS_UPGRADE_COMPLETE=${ALERTS_UPGRADE_COMPLETE:-true}
+      - ALERTS_UPGRADE_FAILURE=${ALERTS_UPGRADE_FAILURE:-true}
+
   alert-manager:
     build:
       context: ./alert-manager

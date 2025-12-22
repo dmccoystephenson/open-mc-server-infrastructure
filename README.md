@@ -276,21 +276,42 @@ The `deposit-box` directory is shared between your host system and the container
 
 ## Updating
 
-### Automated Upgrade Script
+### Upgrade Manager API (Recommended)
 
-The easiest way to upgrade your Minecraft server to a new version:
+The server includes an **upgrade-manager** service that provides a REST API for managing version upgrades:
+
+```bash
+# Trigger an upgrade to version 1.21.10
+./trigger-upgrade.sh 1.21.10
+```
+
+Or use the API directly:
+
+```bash
+curl -X POST http://localhost:8092/api/upgrades/trigger \
+  -H "Content-Type: application/json" \
+  -d '{"newVersion": "1.21.10"}'
+```
+
+The upgrade-manager automates the entire upgrade process:
+- Ensures a backup exists (creates one if needed via backup-manager)
+- Stops the server gracefully
+- Updates configuration in `.env` file
+- Rebuilds Docker image with the new version
+- Starts the server
+- Sends notifications via alert-manager
+
+See [upgrade-manager/README.md](upgrade-manager/README.md) for detailed API documentation.
+
+### Legacy Shell Script
+
+The original `upgrade.sh` script is still available for manual upgrades:
 
 ```bash
 ./upgrade.sh
 ```
 
-This script automates the entire upgrade process:
-- Stops the server gracefully
-- Creates a timestamped backup automatically
-- Prompts for the new version
-- Updates configuration
-- Rebuilds with the new version
-- Starts the server
+This interactive script prompts for the new version and performs the same upgrade steps.
 
 ### Upgrade to a New Minecraft Version
 
