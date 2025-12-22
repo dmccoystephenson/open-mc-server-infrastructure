@@ -20,10 +20,10 @@ cat > "$TEST_DIR/test-overload.sh" << 'EOF'
 #!/bin/bash
 
 # Mock variables
-LAST_OVERLOAD_ALERT=0
 OVERLOAD_ALERT_COOLDOWN=300
 ALERTS_SERVER_OVERLOAD=true
 ALERT_MANAGER_URL="http://localhost:8090/api/alerts"
+OVERLOAD_ALERT_TIMESTAMP_FILE="/tmp/test-overload-timestamp"
 
 # Mock log function
 log() {
@@ -52,14 +52,21 @@ check_for_overload() {
         local current_time
         current_time=$(date +%s)
         
+        # Read last alert time from file (default to 0 if file doesn't exist)
+        local last_alert_time=0
+        if [ -f "$OVERLOAD_ALERT_TIMESTAMP_FILE" ]; then
+            last_alert_time=$(cat "$OVERLOAD_ALERT_TIMESTAMP_FILE")
+        fi
+        
         # Check if we're still in cooldown period
-        if [ $((current_time - LAST_OVERLOAD_ALERT)) -gt $OVERLOAD_ALERT_COOLDOWN ]; then
+        if [ $((current_time - last_alert_time)) -gt $OVERLOAD_ALERT_COOLDOWN ]; then
             log "Detected server overload message: $line"
             
-            # Extract the timing information if available
+            # Extract the timing information if available using portable sed
             local timing_info=""
             if echo "$line" | grep -q "Running.*behind"; then
-                timing_info=$(echo "$line" | grep -oP "Running \K.*(?= behind)" || echo "")
+                # Use sed to extract text between "Running " and " behind"
+                timing_info=$(echo "$line" | sed -n 's/.*Running \(.*\) behind.*/\1/p')
             fi
             
             local alert_message="Server performance warning detected. The server may be overloaded."
@@ -68,7 +75,9 @@ check_for_overload() {
             fi
             
             send_alert "Server Overloaded" "$alert_message" "WARNING" "ALERTS_SERVER_OVERLOAD"
-            LAST_OVERLOAD_ALERT=$current_time
+            
+            # Save current time to file for cooldown tracking
+            echo "$current_time" > "$OVERLOAD_ALERT_TIMESTAMP_FILE"
         else
             log "Overload detected but suppressed due to cooldown period"
         fi
@@ -79,6 +88,9 @@ check_for_overload() {
 export -f check_for_overload
 export -f log
 export -f send_alert
+
+# Clean up any existing timestamp file
+rm -f "$OVERLOAD_ALERT_TIMESTAMP_FILE"
 
 # Test cases
 echo "Test 1: Normal Minecraft server log line (no overload)"
@@ -100,6 +112,9 @@ echo "Test 4: Normal log line again (should not trigger)"
 echo "----------------------------------------"
 check_for_overload "[12:34:56] [Server thread/INFO]: Time elapsed: 100ms"
 echo ""
+
+# Clean up timestamp file
+rm -f "$OVERLOAD_ALERT_TIMESTAMP_FILE"
 
 EOF
 

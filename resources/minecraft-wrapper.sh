@@ -9,8 +9,8 @@ SERVER_DIR="$2"
 JAVA_OPTS="$3"
 PID=""
 INPUT_FIFO="$SERVER_DIR/server_input"
-LAST_OVERLOAD_ALERT=0
 OVERLOAD_ALERT_COOLDOWN=300  # 5 minutes cooldown between overload alerts
+OVERLOAD_ALERT_TIMESTAMP_FILE="$SERVER_DIR/.last_overload_alert"
 
 # Function: Log with timestamp - ensure visibility in Docker logs
 log() {
@@ -116,14 +116,21 @@ check_for_overload() {
         local current_time
         current_time=$(date +%s)
         
+        # Read last alert time from file (default to 0 if file doesn't exist)
+        local last_alert_time=0
+        if [ -f "$OVERLOAD_ALERT_TIMESTAMP_FILE" ]; then
+            last_alert_time=$(cat "$OVERLOAD_ALERT_TIMESTAMP_FILE")
+        fi
+        
         # Check if we're still in cooldown period
-        if [ $((current_time - LAST_OVERLOAD_ALERT)) -gt $OVERLOAD_ALERT_COOLDOWN ]; then
+        if [ $((current_time - last_alert_time)) -gt $OVERLOAD_ALERT_COOLDOWN ]; then
             log "Detected server overload message: $line"
             
-            # Extract the timing information if available
+            # Extract the timing information if available using portable sed
             local timing_info=""
             if echo "$line" | grep -q "Running.*behind"; then
-                timing_info=$(echo "$line" | grep -oP "Running \K.*(?= behind)" || echo "")
+                # Use sed to extract text between "Running " and " behind"
+                timing_info=$(echo "$line" | sed -n 's/.*Running \(.*\) behind.*/\1/p')
             fi
             
             local alert_message="Server performance warning detected. The server may be overloaded."
@@ -132,7 +139,9 @@ check_for_overload() {
             fi
             
             send_alert "Server Overloaded" "$alert_message" "WARNING" "ALERTS_SERVER_OVERLOAD"
-            LAST_OVERLOAD_ALERT=$current_time
+            
+            # Save current time to file for cooldown tracking
+            echo "$current_time" > "$OVERLOAD_ALERT_TIMESTAMP_FILE"
         else
             log "Overload detected but suppressed due to cooldown period"
         fi
@@ -190,6 +199,7 @@ graceful_shutdown() {
 # shellcheck disable=SC2317  # Function called via signal trap
 cleanup() {
     [ -p "$INPUT_FIFO" ] && rm -f "$INPUT_FIFO"
+    [ -f "$OVERLOAD_ALERT_TIMESTAMP_FILE" ] && rm -f "$OVERLOAD_ALERT_TIMESTAMP_FILE"
 }
 
 # Set up signal handlers
