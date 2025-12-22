@@ -190,7 +190,14 @@ graceful_shutdown() {
         log "No server process found or already terminated."
     fi
     
-    # Clean up FIFO
+    # Clean up output pipe and monitor process
+    [ -p "$SERVER_OUTPUT_PIPE" ] && rm -f "$SERVER_OUTPUT_PIPE"
+    if [ -n "${MONITOR_PID:-}" ]; then
+        kill "$MONITOR_PID" 2>/dev/null || true
+        wait "$MONITOR_PID" 2>/dev/null || true
+    fi
+    
+    # Clean up input FIFO
     [ -p "$INPUT_FIFO" ] && rm -f "$INPUT_FIFO"
     
     exit 0
@@ -201,7 +208,8 @@ graceful_shutdown() {
 cleanup() {
     [ -p "$INPUT_FIFO" ] && rm -f "$INPUT_FIFO"
     [ -p "$SERVER_OUTPUT_PIPE" ] && rm -f "$SERVER_OUTPUT_PIPE"
-    [ -f "$OVERLOAD_ALERT_TIMESTAMP_FILE" ] && rm -f "$OVERLOAD_ALERT_TIMESTAMP_FILE"
+    # Note: OVERLOAD_ALERT_TIMESTAMP_FILE is intentionally not removed
+    # to maintain cooldown state across server restarts
 }
 
 # Set up signal handlers
