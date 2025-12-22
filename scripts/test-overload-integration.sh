@@ -1,141 +1,135 @@
 #!/bin/bash
 # Integration test for server overload alert
-# This test simulates a Minecraft server log line with "Can't keep up!" and verifies the alert logic
+# This test verifies the overload detection logic and cooldown mechanism
 
 set -euo pipefail
+
+# Detect script directory and repository root
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 echo "=========================================="
 echo "Server Overload Alert - Integration Test"
 echo "=========================================="
 echo ""
 
-# Source the check_for_overload function from minecraft-wrapper.sh
-# First, we need to extract just the function we need
-
+# Set up test environment
 TEST_DIR="/tmp/overload-test-$$"
 mkdir -p "$TEST_DIR"
+cd "$TEST_DIR"
 
-# Create a test version of the function with dependencies
-cat > "$TEST_DIR/test-overload.sh" << 'EOF'
-#!/bin/bash
+# Mock variables and functions needed by check_for_overload
+export OVERLOAD_ALERT_COOLDOWN=5  # Use 5 seconds for testing
+export ALERTS_SERVER_OVERLOAD=true
+export ALERT_MANAGER_URL="http://localhost:8090/api/alerts"
+export OVERLOAD_ALERT_TIMESTAMP_FILE="$TEST_DIR/.last_overload_alert"
+export SERVER_DIR="$TEST_DIR"
 
-# Mock variables
-OVERLOAD_ALERT_COOLDOWN=300
-ALERTS_SERVER_OVERLOAD=true
-ALERT_MANAGER_URL="http://localhost:8090/api/alerts"
-OVERLOAD_ALERT_TIMESTAMP_FILE="/tmp/test-overload-timestamp"
+# Track alerts sent
+ALERT_COUNT=0
 
 # Mock log function
 log() {
     echo "[TEST-LOG] $1"
 }
+export -f log
 
-# Mock send_alert function that just logs
+# Mock send_alert function that tracks calls
 send_alert() {
     local title="$1"
     local message="$2"
     local level="${3:-INFO}"
     local alert_toggle="${4:-}"
     
-    echo "[TEST-ALERT] Title: $title"
-    echo "[TEST-ALERT] Message: $message"
-    echo "[TEST-ALERT] Level: $level"
-    echo "[TEST-ALERT] Toggle: $alert_toggle"
+    ALERT_COUNT=$((ALERT_COUNT + 1))
+    echo "[TEST-ALERT #$ALERT_COUNT] Title: $title"
+    echo "[TEST-ALERT #$ALERT_COUNT] Message: $message"
+    echo "[TEST-ALERT #$ALERT_COUNT] Level: $level"
+    echo "[TEST-ALERT #$ALERT_COUNT] Toggle: $alert_toggle"
 }
-
-# The actual function from minecraft-wrapper.sh
-check_for_overload() {
-    local line="$1"
-    
-    # Check if line contains "Can't keep up!" message
-    if echo "$line" | grep -q "Can't keep up!"; then
-        local current_time
-        current_time=$(date +%s)
-        
-        # Read last alert time from file (default to 0 if file doesn't exist)
-        local last_alert_time=0
-        if [ -f "$OVERLOAD_ALERT_TIMESTAMP_FILE" ]; then
-            last_alert_time=$(cat "$OVERLOAD_ALERT_TIMESTAMP_FILE")
-        fi
-        
-        # Check if we're still in cooldown period
-        if [ $((current_time - last_alert_time)) -gt $OVERLOAD_ALERT_COOLDOWN ]; then
-            log "Detected server overload message: $line"
-            
-            # Extract the timing information if available using portable sed
-            local timing_info=""
-            if echo "$line" | grep -q "Running.*behind"; then
-                # Use sed to extract text between "Running " and " behind"
-                timing_info=$(echo "$line" | sed -n 's/.*Running \(.*\) behind.*/\1/p')
-            fi
-            
-            local alert_message="Server performance warning detected. The server may be overloaded."
-            if [ -n "$timing_info" ]; then
-                alert_message="Server is overloaded and running $timing_info behind schedule."
-            fi
-            
-            send_alert "Server Overloaded" "$alert_message" "WARNING" "ALERTS_SERVER_OVERLOAD"
-            
-            # Save current time to file for cooldown tracking
-            echo "$current_time" > "$OVERLOAD_ALERT_TIMESTAMP_FILE"
-        else
-            log "Overload detected but suppressed due to cooldown period"
-        fi
-    fi
-}
-
-# Export the function so it can be called
-export -f check_for_overload
-export -f log
 export -f send_alert
 
-# Clean up any existing timestamp file
-rm -f "$OVERLOAD_ALERT_TIMESTAMP_FILE"
+# Extract and source the check_for_overload function from minecraft-wrapper.sh
+# Extract the function definition
+sed -n '/^check_for_overload() {$/,/^}$/p' "$REPO_ROOT/resources/minecraft-wrapper.sh" > "$TEST_DIR/check_for_overload.sh"
+
+# Source the extracted function
+# shellcheck source=/dev/null
+source "$TEST_DIR/check_for_overload.sh"
 
 # Test cases
-echo "Test 1: Normal Minecraft server log line (no overload)"
+echo "Test 1: Normal log line (should not trigger alert)"
 echo "----------------------------------------"
 check_for_overload "[12:34:56] [Server thread/INFO]: Player joined the game"
+if [ $ALERT_COUNT -eq 0 ]; then
+    echo "✓ No alert sent (correct)"
+else
+    echo "✗ Alert was sent when it shouldn't have been"
+    exit 1
+fi
 echo ""
 
-echo "Test 2: Can't keep up! message with timing info"
+echo "Test 2: First overload message with timing info (should trigger alert)"
 echo "----------------------------------------"
 check_for_overload "[12:34:56] [Server thread/WARN]: Can't keep up! Is the server overloaded? Running 3639ms or 72 ticks behind"
+if [ $ALERT_COUNT -eq 1 ]; then
+    echo "✓ Alert sent (correct)"
+else
+    echo "✗ Expected 1 alert, got $ALERT_COUNT"
+    exit 1
+fi
 echo ""
 
-echo "Test 3: Simple Can't keep up! message"
+echo "Test 3: Second overload message immediately after (should be suppressed by cooldown)"
 echo "----------------------------------------"
-check_for_overload "[12:34:56] [Server thread/WARN]: Can't keep up! Is the server overloaded?"
+check_for_overload "[12:34:57] [Server thread/WARN]: Can't keep up! Is the server overloaded? Running 2500ms or 50 ticks behind"
+if [ $ALERT_COUNT -eq 1 ]; then
+    echo "✓ Alert suppressed by cooldown (correct)"
+else
+    echo "✗ Expected 1 total alert, got $ALERT_COUNT"
+    exit 1
+fi
 echo ""
 
-echo "Test 4: Normal log line again (should not trigger)"
+echo "Test 4: Wait for cooldown period to expire..."
 echo "----------------------------------------"
-check_for_overload "[12:34:56] [Server thread/INFO]: Time elapsed: 100ms"
+echo "Waiting 6 seconds for cooldown to expire..."
+sleep 6
 echo ""
 
-# Clean up timestamp file
-rm -f "$OVERLOAD_ALERT_TIMESTAMP_FILE"
+echo "Test 5: Overload message after cooldown (should trigger alert)"
+echo "----------------------------------------"
+check_for_overload "[12:35:00] [Server thread/WARN]: Can't keep up! Is the server overloaded? Running 1500ms or 30 ticks behind"
+if [ $ALERT_COUNT -eq 2 ]; then
+    echo "✓ Alert sent after cooldown expired (correct)"
+else
+    echo "✗ Expected 2 total alerts, got $ALERT_COUNT"
+    exit 1
+fi
+echo ""
 
-EOF
-
-chmod +x "$TEST_DIR/test-overload.sh"
-
-# Run the test
-bash "$TEST_DIR/test-overload.sh"
+echo "Test 6: Normal log line again (should not trigger)"
+echo "----------------------------------------"
+check_for_overload "[12:35:01] [Server thread/INFO]: Time elapsed: 100ms"
+if [ $ALERT_COUNT -eq 2 ]; then
+    echo "✓ No alert sent (correct)"
+else
+    echo "✗ Expected 2 total alerts, got $ALERT_COUNT"
+    exit 1
+fi
+echo ""
 
 # Cleanup
+cd /
 rm -rf "$TEST_DIR"
 
-echo ""
 echo "=========================================="
-echo "Integration Test Complete ✓"
+echo "All Integration Tests Passed! ✓"
 echo "=========================================="
 echo ""
 echo "Summary:"
-echo "- Test 1: Normal log line did not trigger alert (correct)"
-echo "- Test 2: Overload message with timing triggered alert (correct)"
-echo "- Test 3: Simple overload message triggered alert (correct)"
-echo "- Test 4: Normal log line did not trigger alert (correct)"
-echo ""
-echo "The check_for_overload function correctly identifies and processes"
-echo "'Can't keep up!' messages from Minecraft server logs."
+echo "- Normal log lines do not trigger alerts"
+echo "- Overload messages trigger alerts with extracted timing info"
+echo "- Cooldown mechanism properly suppresses rapid alerts"
+echo "- Alerts resume after cooldown period expires"
+echo "- File-based cooldown tracking persists correctly"

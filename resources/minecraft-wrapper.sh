@@ -9,6 +9,7 @@ SERVER_DIR="$2"
 JAVA_OPTS="$3"
 PID=""
 INPUT_FIFO="$SERVER_DIR/server_input"
+SERVER_OUTPUT_PIPE="$SERVER_DIR/server_output"
 OVERLOAD_ALERT_COOLDOWN=300  # 5 minutes cooldown between overload alerts
 OVERLOAD_ALERT_TIMESTAMP_FILE="$SERVER_DIR/.last_overload_alert"
 
@@ -107,7 +108,7 @@ send_message() {
 }
 
 # Function: Monitor server output for overload messages
-# shellcheck disable=SC2317  # Function called from monitor_server_output
+# shellcheck disable=SC2317  # Function called from while-read loop monitoring server output
 check_for_overload() {
     local line="$1"
     
@@ -199,6 +200,7 @@ graceful_shutdown() {
 # shellcheck disable=SC2317  # Function called via signal trap
 cleanup() {
     [ -p "$INPUT_FIFO" ] && rm -f "$INPUT_FIFO"
+    [ -p "$SERVER_OUTPUT_PIPE" ] && rm -f "$SERVER_OUTPUT_PIPE"
     [ -f "$OVERLOAD_ALERT_TIMESTAMP_FILE" ] && rm -f "$OVERLOAD_ALERT_TIMESTAMP_FILE"
 }
 
@@ -233,16 +235,25 @@ FIFO_KEEPER_PID=$!
 
 # Start the Minecraft server and attach stdin to the named pipe
 log "Starting Minecraft server..."
-# shellcheck disable=SC2086  # Word splitting is intentional for JAVA_OPTS
+
+# Create a named pipe for server output monitoring
+mkfifo "$SERVER_OUTPUT_PIPE"
+
+# Start monitoring process in background
 {
-    java $JAVA_OPTS -jar "$SERVER_JAR" nogui < "$INPUT_FIFO" 2>&1 | while IFS= read -r line; do
+    while IFS= read -r line; do
         echo "$line"
         check_for_overload "$line"
-    done
+    done < "$SERVER_OUTPUT_PIPE"
 } &
+MONITOR_PID=$!
+
+# Start the Java server with output redirected to the monitoring pipe
+# shellcheck disable=SC2086  # Word splitting is intentional for JAVA_OPTS
+java $JAVA_OPTS -jar "$SERVER_JAR" nogui < "$INPUT_FIFO" > "$SERVER_OUTPUT_PIPE" 2>&1 &
 PID=$!
 
-log "Minecraft server started with PID: $PID"
+log "Minecraft server started with PID: $PID (monitor PID: $MONITOR_PID)"
 
 # Send alert that server has started
 send_alert "Minecraft Server Started" "The Minecraft server has started successfully." "INFO" "ALERTS_SERVER_START"
@@ -250,6 +261,12 @@ send_alert "Minecraft Server Started" "The Minecraft server has started successf
 # Wait until the server process finishes or a termination signal is received
 wait "$PID"
 EXIT_CODE=$?
+
+# Close the output pipe to stop the monitor process
+[ -p "$SERVER_OUTPUT_PIPE" ] && rm -f "$SERVER_OUTPUT_PIPE"
+
+# Wait for monitor process to exit
+wait "$MONITOR_PID" 2>/dev/null || true
 
 # Clean up FIFO keeper
 kill "$FIFO_KEEPER_PID" 2>/dev/null || true
