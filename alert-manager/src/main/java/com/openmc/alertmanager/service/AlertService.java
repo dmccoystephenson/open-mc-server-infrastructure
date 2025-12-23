@@ -17,11 +17,14 @@ public class AlertService {
 
     private final DiscordAlertService discordAlertService;
     private final MinecraftMessageService minecraftMessageService;
+    private final RateLimitService rateLimitService;
 
     public AlertService(DiscordAlertService discordAlertService, 
-                       MinecraftMessageService minecraftMessageService) {
+                       MinecraftMessageService minecraftMessageService,
+                       RateLimitService rateLimitService) {
         this.discordAlertService = discordAlertService;
         this.minecraftMessageService = minecraftMessageService;
+        this.rateLimitService = rateLimitService;
     }
 
     /**
@@ -42,6 +45,13 @@ public class AlertService {
         // Send to each requested destination
         for (AlertDestination destination : destinations) {
             try {
+                // Check rate limit for this destination
+                if (!rateLimitService.shouldAllowAlert(destination.name())) {
+                    log.warn("Alert rate limited for destination: {}. Skipping alert: {}", 
+                             destination, alert.getTitle());
+                    continue;
+                }
+                
                 switch (destination) {
                     case DISCORD:
                         discordAlertService.sendAlert(alert);

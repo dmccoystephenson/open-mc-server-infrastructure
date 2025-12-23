@@ -157,6 +157,11 @@ See [backup-manager/README.md](backup-manager/README.md) for detailed cron expre
 - `DISCORD_WEBHOOK_URL`: Discord webhook URL for sending notifications (optional)
 - `DISCORD_ENABLED`: Enable/disable Discord notifications (default: `false`)
 
+**Alert Rate Limiting** - Prevent alert flooding (e.g., during server crash loops):
+- `ALERT_RATE_LIMIT_ENABLED`: Enable/disable rate limiting (default: `true`)
+- `ALERT_RATE_LIMIT_MAX_ALERTS`: Maximum alerts per destination within time window (default: `10`)
+- `ALERT_RATE_LIMIT_WINDOW_SECONDS`: Time window for rate limiting in seconds (default: `60`)
+
 **Alert Toggles** - Fine-grained control over which events trigger alerts:
 - `ALERTS_SERVER_START`: Alert when server starts (default: `true`)
 - `ALERTS_SERVER_STOP`: Alert when server stops gracefully (default: `true`)

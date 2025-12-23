@@ -30,6 +30,9 @@ class AlertServiceTest {
     @MockBean
     private MinecraftMessageService minecraftMessageService;
 
+    @MockBean
+    private RateLimitService rateLimitService;
+
     private Alert testAlert;
 
     @BeforeEach
@@ -40,6 +43,9 @@ class AlertServiceTest {
             .level(AlertLevel.INFO)
             .source("test-module")
             .build();
+        
+        // By default, allow all alerts (no rate limiting)
+        when(rateLimitService.shouldAllowAlert(anyString())).thenReturn(true);
     }
 
     @Test
@@ -107,5 +113,56 @@ class AlertServiceTest {
         // Each level should be sent to all destinations (Discord + Minecraft)
         verify(discordAlertService, times(AlertLevel.values().length)).sendAlert(any());
         verify(minecraftMessageService, times(AlertLevel.values().length)).sendMessage(anyString());
+    }
+
+    @Test
+    @DisplayName("Should skip Discord when rate limited")
+    void shouldSkipDiscordWhenRateLimited() throws Exception {
+        // Simulate Discord being rate limited
+        when(rateLimitService.shouldAllowAlert("DISCORD")).thenReturn(false);
+        when(rateLimitService.shouldAllowAlert("MINECRAFT")).thenReturn(true);
+        
+        alertService.sendAlert(testAlert);
+        
+        // Discord should be skipped, but Minecraft should still be sent
+        verify(discordAlertService, never()).sendAlert(any());
+        verify(minecraftMessageService, times(1)).sendMessage(testAlert.getMessage());
+    }
+
+    @Test
+    @DisplayName("Should skip Minecraft when rate limited")
+    void shouldSkipMinecraftWhenRateLimited() throws Exception {
+        // Simulate Minecraft being rate limited
+        when(rateLimitService.shouldAllowAlert("DISCORD")).thenReturn(true);
+        when(rateLimitService.shouldAllowAlert("MINECRAFT")).thenReturn(false);
+        
+        alertService.sendAlert(testAlert);
+        
+        // Discord should be sent, but Minecraft should be skipped
+        verify(discordAlertService, times(1)).sendAlert(testAlert);
+        verify(minecraftMessageService, never()).sendMessage(anyString());
+    }
+
+    @Test
+    @DisplayName("Should skip all destinations when rate limited")
+    void shouldSkipAllDestinationsWhenRateLimited() throws Exception {
+        // Simulate all destinations being rate limited
+        when(rateLimitService.shouldAllowAlert(anyString())).thenReturn(false);
+        
+        alertService.sendAlert(testAlert);
+        
+        // Nothing should be sent
+        verify(discordAlertService, never()).sendAlert(any());
+        verify(minecraftMessageService, never()).sendMessage(anyString());
+    }
+
+    @Test
+    @DisplayName("Should check rate limit for each destination")
+    void shouldCheckRateLimitForEachDestination() throws Exception {
+        alertService.sendAlert(testAlert);
+        
+        // Should check rate limit for both destinations
+        verify(rateLimitService, times(1)).shouldAllowAlert("DISCORD");
+        verify(rateLimitService, times(1)).shouldAllowAlert("MINECRAFT");
     }
 }

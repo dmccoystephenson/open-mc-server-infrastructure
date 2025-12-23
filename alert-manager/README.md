@@ -6,6 +6,7 @@ An alert notification system for the Minecraft server infrastructure. This Sprin
 
 - **Discord Notifications**: Send alerts to Discord channels via webhooks
 - **Multiple Alert Levels**: Support for INFO, WARNING, ERROR, and CRITICAL alert levels
+- **Rate Limiting**: Prevent alert flooding with configurable rate limits per destination
 - **REST API**: Easy integration with other modules via HTTP endpoints
 - **Containerized**: Runs in its own Docker container for isolation
 - **Extensible**: Designed to support additional notification destinations (Slack, Email, SMS, etc.)
@@ -24,6 +25,13 @@ The following environment variables can be configured in `.env`:
 - `MINECRAFT_RCON_PORT`: Minecraft server RCON port (default: `25575`)
 - `MINECRAFT_RCON_PASSWORD`: Password for Minecraft RCON (default: uses `RCON_PASSWORD` from compose.yml)
 - `MINECRAFT_RCON_ENABLED`: Enable/disable Minecraft message sending (default: `true`)
+
+**Rate Limiting Configuration:**
+- `ALERT_RATE_LIMIT_ENABLED`: Enable/disable rate limiting (default: `true`)
+- `ALERT_RATE_LIMIT_MAX_ALERTS`: Maximum number of alerts per destination within the time window (default: `10`)
+- `ALERT_RATE_LIMIT_WINDOW_SECONDS`: Time window in seconds for counting alerts (default: `60`)
+
+Rate limiting helps prevent alert flooding, especially useful when the server gets into a crash loop. Each alert destination (Discord, Minecraft) is rate limited independently.
 
 ### Discord Webhook Setup
 
@@ -173,6 +181,18 @@ The alert-manager is designed to be extensible. Future versions may include:
 2. Check Discord server permissions
 3. Ensure the webhook hasn't been deleted
 4. Check for rate limiting in the logs
+
+### Alerts Being Rate Limited
+
+If you see "Alert rate limited" warnings in the logs:
+
+1. Check the rate limit configuration in `.env`:
+   - `ALERT_RATE_LIMIT_ENABLED`: Set to `false` to disable rate limiting
+   - `ALERT_RATE_LIMIT_MAX_ALERTS`: Increase the maximum number of alerts allowed
+   - `ALERT_RATE_LIMIT_WINDOW_SECONDS`: Increase the time window
+2. Investigate the root cause of excessive alerts (e.g., server crash loop)
+3. Consider fixing the underlying issue rather than just increasing rate limits
+4. Rate limits reset automatically after the time window expires
 
 ### Can't Connect to Alert Manager API
 
