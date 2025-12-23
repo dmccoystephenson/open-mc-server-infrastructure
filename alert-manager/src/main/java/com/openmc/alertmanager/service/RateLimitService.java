@@ -6,6 +6,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
+import java.util.ArrayDeque;
+import java.util.Deque;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
@@ -128,7 +130,7 @@ public class RateLimitService {
      * Inner class to track alerts within a time window using a Deque for efficient removal
      */
     private static class AlertWindow {
-        private final java.util.Deque<Instant> timestamps = new java.util.ArrayDeque<>();
+        private final Deque<Instant> timestamps = new ArrayDeque<>();
 
         public void addAlert(Instant timestamp) {
             timestamps.addLast(timestamp);
