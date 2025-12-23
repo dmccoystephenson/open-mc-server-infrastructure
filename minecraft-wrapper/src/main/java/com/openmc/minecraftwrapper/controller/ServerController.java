@@ -37,7 +37,7 @@ public class ServerController {
             return ResponseEntity.badRequest().body("Server is not running");
         } catch (IOException e) {
             log.error("Failed to send command", e);
-            return ResponseEntity.internalServerError().body("Failed to send command: " + e.getMessage());
+            return ResponseEntity.internalServerError().body("Failed to send command");
         }
     }
 
@@ -49,7 +49,7 @@ public class ServerController {
             return ResponseEntity.ok("Shutdown initiated");
         } catch (Exception e) {
             log.error("Failed to shutdown server", e);
-            return ResponseEntity.internalServerError().body("Failed to shutdown: " + e.getMessage());
+            return ResponseEntity.internalServerError().body("Failed to shutdown server");
         }
     }
 }
