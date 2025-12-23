@@ -101,11 +101,13 @@ The upgrade-manager is configured through environment variables in the `.env` fi
 The upgrade manager follows these steps:
 
 1. **Backup Verification**: Checks for existing backup or creates a new one via backup-manager API
-2. **Server Shutdown**: Gracefully stops the Minecraft server
+2. **Server Shutdown**: Gracefully stops the Minecraft server using `docker compose stop mcserver`
 3. **Version Update**: Updates `MINECRAFT_VERSION` in `.env` file
 4. **Docker Rebuild**: Rebuilds the Docker image with the new Minecraft version
-5. **Server Startup**: Starts the server with the new version
+5. **Server Startup**: Starts the server with the new version using `docker compose start mcserver`
 6. **Monitoring**: Checks server logs to verify successful startup
+
+**Note**: The upgrade process uses `docker compose stop/start` commands to control only the mcserver service, ensuring that other services (including upgrade-manager itself) remain running during the upgrade.
 
 ## Integration with Other Services
 

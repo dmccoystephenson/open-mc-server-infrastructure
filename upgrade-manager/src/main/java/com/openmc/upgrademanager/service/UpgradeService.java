@@ -269,13 +269,25 @@ public class UpgradeService {
     }
 
     /**
-     * Stop the server using down.sh script
+     * Stop the server using docker compose stop command
      */
     void stopServer() throws UpgradeException {
         try {
-            ProcessBuilder pb = new ProcessBuilder("/scripts/down.sh");
+            // Use docker compose stop to stop only the mcserver service
+            // This avoids shutting down the upgrade-manager itself
+            ProcessBuilder pb = new ProcessBuilder(
+                    "docker", "compose", "-f", dockerComposeFile, "stop", "mcserver"
+            );
             pb.redirectErrorStream(true);
             Process process = pb.start();
+            
+            // Capture output for debugging
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    log.debug("docker compose stop: {}", line);
+                }
+            }
             
             // Wait up to 2 minutes for graceful shutdown (includes 45s grace period)
             boolean finished = process.waitFor(2, TimeUnit.MINUTES);
@@ -290,22 +302,34 @@ public class UpgradeService {
             }
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            throw new UpgradeException("Failed to execute down.sh", e);
+            throw new UpgradeException("Failed to execute docker compose stop", e);
         } catch (IOException e) {
-            throw new UpgradeException("Failed to execute down.sh", e);
+            throw new UpgradeException("Failed to execute docker compose stop", e);
         }
     }
 
     /**
-     * Start the server using up.sh script
+     * Start the server using docker compose start command
      */
     void startServer() throws UpgradeException {
         try {
-            ProcessBuilder pb = new ProcessBuilder("/scripts/up.sh");
+            // Use docker compose start to start only the mcserver service
+            // This avoids restarting all services
+            ProcessBuilder pb = new ProcessBuilder(
+                    "docker", "compose", "-f", dockerComposeFile, "start", "mcserver"
+            );
             pb.redirectErrorStream(true);
             Process process = pb.start();
             
-            // Wait up to 5 minutes for startup (docker compose up can take time)
+            // Capture output for debugging
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    log.debug("docker compose start: {}", line);
+                }
+            }
+            
+            // Wait up to 5 minutes for startup
             boolean finished = process.waitFor(5, TimeUnit.MINUTES);
             if (!finished) {
                 process.destroyForcibly();
@@ -318,9 +342,9 @@ public class UpgradeService {
             }
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            throw new UpgradeException("Failed to execute up.sh", e);
+            throw new UpgradeException("Failed to execute docker compose start", e);
         } catch (IOException e) {
-            throw new UpgradeException("Failed to execute up.sh", e);
+            throw new UpgradeException("Failed to execute docker compose start", e);
         }
     }
 
