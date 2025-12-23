@@ -138,6 +138,33 @@ services:
       - MINECRAFT_RCON_PASSWORD=${RCON_PASSWORD:-minecraft}
       - MINECRAFT_RCON_ENABLED=${MINECRAFT_RCON_ENABLED:-true}
 
+  # Minecraft Wrapper Service (Optional)
+  # Uncomment this service to deploy the Spring Boot wrapper alongside the bash script.
+  # This provides REST API access to wrapper functionality and enables unit-tested server management.
+  # Note: Set MINECRAFT_AUTO_START=false if using this alongside the bash wrapper to avoid conflicts.
+  #
+  # minecraft-wrapper:
+  #   build:
+  #     context: ./minecraft-wrapper
+  #   image: open-mc-server-minecraft-wrapper
+  #   restart: always
+  #   container_name: ${WRAPPER_CONTAINER_NAME:-open-mc-wrapper}
+  #   ports:
+  #     - "${WRAPPER_PORT:-8092}:8092"
+  #   volumes:
+  #     - mcserver:/mcserver
+  #   depends_on:
+  #     alert-manager:
+  #       condition: service_healthy
+  #   environment:
+  #     - MINECRAFT_VERSION=${MINECRAFT_VERSION}
+  #     - MINECRAFT_AUTO_START=${MINECRAFT_WRAPPER_AUTO_START:-false}
+  #     - JAVA_OPTS=${JAVA_OPTS}
+  #     - ALERT_MANAGER_URL=${ALERT_MANAGER_URL:-http://alert-manager:8090/api/alerts}
+  #     - ALERTS_SERVER_START=${ALERTS_SERVER_START:-true}
+  #     - ALERTS_SERVER_STOP=${ALERTS_SERVER_STOP:-true}
+  #     - ALERTS_SERVER_CRASH=${ALERTS_SERVER_CRASH:-true}
+
 volumes:
   mcserver:
     name: ${VOLUME_NAME:-mcserver}

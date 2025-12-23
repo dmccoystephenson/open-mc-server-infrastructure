@@ -347,6 +347,40 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Development
 
+### Modules
+
+The infrastructure consists of several Spring Boot modules:
+
+#### Alert Manager
+Handles alert notifications to Discord and sends messages to Minecraft players via RCON.
+- **Port**: 8090
+- **Location**: `alert-manager/`
+- **Documentation**: [alert-manager/README.md](alert-manager/README.md)
+
+#### Backup Manager  
+Automated backup service with scheduling and size management.
+- **Port**: 8091
+- **Location**: `backup-manager/`
+- **Documentation**: [backup-manager/README.md](backup-manager/README.md)
+
+#### Minecraft Wrapper (New)
+Spring Boot service providing testable, REST-accessible wrapper functionality for Minecraft server management.
+- **Port**: 8092 (when enabled)
+- **Location**: `minecraft-wrapper/`
+- **Documentation**: [minecraft-wrapper/README.md](minecraft-wrapper/README.md)
+- **Features**:
+  - Unit-tested server lifecycle management (15 tests)
+  - REST API for server status, commands, and messaging
+  - Graceful shutdown with player warnings
+  - Alert integration
+
+**Note**: The minecraft-wrapper module is optional. The default setup uses a bash wrapper script (`resources/minecraft-wrapper.sh`). The Spring Boot module provides the same functionality with added benefits of unit tests and REST API access. See the minecraft-wrapper README for deployment options.
+
+#### Web App
+Spring Boot web dashboard for server management and monitoring.
+- **Port**: 8080 (behind nginx proxy on 8443)
+- **Location**: `web-app/`
+
 ### CI/CD Pipeline
 
 This repository includes a comprehensive CI pipeline that automatically validates:
