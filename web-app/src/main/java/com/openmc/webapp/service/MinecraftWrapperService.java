@@ -39,7 +39,7 @@ public class MinecraftWrapperService {
 
     /**
      * Get the current server status from the wrapper
-     * @return Server status information
+     * @return Server status information, or null if not available
      */
     public ServerStatus getServerStatus() {
         try {
@@ -49,7 +49,7 @@ public class MinecraftWrapperService {
             ResponseEntity<ServerStatus> response = restTemplate.getForEntity(url, ServerStatus.class);
             return response.getBody();
         } catch (Exception e) {
-            log.error("Failed to get server status from wrapper: {}", e.getMessage());
+            log.warn("Failed to get server status from wrapper: {}", e.getMessage());
             return null;
         }
     }
@@ -125,12 +125,7 @@ public class MinecraftWrapperService {
      * @return true if wrapper is reachable
      */
     public boolean isAvailable() {
-        try {
-            ServerStatus status = getServerStatus();
-            return status != null;
-        } catch (Exception e) {
-            return false;
-        }
+        return getServerStatus() != null;
     }
 
     /**
