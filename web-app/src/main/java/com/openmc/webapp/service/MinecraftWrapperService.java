@@ -1,7 +1,7 @@
 package com.openmc.webapp.service;
 
-import lombok.Data;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.web.client.RestTemplateBuilder;
@@ -19,10 +19,11 @@ import java.util.Map;
 /**
  * Service for interacting with the Minecraft Wrapper REST API
  */
-@Slf4j
 @Service
 @ConditionalOnProperty(name = "minecraft.wrapper.enabled", havingValue = "true", matchIfMissing = true)
 public class MinecraftWrapperService {
+
+    private static final Logger log = LoggerFactory.getLogger(MinecraftWrapperService.class);
 
     @Value("${minecraft.wrapper.url:http://minecraft-wrapper:8092}")
     private String wrapperUrl;
@@ -132,11 +133,48 @@ public class MinecraftWrapperService {
         }
     }
 
-    @Data
+    /**
+     * Server status data class
+     */
     public static class ServerStatus {
         private boolean running;
         private Long pid;
         private String serverJar;
         private String serverDirectory;
+
+        public ServerStatus() {
+        }
+
+        public boolean isRunning() {
+            return running;
+        }
+
+        public void setRunning(boolean running) {
+            this.running = running;
+        }
+
+        public Long getPid() {
+            return pid;
+        }
+
+        public void setPid(Long pid) {
+            this.pid = pid;
+        }
+
+        public String getServerJar() {
+            return serverJar;
+        }
+
+        public void setServerJar(String serverJar) {
+            this.serverJar = serverJar;
+        }
+
+        public String getServerDirectory() {
+            return serverDirectory;
+        }
+
+        public void setServerDirectory(String serverDirectory) {
+            this.serverDirectory = serverDirectory;
+        }
     }
 }
