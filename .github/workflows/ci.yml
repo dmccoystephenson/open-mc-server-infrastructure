@@ -37,7 +37,7 @@ jobs:
         bash -n resources/post-create.sh
         
         echo "🔍 Running ShellCheck linter..."
-        shellcheck up.sh down.sh upgrade.sh trigger-backup.sh resources/*.sh scripts/*.sh
+        shellcheck up.sh down.sh upgrade.sh trigger-backup.sh resources/post-create.sh scripts/*.sh
         
     - name: Validate Docker configuration
       run: |
