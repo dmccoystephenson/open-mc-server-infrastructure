@@ -216,6 +216,13 @@ EOF
 start_server() {
     log "Starting server with Spring Boot wrapper..."
     local wrapper_jar="${MINECRAFT_WRAPPER_JAR:-/app/minecraft-wrapper.jar}"
+    
+    # Verify wrapper JAR exists
+    if [ ! -f "$wrapper_jar" ]; then
+        log "ERROR: Minecraft wrapper JAR not found at: $wrapper_jar"
+        exit 1
+    fi
+    
     exec java -jar "$wrapper_jar" \
         --minecraft.server.jar="spigot-${MINECRAFT_VERSION}.jar" \
         --minecraft.server.directory="$SERVER_DIR" \

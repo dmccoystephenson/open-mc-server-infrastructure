@@ -26,7 +26,8 @@ RUN java -jar BuildTools.jar --rev ${MINECRAFT_VERSION}
 FROM base as wrapper-builder
 WORKDIR /wrapper-build
 COPY minecraft-wrapper/ .
-RUN ./gradlew build --no-daemon -x test
+# Build with tests - ensures code quality before creating Docker image
+RUN ./gradlew build --no-daemon
 
 FROM base as final
 
