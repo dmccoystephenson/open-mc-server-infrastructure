@@ -363,18 +363,16 @@ Automated backup service with scheduling and size management.
 - **Location**: `backup-manager/`
 - **Documentation**: [backup-manager/README.md](backup-manager/README.md)
 
-#### Minecraft Wrapper (New)
-Spring Boot service providing testable, REST-accessible wrapper functionality for Minecraft server management.
-- **Port**: 8092 (when enabled)
+#### Minecraft Wrapper
+Spring Boot service providing testable, REST-accessible wrapper functionality for Minecraft server management. This module is integrated into the main Minecraft server container.
 - **Location**: `minecraft-wrapper/`
 - **Documentation**: [minecraft-wrapper/README.md](minecraft-wrapper/README.md)
 - **Features**:
   - Unit-tested server lifecycle management (15 tests)
-  - REST API for server status, commands, and messaging
+  - REST API for server status, commands, and messaging (port 8092)
   - Graceful shutdown with player warnings
   - Alert integration
-
-**Note**: The minecraft-wrapper module is optional. The default setup uses a bash wrapper script (`resources/minecraft-wrapper.sh`). The Spring Boot module provides the same functionality with added benefits of unit tests and REST API access. See the minecraft-wrapper README for deployment options.
+  - Process management for Minecraft server
 
 #### Web App
 Spring Boot web dashboard for server management and monitoring.

@@ -214,11 +214,12 @@ EOF
 
 # Function: Start server
 start_server() {
-    log "Starting server with graceful shutdown wrapper..."
-    exec /resources/minecraft-wrapper.sh \
-        "spigot-${MINECRAFT_VERSION}.jar" \
-        "$SERVER_DIR" \
-        "${JAVA_OPTS:--Xmx2G -Xms1G}"
+    log "Starting server with Spring Boot wrapper..."
+    exec java -jar /app/minecraft-wrapper.jar \
+        --minecraft.server.jar="spigot-${MINECRAFT_VERSION}.jar" \
+        --minecraft.server.directory="$SERVER_DIR" \
+        --minecraft.java.opts="${JAVA_OPTS:--Xmx2G -Xms1G}" \
+        --minecraft.auto.start=true
 }
 
 # Main Process
