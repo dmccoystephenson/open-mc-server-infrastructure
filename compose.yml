@@ -1,5 +1,5 @@
 services:
-  mcserver:
+  minecraft-wrapper:
     build:
       context: .
       args:
@@ -12,6 +12,7 @@ services:
       - "${HOST_PORT:-25565}:25565"
       - "${HOST_RCON_PORT:-25575}:25575"
       - "${HOST_BLUEMAP_PORT:-8100}:8100"
+      - "${WRAPPER_PORT:-8092}:8092"
     volumes:
       - mcserver:/mcserver
       - ./deposit-box:/deposit-box
@@ -54,9 +55,9 @@ services:
       # so we mount the entire volume but PluginService enforces access only to /mcserver/plugins
       - mcserver:/mcserver:rw
     depends_on:
-      - mcserver
+      - minecraft-wrapper
     environment:
-      - MC_HOST=mcserver
+      - MC_HOST=minecraft-wrapper
       - MC_RCON_PORT=25575
       - MC_RCON_PASSWORD=${RCON_PASSWORD:-minecraft}
       - MC_MOTD=${SERVER_MOTD}
@@ -75,6 +76,7 @@ services:
       - DATA_STORAGE_PATH=${DATA_STORAGE_PATH:-/app/data}
       - ALERT_MANAGER_URL=${ALERT_MANAGER_URL:-http://alert-manager:8090}
       - ALERT_MANAGER_ENABLED=${ALERT_MANAGER_ENABLED:-true}
+      - MINECRAFT_WRAPPER_URL=${MINECRAFT_WRAPPER_URL:-http://minecraft-wrapper:8092}
 
   nginx:
     build:
@@ -133,7 +135,7 @@ services:
     environment:
       - DISCORD_WEBHOOK_URL=${DISCORD_WEBHOOK_URL:-}
       - DISCORD_ENABLED=${DISCORD_ENABLED:-false}
-      - MINECRAFT_RCON_HOST=${MINECRAFT_RCON_HOST:-mcserver}
+      - MINECRAFT_RCON_HOST=${MINECRAFT_RCON_HOST:-minecraft-wrapper}
       - MINECRAFT_RCON_PORT=${MINECRAFT_RCON_PORT:-25575}
       - MINECRAFT_RCON_PASSWORD=${RCON_PASSWORD:-minecraft}
       - MINECRAFT_RCON_ENABLED=${MINECRAFT_RCON_ENABLED:-true}

@@ -20,7 +20,7 @@ This module replaces the original `minecraft-wrapper.sh` bash script with a test
 
 ## Deployment
 
-The Spring Boot wrapper is built as part of the main Minecraft server Docker image and runs inside the `mcserver` container. It starts automatically when the container starts and manages the Minecraft server process.
+The Spring Boot wrapper is built as part of the main Minecraft server Docker image and runs inside the `minecraft-wrapper` container. It starts automatically when the container starts and manages the Minecraft server process.
 
 ## REST API Endpoints
 
@@ -103,7 +103,7 @@ The wrapper service is built and deployed as part of the main Minecraft server c
 1. **Integrates with Alert Manager**: Sends lifecycle alerts (start, stop, crash) via REST API
 2. **Manages Minecraft Server**: Controls the server process and sends commands via FIFO
 3. **Provides REST API**: Exposes endpoints for external management on port 8092
-4. **Runs inside mcserver container**: No separate container needed
+4. **Runs inside minecraft-wrapper container**: Accessible as the `minecraft-wrapper` service in Docker Compose
 
 ## Advantages of Spring Boot Implementation
 
