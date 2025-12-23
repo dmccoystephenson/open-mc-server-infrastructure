@@ -150,4 +150,23 @@ class RateLimitServiceTest {
     void shouldReturnZeroCountForUnknownDestination() {
         assertEquals(0, rateLimitService.getCurrentCount("UNKNOWN"));
     }
+
+    @Test
+    @DisplayName("Should throw exception when destination is null in shouldAllowAlert")
+    void shouldThrowExceptionWhenDestinationIsNullInShouldAllowAlert() {
+        assertThrows(NullPointerException.class, () -> rateLimitService.shouldAllowAlert(null));
+    }
+
+    @Test
+    @DisplayName("Should handle null destination gracefully in resetRateLimit")
+    void shouldHandleNullDestinationGracefullyInResetRateLimit() {
+        // Should not throw exception
+        assertDoesNotThrow(() -> rateLimitService.resetRateLimit(null));
+    }
+
+    @Test
+    @DisplayName("Should return zero for null destination in getCurrentCount")
+    void shouldReturnZeroForNullDestinationInGetCurrentCount() {
+        assertEquals(0, rateLimitService.getCurrentCount(null));
+    }
 }

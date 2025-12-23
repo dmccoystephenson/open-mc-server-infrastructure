@@ -2,6 +2,7 @@
 # Test script to demonstrate rate limiting functionality
 
 ALERT_MANAGER_URL="${ALERT_MANAGER_URL:-http://localhost:8090}"
+CONTAINER_NAME="${ALERT_CONTAINER_NAME:-open-mc-alert-manager}"
 
 echo "Testing Alert Rate Limiting"
 echo "=============================="
@@ -41,7 +42,7 @@ done
 echo ""
 echo "Test complete!"
 echo "Check the alert-manager logs to see rate limiting in action:"
-echo "  docker logs open-mc-alert-manager | grep -i \"rate\""
+echo "  docker logs $CONTAINER_NAME | grep -i \"rate\""
 echo ""
 echo "The logs should show messages like:"
 echo "  'Alert rate limited for destination: DISCORD. Skipping alert: Test Alert X'"
@@ -49,3 +50,4 @@ echo ""
 echo "Note: To test with different rate limits, modify the values in your .env file:"
 echo "  ALERT_RATE_LIMIT_MAX_ALERTS=5  # Lower limit for testing"
 echo "  ALERT_RATE_LIMIT_WINDOW_SECONDS=30  # Shorter window for testing"
+echo "  ALERT_CONTAINER_NAME=custom-name  # Custom container name"

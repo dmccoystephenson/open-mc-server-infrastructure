@@ -1,11 +1,13 @@
 package com.openmc.alertmanager.service;
 
+import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -25,7 +27,22 @@ public class RateLimitService {
     private int timeWindowSeconds;
 
     // Track alert counts per destination
+    // Note: This map uses fixed destination names (DISCORD, MINECRAFT) so unbounded growth is not a concern
     private final Map<String, AlertWindow> alertWindows = new ConcurrentHashMap<>();
+
+    @PostConstruct
+    public void validateConfiguration() {
+        if (maxAlerts <= 0) {
+            log.warn("Invalid rate limit configuration: maxAlerts={} must be > 0. Using default value of 10.", maxAlerts);
+            maxAlerts = 10;
+        }
+        if (timeWindowSeconds <= 0) {
+            log.warn("Invalid rate limit configuration: timeWindowSeconds={} must be > 0. Using default value of 60.", timeWindowSeconds);
+            timeWindowSeconds = 60;
+        }
+        log.info("Rate limiting initialized: enabled={}, maxAlerts={}, timeWindowSeconds={}", 
+                 rateLimitEnabled, maxAlerts, timeWindowSeconds);
+    }
 
     /**
      * Check if an alert should be allowed based on rate limits
@@ -34,6 +51,8 @@ public class RateLimitService {
      * @return true if alert should be allowed, false if rate limited
      */
     public boolean shouldAllowAlert(String destination) {
+        Objects.requireNonNull(destination, "Destination cannot be null");
+        
         if (!rateLimitEnabled) {
             log.debug("Rate limiting is disabled, allowing alert to {}", destination);
             return true;
@@ -68,6 +87,10 @@ public class RateLimitService {
      * @param destination The destination to reset
      */
     public void resetRateLimit(String destination) {
+        if (destination == null) {
+            log.warn("Attempted to reset rate limit for null destination, skipping");
+            return;
+        }
         alertWindows.remove(destination);
         log.debug("Rate limit reset for destination: {}", destination);
     }
@@ -87,6 +110,10 @@ public class RateLimitService {
      * @return Current alert count in the time window
      */
     public int getCurrentCount(String destination) {
+        if (destination == null) {
+            log.debug("getCurrentCount called with null destination");
+            return 0;
+        }
         AlertWindow window = alertWindows.get(destination);
         if (window == null) {
             return 0;
@@ -98,13 +125,13 @@ public class RateLimitService {
     }
 
     /**
-     * Inner class to track alerts within a time window
+     * Inner class to track alerts within a time window using a Deque for efficient removal
      */
     private static class AlertWindow {
-        private final java.util.List<Instant> timestamps = new java.util.ArrayList<>();
+        private final java.util.Deque<Instant> timestamps = new java.util.ArrayDeque<>();
 
         public void addAlert(Instant timestamp) {
-            timestamps.add(timestamp);
+            timestamps.addLast(timestamp);
         }
 
         public int getCount() {
@@ -113,7 +140,10 @@ public class RateLimitService {
 
         public void removeOldEntries(Instant now, int windowSeconds) {
             Instant cutoff = now.minusSeconds(windowSeconds);
-            timestamps.removeIf(timestamp -> timestamp.isBefore(cutoff));
+            // Remove from the front while timestamps are before cutoff
+            while (!timestamps.isEmpty() && timestamps.peekFirst().isBefore(cutoff)) {
+                timestamps.pollFirst();
+            }
         }
     }
 }
