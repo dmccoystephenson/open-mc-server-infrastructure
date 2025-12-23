@@ -53,7 +53,7 @@ public class ServerController {
     /**
      * Initiate graceful server shutdown.
      * Returns 202 Accepted immediately and performs shutdown asynchronously.
-     * Note: This endpoint will block for 30+ seconds during graceful shutdown.
+     * The shutdown process takes 30+ seconds to complete with player warnings.
      * Consider implementing proper authentication/authorization before exposing this endpoint.
      */
     @PostMapping("/shutdown")
@@ -61,12 +61,16 @@ public class ServerController {
         log.info("Received shutdown request");
         
         // Execute shutdown asynchronously to avoid blocking the HTTP request
+        // Note: Using default ForkJoinPool for simplicity. In production, consider a dedicated executor.
         CompletableFuture.runAsync(() -> {
             try {
                 minecraftServerService.shutdown();
             } catch (Exception e) {
                 log.error("Failed to shutdown server", e);
             }
+        }).exceptionally(ex -> {
+            log.error("Unexpected error during shutdown", ex);
+            return null;
         });
         
         // Return immediately with 202 Accepted
