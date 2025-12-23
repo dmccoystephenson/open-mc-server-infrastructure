@@ -38,7 +38,9 @@ ARG MINECRAFT_VERSION=1.21.10
 COPY --from=builder /mcserver-build/spigot-${MINECRAFT_VERSION}.jar /mcserver-build/spigot-${MINECRAFT_VERSION}.jar
 
 # Copy minecraft-wrapper Spring Boot application
-COPY --from=wrapper-builder /wrapper-build/build/libs/*.jar /app/minecraft-wrapper.jar
+# Spring Boot Gradle plugin creates a JAR with the name pattern: {projectName}-{version}.jar
+# We copy all JARs to ensure we get the executable JAR (not the -plain.jar)
+COPY --from=wrapper-builder /wrapper-build/build/libs/minecraft-wrapper-*.jar /app/minecraft-wrapper.jar
 
 # Copy resources and make scripts executable
 COPY ./resources /resources

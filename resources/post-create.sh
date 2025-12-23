@@ -223,11 +223,14 @@ start_server() {
         exit 1
     fi
     
-    exec java -jar "$wrapper_jar" \
-        --minecraft.server.jar="spigot-${MINECRAFT_VERSION}.jar" \
-        --minecraft.server.directory="$SERVER_DIR" \
-        --minecraft.java.opts="${JAVA_OPTS:--Xmx2G -Xms1G}" \
-        --minecraft.auto.start=true
+    # Export environment variables for Spring Boot to read
+    export MINECRAFT_SERVER_JAR="spigot-${MINECRAFT_VERSION}.jar"
+    export MINECRAFT_SERVER_DIRECTORY="$SERVER_DIR"
+    export JAVA_OPTS="${JAVA_OPTS:--Xmx2G -Xms1G}"
+    export MINECRAFT_AUTO_START=true
+    
+    exec java -jar "$wrapper_jar"
+}
 }
 
 # Main Process

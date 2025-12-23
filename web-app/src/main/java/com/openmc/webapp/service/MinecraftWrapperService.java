@@ -104,7 +104,8 @@ public class MinecraftWrapperService {
     }
 
     /**
-     * Initiate graceful server shutdown via the wrapper
+     * Initiate graceful server shutdown via the wrapper.
+     * The shutdown endpoint returns immediately (202 Accepted) and performs shutdown asynchronously.
      * @return true if shutdown was initiated successfully
      */
     public boolean initiateShutdown() {
@@ -113,6 +114,7 @@ public class MinecraftWrapperService {
             log.info("Initiating server shutdown via wrapper");
             
             ResponseEntity<String> response = restTemplate.postForEntity(url, null, String.class);
+            // Accept both 200 OK and 202 Accepted as success
             return response.getStatusCode().is2xxSuccessful();
         } catch (Exception e) {
             log.error("Failed to initiate shutdown via wrapper: {}", e.getMessage());

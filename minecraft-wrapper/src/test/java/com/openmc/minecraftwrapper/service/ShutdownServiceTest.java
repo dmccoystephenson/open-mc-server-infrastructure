@@ -7,6 +7,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import static org.mockito.Mockito.*;
 
@@ -20,30 +21,38 @@ class ShutdownServiceTest {
     @InjectMocks
     private ShutdownService shutdownService;
 
+    @BeforeEach
+    void setUp() {
+        // Disable countdown to avoid 30 second test delay
+        ReflectionTestUtils.setField(shutdownService, "countdownEnabled", false);
+    }
+
     @Test
-    @DisplayName("Should send countdown messages before shutdown")
-    void shouldSendCountdownMessagesBeforeShutdown() {
+    @DisplayName("Should execute stop command when countdown disabled")
+    void shouldExecuteStopCommandWhenCountdownDisabled() {
         Runnable stopCommand = mock(Runnable.class);
 
-        // We need to mock the sleep behavior, but since it's a private method,
-        // we'll just verify the messages and command are called
+        shutdownService.performGracefulShutdown(stopCommand);
+
+        // Verify stop command is called without messages
+        verify(stopCommand, times(1)).run();
+        verify(messageService, never()).sendMessage(anyString(), anyString());
+    }
+
+    @Test
+    @DisplayName("Should send countdown messages when enabled")
+    void shouldSendCountdownMessagesWhenEnabled() {
+        // Re-enable countdown for this specific test
+        ReflectionTestUtils.setField(shutdownService, "countdownEnabled", true);
+        Runnable stopCommand = mock(Runnable.class);
+
+        // Note: This test will take 30 seconds to run
         shutdownService.performGracefulShutdown(stopCommand);
 
         verify(messageService, times(1)).sendMessage("Server is shutting down in 30 seconds!", "MINECRAFT");
         verify(messageService, times(1)).sendMessage("Server is shutting down in 20 seconds!", "MINECRAFT");
         verify(messageService, times(1)).sendMessage("Server is shutting down in 10 seconds!", "MINECRAFT");
         verify(messageService, times(1)).sendMessage("Server is shutting down in 5 seconds!", "MINECRAFT");
-        verify(stopCommand, times(1)).run();
-    }
-
-    @Test
-    @DisplayName("Should execute stop command after countdown")
-    void shouldExecuteStopCommandAfterCountdown() {
-        Runnable stopCommand = mock(Runnable.class);
-
-        shutdownService.performGracefulShutdown(stopCommand);
-
-        // Verify stop command is called after messages
         verify(stopCommand, times(1)).run();
     }
 }

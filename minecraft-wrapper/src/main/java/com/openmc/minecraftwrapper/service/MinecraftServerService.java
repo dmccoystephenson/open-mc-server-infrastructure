@@ -13,6 +13,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 @Slf4j
 @Service
@@ -36,7 +37,7 @@ public class MinecraftServerService {
     private Process serverProcess;
     private Path inputFifo;
     private Thread fifoKeeperThread;
-    private volatile boolean shutdownInProgress = false;
+    private final AtomicBoolean shutdownInProgress = new AtomicBoolean(false);
 
     public MinecraftServerService(AlertService alertService, ShutdownService shutdownService) {
         this.alertService = alertService;
@@ -137,7 +138,7 @@ public class MinecraftServerService {
                 log.info("Minecraft server process exited with code: {}", exitCode);
 
                 // Only send alerts if not in shutdown process
-                if (!shutdownInProgress) {
+                if (!shutdownInProgress.get()) {
                     if (exitCode == 0) {
                         alertService.sendServerStopAlert();
                     } else {
@@ -156,7 +157,7 @@ public class MinecraftServerService {
     @PreDestroy
     public void shutdown() {
         if (serverProcess != null && serverProcess.isAlive()) {
-            shutdownInProgress = true;
+            shutdownInProgress.set(true);
             
             shutdownService.performGracefulShutdown(() -> {
                 try {
