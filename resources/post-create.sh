@@ -231,7 +231,6 @@ start_server() {
     
     exec java -jar "$wrapper_jar"
 }
-}
 
 # Main Process
 log "Running server setup script..."
