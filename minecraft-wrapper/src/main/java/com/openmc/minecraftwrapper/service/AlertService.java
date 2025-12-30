@@ -46,6 +46,12 @@ public class AlertService {
             return;
         }
 
+        // Validate alert manager URL is configured
+        if (alertManagerUrl == null || alertManagerUrl.trim().isEmpty()) {
+            log.warn("Alert manager URL is not configured. Skipping alert: {}", title);
+            return;
+        }
+
         Alert alert = Alert.builder()
                 .title(title)
                 .message(message)
@@ -64,7 +70,8 @@ public class AlertService {
             restTemplate.postForEntity(alertManagerUrl, request, String.class);
             log.info("Alert sent successfully");
         } catch (Exception e) {
-            log.error("Failed to send alert: {}", e.getMessage(), e);
+            log.error("Failed to send alert: {}", e.getMessage());
+            log.debug("Alert error details", e);
         }
     }
 
