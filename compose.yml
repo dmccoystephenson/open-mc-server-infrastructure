@@ -34,7 +34,7 @@ services:
       - JAVA_OPTS=${JAVA_OPTS}
       - RCON_PASSWORD=${RCON_PASSWORD:-minecraft}
       # Alert configuration
-      - ALERT_MANAGER_URL=${ALERT_MANAGER_URL:-}
+      - ALERT_MANAGER_URL=${ALERT_MANAGER_URL:-http://alert-manager:8090/api/alerts}
       - ALERTS_SERVER_START=${ALERTS_SERVER_START:-true}
       - ALERTS_SERVER_STOP=${ALERTS_SERVER_STOP:-true}
       - ALERTS_SERVER_CRASH=${ALERTS_SERVER_CRASH:-true}
