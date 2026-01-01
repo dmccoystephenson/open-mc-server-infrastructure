@@ -226,4 +226,4 @@ jobs:
           embed-author-icon-url: ${{ github.event.release.author.avatar_url }}
           embed-color: 15844367
           embed-footer-text: "Repository: ${{ github.repository }}"
-          embed-timestamp: ${{ github.event.release.published_at || github.event.release.created_at }}
+          embed-timestamp: ${{ github.event.release.published_at != null && github.event.release.published_at || github.event.release.created_at }}
