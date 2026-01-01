@@ -15,7 +15,7 @@ on:
 jobs:
   notify-discord:
     runs-on: ubuntu-latest
-    if: ${{ secrets.DISCORD_WEBHOOK_URL != '' }}
+    if: secrets.DISCORD_WEBHOOK_URL != null
     steps:
       - name: Send Discord notification for issue opened
         if: github.event_name == 'issues' && github.event.action == 'opened'
@@ -203,7 +203,9 @@ jobs:
         with:
           webhook-url: ${{ secrets.DISCORD_WEBHOOK_URL }}
           embed-title: "📦 Push to ${{ github.ref_name }}"
-          embed-description: "**${{ github.event.head_commit.message }}**"
+          embed-description: |
+            **Commit Message:**
+            ${{ github.event.head_commit.message }}
           embed-url: ${{ github.event.compare }}
           embed-author-name: ${{ github.event.pusher.name }}
           embed-author-url: ${{ github.event.sender.html_url }}
