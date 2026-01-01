@@ -11,6 +11,7 @@ An open, community-agnostic, Docker-based Minecraft server infrastructure runnin
 - **Web Dashboard**: Built-in Spring Boot web application for server management
 - **Automated Backups**: Scheduled backups with automatic cleanup and size management
 - **Alert Notifications**: Discord notifications for server events and admin alerts
+- **GitHub Activity Alerts**: Automatic Discord notifications for repository activity (issues, PRs, releases, etc.)
 - **Configurable**: Environment-based configuration
 - **Persistent Data**: Server data persists across container restarts
 - **Easy Management**: Simple scripts for starting and stopping the server
@@ -176,6 +177,24 @@ To enable Discord notifications:
 The alert manager API is accessible on the configured port (default: 8090) for testing and integration from the host machine.
 
 See [alert-manager/README.md](alert-manager/README.md) for detailed configuration and usage examples.
+
+### GitHub Repository Activity Alerts
+
+The infrastructure includes automated Discord notifications for GitHub repository activity such as:
+- **Issues**: Opened, closed, reopened, and labeled
+- **Pull Requests**: Opened, closed, merged, ready for review, and review requested
+- **Push Events**: Commits pushed to main and develop branches
+- **Releases**: New releases published
+
+To enable GitHub repository activity alerts:
+1. Create a webhook in your Discord server (Server Settings → Integrations → Webhooks)
+2. In your GitHub repository, go to Settings → Secrets and variables → Actions
+3. Create a new repository secret named `DISCORD_WEBHOOK_URL` with your Discord webhook URL
+4. The workflow will automatically send notifications for repository events
+
+Note: This is separate from the Alert Manager service which handles Minecraft server events. GitHub repository alerts are sent directly from GitHub Actions workflows.
+
+For detailed setup instructions, see [.github/DISCORD-NOTIFICATIONS.md](.github/DISCORD-NOTIFICATIONS.md).
 
 **Running Parallel Development Servers**: To run multiple servers simultaneously (e.g., for testing different configurations), create separate `.env` files with different values for these settings and use `docker compose --env-file <env-file>` to start each server.
 

@@ -1,0 +1,91 @@
+name: Discord Notifications
+
+on:
+  issues:
+    types: [opened, closed, reopened, labeled]
+  pull_request:
+    types: [opened, closed, reopened, ready_for_review, review_requested]
+  push:
+    branches:
+      - main
+      - develop
+  release:
+    types: [published, created]
+
+jobs:
+  notify-discord:
+    runs-on: ubuntu-latest
+    if: ${{ secrets.DISCORD_WEBHOOK_URL != '' }}
+    steps:
+      - name: Send Discord notification for issue events
+        if: github.event_name == 'issues'
+        uses: tsickert/discord-webhook@v5.3.0
+        with:
+          webhook-url: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          embed-title: "${{ github.event.action == 'opened' && '🆕' || github.event.action == 'closed' && '✅' || github.event.action == 'reopened' && '🔄' || '🏷️' }} Issue ${{ github.event.action }}: #${{ github.event.issue.number }}"
+          embed-description: |
+            **${{ github.event.issue.title }}**
+            
+            ${{ github.event.issue.body }}
+          embed-url: ${{ github.event.issue.html_url }}
+          embed-author-name: ${{ github.event.issue.user.login }}
+          embed-author-url: ${{ github.event.issue.user.html_url }}
+          embed-author-icon-url: ${{ github.event.issue.user.avatar_url }}
+          embed-color: ${{ github.event.action == 'opened' && '3066993' || github.event.action == 'closed' && '3066993' || github.event.action == 'reopened' && '15105570' || '15844367' }}
+          embed-footer-text: "Repository: ${{ github.repository }}"
+          embed-timestamp: ${{ github.event.issue.created_at }}
+
+      - name: Send Discord notification for pull request events
+        if: github.event_name == 'pull_request'
+        uses: tsickert/discord-webhook@v5.3.0
+        with:
+          webhook-url: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          embed-title: "${{ github.event.action == 'opened' && '🔀' || github.event.action == 'closed' && github.event.pull_request.merged && '✅' || github.event.action == 'closed' && '❌' || github.event.action == 'reopened' && '🔄' || github.event.action == 'ready_for_review' && '👀' || '📝' }} Pull Request ${{ github.event.action == 'closed' && github.event.pull_request.merged && 'merged' || github.event.action }}: #${{ github.event.pull_request.number }}"
+          embed-description: |
+            **${{ github.event.pull_request.title }}**
+            
+            ${{ github.event.pull_request.body }}
+          embed-url: ${{ github.event.pull_request.html_url }}
+          embed-author-name: ${{ github.event.pull_request.user.login }}
+          embed-author-url: ${{ github.event.pull_request.user.html_url }}
+          embed-author-icon-url: ${{ github.event.pull_request.user.avatar_url }}
+          embed-color: ${{ github.event.action == 'opened' && '3447003' || github.event.action == 'closed' && github.event.pull_request.merged && '5763719' || github.event.action == 'closed' && '15158332' || github.event.action == 'reopened' && '15105570' || '10181046' }}
+          embed-footer-text: "Repository: ${{ github.repository }} | ${{ github.event.pull_request.base.ref }} ← ${{ github.event.pull_request.head.ref }}"
+          embed-timestamp: ${{ github.event.pull_request.created_at }}
+
+      - name: Send Discord notification for push events
+        if: github.event_name == 'push'
+        uses: tsickert/discord-webhook@v5.3.0
+        with:
+          webhook-url: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          embed-title: "📦 Push to ${{ github.ref_name }}"
+          embed-description: |
+            **${{ github.event.head_commit.message }}**
+            
+            Commits: ${{ github.event.commits | length }}
+            Files changed: ${{ github.event.head_commit.added | length + github.event.head_commit.modified | length + github.event.head_commit.removed | length }}
+          embed-url: ${{ github.event.compare }}
+          embed-author-name: ${{ github.event.pusher.name }}
+          embed-author-url: ${{ github.event.sender.html_url }}
+          embed-author-icon-url: ${{ github.event.sender.avatar_url }}
+          embed-color: 7506394
+          embed-footer-text: "Repository: ${{ github.repository }}"
+          embed-timestamp: ${{ github.event.head_commit.timestamp }}
+
+      - name: Send Discord notification for release events
+        if: github.event_name == 'release'
+        uses: tsickert/discord-webhook@v5.3.0
+        with:
+          webhook-url: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          embed-title: "🚀 Release ${{ github.event.action }}: ${{ github.event.release.tag_name }}"
+          embed-description: |
+            **${{ github.event.release.name }}**
+            
+            ${{ github.event.release.body }}
+          embed-url: ${{ github.event.release.html_url }}
+          embed-author-name: ${{ github.event.release.author.login }}
+          embed-author-url: ${{ github.event.release.author.html_url }}
+          embed-author-icon-url: ${{ github.event.release.author.avatar_url }}
+          embed-color: 15844367
+          embed-footer-text: "Repository: ${{ github.repository }}"
+          embed-timestamp: ${{ github.event.release.created_at }}
