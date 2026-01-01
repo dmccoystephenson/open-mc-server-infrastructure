@@ -104,6 +104,60 @@ public class MinecraftWrapperService {
     }
 
     /**
+     * Start the Minecraft server via the wrapper.
+     * The start endpoint returns immediately (202 Accepted) and performs start asynchronously.
+     * @return true if start was initiated successfully
+     */
+    public boolean startServer() {
+        try {
+            String url = wrapperUrl + "/api/server/start";
+            log.info("Starting server via wrapper");
+            
+            ResponseEntity<String> response = restTemplate.postForEntity(url, null, String.class);
+            return response.getStatusCode().is2xxSuccessful();
+        } catch (Exception e) {
+            log.error("Failed to start server via wrapper: {}", e.getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Stop the Minecraft server via the wrapper.
+     * The stop endpoint returns immediately (202 Accepted) and performs stop asynchronously.
+     * @return true if stop was initiated successfully
+     */
+    public boolean stopServer() {
+        try {
+            String url = wrapperUrl + "/api/server/stop";
+            log.info("Stopping server via wrapper");
+            
+            ResponseEntity<String> response = restTemplate.postForEntity(url, null, String.class);
+            return response.getStatusCode().is2xxSuccessful();
+        } catch (Exception e) {
+            log.error("Failed to stop server via wrapper: {}", e.getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Restart the Minecraft server via the wrapper.
+     * The restart endpoint returns immediately (202 Accepted) and performs restart asynchronously.
+     * @return true if restart was initiated successfully
+     */
+    public boolean restartServer() {
+        try {
+            String url = wrapperUrl + "/api/server/restart";
+            log.info("Restarting server via wrapper");
+            
+            ResponseEntity<String> response = restTemplate.postForEntity(url, null, String.class);
+            return response.getStatusCode().is2xxSuccessful();
+        } catch (Exception e) {
+            log.error("Failed to restart server via wrapper: {}", e.getMessage());
+            return false;
+        }
+    }
+
+    /**
      * Initiate graceful server shutdown via the wrapper.
      * The shutdown endpoint returns immediately (202 Accepted) and performs shutdown asynchronously.
      * @return true if shutdown was initiated successfully

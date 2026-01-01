@@ -292,6 +292,24 @@
             <div id="commandOutput" class="command-output"></div>
         </div>
         
+        <!-- Server Control Card -->
+        <div class="card">
+            <h2>Server Control</h2>
+            <p style="color: #6b7280; margin-bottom: 15px;">Start, stop, or restart the Minecraft server</p>
+            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                <button onclick="startServer()" class="btn btn-primary" style="background: #10b981;">
+                    ▶ Start Server
+                </button>
+                <button onclick="stopServer()" class="btn btn-primary" style="background: #ef4444;">
+                    ⏹ Stop Server
+                </button>
+                <button onclick="restartServer()" class="btn btn-primary" style="background: #f59e0b;">
+                    🔄 Restart Server
+                </button>
+            </div>
+            <div id="serverControlOutput" class="command-output"></div>
+        </div>
+        
         <!-- Plugin Management Card -->
         <div class="card">
             <h2>Plugin Management</h2>
@@ -514,6 +532,107 @@
             const div = document.createElement('div');
             div.textContent = text;
             return div.innerHTML;
+        }
+        
+        async function startServer() {
+            const { username, password } = getCredentials();
+            
+            if (!username || !password) {
+                alert('Please enter username and password above');
+                return;
+            }
+            
+            const output = document.getElementById('serverControlOutput');
+            output.textContent = 'Starting server...';
+            output.classList.add('show');
+            
+            try {
+                const response = await fetch('/api/server/start', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        username: username,
+                        password: password
+                    })
+                });
+                
+                const data = await response.json();
+                output.textContent = data.success ? '✓ ' + data.message : '✗ ' + data.message;
+            } catch (error) {
+                output.textContent = '✗ Error: ' + error.message;
+            }
+        }
+        
+        async function stopServer() {
+            const { username, password } = getCredentials();
+            
+            if (!username || !password) {
+                alert('Please enter username and password above');
+                return;
+            }
+            
+            if (!confirm('Are you sure you want to stop the server?')) {
+                return;
+            }
+            
+            const output = document.getElementById('serverControlOutput');
+            output.textContent = 'Stopping server...';
+            output.classList.add('show');
+            
+            try {
+                const response = await fetch('/api/server/stop', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        username: username,
+                        password: password
+                    })
+                });
+                
+                const data = await response.json();
+                output.textContent = data.success ? '✓ ' + data.message : '✗ ' + data.message;
+            } catch (error) {
+                output.textContent = '✗ Error: ' + error.message;
+            }
+        }
+        
+        async function restartServer() {
+            const { username, password } = getCredentials();
+            
+            if (!username || !password) {
+                alert('Please enter username and password above');
+                return;
+            }
+            
+            if (!confirm('Are you sure you want to restart the server?')) {
+                return;
+            }
+            
+            const output = document.getElementById('serverControlOutput');
+            output.textContent = 'Restarting server...';
+            output.classList.add('show');
+            
+            try {
+                const response = await fetch('/api/server/restart', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        username: username,
+                        password: password
+                    })
+                });
+                
+                const data = await response.json();
+                output.textContent = data.success ? '✓ ' + data.message : '✗ ' + data.message;
+            } catch (error) {
+                output.textContent = '✗ Error: ' + error.message;
+            }
         }
     </script>
 </body>

@@ -50,6 +50,9 @@ class ServerControllerTest {
     
     @MockBean
     private AlertNotificationService alertNotificationService;
+    
+    @MockBean
+    private com.openmc.webapp.service.MinecraftWrapperService minecraftWrapperService;
 
     private RconService.ServerStatus mockStatus;
 
