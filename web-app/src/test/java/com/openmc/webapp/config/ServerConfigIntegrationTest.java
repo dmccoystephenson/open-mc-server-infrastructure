@@ -12,7 +12,8 @@ import static org.junit.jupiter.api.Assertions.*;
 @TestPropertySource(properties = {
     "minecraft.server.admin-username=testuser",
     "minecraft.server.admin-password=testpass123",
-    "data.storage.base-directory=data"
+    "data.storage.base-directory=data",
+    "minecraft.server.wait-for-ready=false"
 })
 @DisplayName("ServerConfig Integration Tests - Environment Variable Binding")
 class ServerConfigIntegrationTest {

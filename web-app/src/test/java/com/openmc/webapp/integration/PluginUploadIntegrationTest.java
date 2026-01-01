@@ -28,7 +28,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * Integration test for plugin upload functionality.
  * Tests the complete upload flow from controller through service with real JAR files.
  */
-@SpringBootTest
+@SpringBootTest(properties = {"minecraft.server.wait-for-ready=false"})
 @AutoConfigureMockMvc
 @DisplayName("Plugin Upload Integration Tests")
 class PluginUploadIntegrationTest {

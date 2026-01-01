@@ -12,7 +12,8 @@ import org.springframework.test.context.TestPropertySource;
     "minecraft.server.rcon-password=test",
     "minecraft.server.admin-username=admin",
     "minecraft.server.admin-password=admin",
-    "data.storage.base-directory=data"
+    "data.storage.base-directory=data",
+    "minecraft.server.wait-for-ready=false"  // Disable RCON readiness check in tests
 })
 @DisplayName("WebAppApplication Tests")
 class WebAppApplicationTest {
