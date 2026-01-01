@@ -36,6 +36,21 @@ The Spring Boot wrapper is built as part of the main Minecraft server Docker ima
   }
   ```
 
+- `POST /api/server/start` - Start the Minecraft server
+  ```bash
+  curl -X POST http://localhost:8092/api/server/start
+  ```
+
+- `POST /api/server/stop` - Stop the Minecraft server gracefully
+  ```bash
+  curl -X POST http://localhost:8092/api/server/stop
+  ```
+
+- `POST /api/server/restart` - Restart the Minecraft server
+  ```bash
+  curl -X POST http://localhost:8092/api/server/restart
+  ```
+
 - `POST /api/server/command` - Send a command to the Minecraft server
   ```bash
   curl -X POST http://localhost:8092/api/server/command \
@@ -43,7 +58,7 @@ The Spring Boot wrapper is built as part of the main Minecraft server Docker ima
     -d "say Hello, World!"
   ```
 
-- `POST /api/server/shutdown` - Initiate graceful server shutdown
+- `POST /api/server/shutdown` - Initiate graceful server shutdown (stops container)
   ```bash
   curl -X POST http://localhost:8092/api/server/shutdown
   ```
@@ -70,6 +85,7 @@ minecraft.server.jar=/mcserver/spigot-1.21.10.jar
 minecraft.server.directory=/mcserver
 minecraft.java.opts=-Xmx2G -Xms1G
 minecraft.auto.start=true
+minecraft.auto.restart=false
 
 # Alert manager configuration
 alert.manager.url=http://alert-manager:8090/api/alerts
@@ -77,6 +93,18 @@ alerts.server.start=true
 alerts.server.stop=true
 alerts.server.crash=true
 ```
+
+### Environment Variables
+
+- `MINECRAFT_SERVER_JAR`: Path to the Minecraft server JAR file (default: `/mcserver/spigot-1.21.10.jar`)
+- `MINECRAFT_SERVER_DIRECTORY`: Directory where the server runs (default: `/mcserver`)
+- `JAVA_OPTS`: Java options for the server (default: `-Xmx2G -Xms1G`)
+- `MINECRAFT_AUTO_START`: Auto-start server on wrapper startup (default: `true`)
+- `MINECRAFT_AUTO_RESTART`: Auto-restart server if it crashes (default: `false`)
+- `ALERT_MANAGER_URL`: URL for alert-manager API (default: `http://alert-manager:8090/api/alerts`)
+- `ALERTS_SERVER_START`: Enable server start alerts (default: `true`)
+- `ALERTS_SERVER_STOP`: Enable server stop alerts (default: `true`)
+- `ALERTS_SERVER_CRASH`: Enable server crash alerts (default: `true`)
 
 ## Building
 

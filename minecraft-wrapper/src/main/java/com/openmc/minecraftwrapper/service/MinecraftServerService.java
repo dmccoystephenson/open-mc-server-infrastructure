@@ -31,6 +31,9 @@ public class MinecraftServerService {
     @Value("${minecraft.auto.start:false}")
     private boolean autoStart;
 
+    @Value("${minecraft.auto.restart:false}")
+    private boolean autoRestart;
+
     private final AlertService alertService;
     private final ShutdownService shutdownService;
 
@@ -38,6 +41,7 @@ public class MinecraftServerService {
     private Path inputFifo;
     private Thread fifoKeeperThread;
     private final AtomicBoolean shutdownInProgress = new AtomicBoolean(false);
+    private final AtomicBoolean manualStop = new AtomicBoolean(false);
 
     public MinecraftServerService(AlertService alertService, ShutdownService shutdownService) {
         this.alertService = alertService;
@@ -45,10 +49,27 @@ public class MinecraftServerService {
     }
 
     @PostConstruct
-    public void startServer() {
-        if (!autoStart) {
+    public void initialize() {
+        if (autoStart) {
+            log.info("Auto-start enabled, starting server...");
+            try {
+                start();
+            } catch (Exception e) {
+                log.error("Failed to auto-start server", e);
+            }
+        } else {
             log.info("Auto-start disabled, server will not start automatically");
-            return;
+        }
+    }
+
+    /**
+     * Start the Minecraft server.
+     * Can be called multiple times to restart the server after it's been stopped.
+     * @throws IllegalStateException if server is already running
+     */
+    public synchronized void start() {
+        if (serverProcess != null && serverProcess.isAlive()) {
+            throw new IllegalStateException("Server is already running");
         }
         
         try {
@@ -56,6 +77,10 @@ public class MinecraftServerService {
             log.info("Server JAR: {}", serverJar);
             log.info("Server Directory: {}", serverDirectory);
             log.info("Java Options: {}", javaOpts);
+
+            // Reset flags
+            shutdownInProgress.set(false);
+            manualStop.set(false);
 
             File serverDir = new File(serverDirectory);
             if (!serverDir.exists() || !serverDir.isDirectory()) {
@@ -112,6 +137,112 @@ public class MinecraftServerService {
         }
     }
 
+    /**
+     * Stop the Minecraft server gracefully.
+     * Sets the manualStop flag to prevent auto-restart.
+     */
+    public synchronized void stop() {
+        if (serverProcess == null || !serverProcess.isAlive()) {
+            throw new IllegalStateException("Server is not running");
+        }
+        
+        manualStop.set(true);
+        shutdownInProgress.set(true);
+        
+        try {
+            // Send stop command via FIFO
+            sendCommand("stop");
+            
+            // Wait for server to shutdown gracefully
+            log.info("Waiting for server to stop gracefully...");
+            if (!serverProcess.waitFor(30, TimeUnit.SECONDS)) {
+                log.warn("Server did not stop in time, forcing termination");
+                serverProcess.destroyForcibly();
+            }
+            
+            log.info("Server stopped successfully");
+            alertService.sendServerStopAlert();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            log.error("Interrupted while waiting for server to stop");
+            serverProcess.destroyForcibly();
+        } catch (IOException e) {
+            log.error("Failed to send stop command", e);
+            serverProcess.destroy();
+        } finally {
+            cleanupResources();
+        }
+    }
+
+    /**
+     * Restart the Minecraft server.
+     * Stops the server if running, then starts it again.
+     */
+    public synchronized void restart() {
+        log.info("Restarting Minecraft server...");
+        
+        if (serverProcess != null && serverProcess.isAlive()) {
+            // Set manualStop temporarily to prevent auto-restart during stop
+            manualStop.set(true);
+            shutdownInProgress.set(true);
+            
+            try {
+                // Send stop command via FIFO
+                sendCommand("stop");
+                
+                // Wait for server to shutdown gracefully
+                log.info("Waiting for server to stop before restart...");
+                if (!serverProcess.waitFor(30, TimeUnit.SECONDS)) {
+                    log.warn("Server did not stop in time, forcing termination");
+                    serverProcess.destroyForcibly();
+                }
+                
+                log.info("Server stopped, preparing to restart...");
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                log.error("Interrupted while waiting for server to stop");
+                serverProcess.destroyForcibly();
+            } catch (IOException e) {
+                log.error("Failed to send stop command", e);
+                serverProcess.destroy();
+            } finally {
+                cleanupResources();
+            }
+        }
+        
+        // Wait a bit before restarting
+        try {
+            Thread.sleep(2000);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+        
+        // Now start the server
+        start();
+    }
+
+    private void cleanupResources() {
+        // Cleanup FIFO keeper thread
+        if (fifoKeeperThread != null && fifoKeeperThread.isAlive()) {
+            fifoKeeperThread.interrupt();
+            try {
+                fifoKeeperThread.join(5000);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        }
+
+        // Cleanup FIFO
+        if (inputFifo != null && Files.exists(inputFifo)) {
+            try {
+                Files.delete(inputFifo);
+                log.debug("FIFO deleted");
+            } catch (IOException e) {
+                log.warn("Failed to delete FIFO", e);
+            }
+        }
+    }
+
     private void startFifoKeeper() {
         fifoKeeperThread = new Thread(() -> {
             try (FileOutputStream fos = new FileOutputStream(inputFifo.toFile())) {
@@ -137,12 +268,29 @@ public class MinecraftServerService {
                 int exitCode = serverProcess.waitFor();
                 log.info("Minecraft server process exited with code: {}", exitCode);
 
+                // Cleanup resources after process ends
+                cleanupResources();
+
                 // Only send alerts if not in shutdown process
                 if (!shutdownInProgress.get()) {
                     if (exitCode == 0) {
                         alertService.sendServerStopAlert();
                     } else {
                         alertService.sendServerCrashAlert(exitCode);
+                    }
+                    
+                    // Auto-restart if enabled and not a manual stop
+                    if (autoRestart && !manualStop.get()) {
+                        log.info("Auto-restart enabled, restarting server in 5 seconds...");
+                        try {
+                            Thread.sleep(5000);
+                            start();
+                        } catch (InterruptedException e) {
+                            Thread.currentThread().interrupt();
+                            log.error("Auto-restart interrupted");
+                        } catch (Exception e) {
+                            log.error("Failed to auto-restart server", e);
+                        }
                     }
                 }
             } catch (InterruptedException e) {
@@ -157,6 +305,7 @@ public class MinecraftServerService {
     @PreDestroy
     public void shutdown() {
         if (serverProcess != null && serverProcess.isAlive()) {
+            manualStop.set(true);
             shutdownInProgress.set(true);
             
             shutdownService.performGracefulShutdown(() -> {
@@ -184,19 +333,7 @@ public class MinecraftServerService {
             });
         }
 
-        // Cleanup FIFO keeper thread
-        if (fifoKeeperThread != null && fifoKeeperThread.isAlive()) {
-            fifoKeeperThread.interrupt();
-        }
-
-        // Cleanup FIFO
-        if (inputFifo != null && Files.exists(inputFifo)) {
-            try {
-                Files.delete(inputFifo);
-            } catch (IOException e) {
-                log.warn("Failed to delete FIFO", e);
-            }
-        }
+        cleanupResources();
     }
 
     public void sendCommand(String command) throws IOException {
