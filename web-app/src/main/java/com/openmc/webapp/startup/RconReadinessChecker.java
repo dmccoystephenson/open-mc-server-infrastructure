@@ -59,11 +59,11 @@ public class RconReadinessChecker implements ApplicationRunner {
                         serverConfig.getHost(), 
                         serverConfig.getRconPort(), 
                         serverConfig.getRconPassword())) {
-                    String response = rcon.sendCommand("list");
+                    // Use a lightweight command that doesn't expose player data
+                    String response = rcon.sendCommand("seed");
                     
                     // If we get here, RCON is available
                     logger.info("Minecraft server RCON is ready! (attempt {}/{})", attempt, maxRetries);
-                    logger.info("Server response: {}", response);
                     return;
                 }
             } catch (IOException e) {
