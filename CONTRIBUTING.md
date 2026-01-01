@@ -52,6 +52,8 @@ The automated CI pipeline will run additional checks including:
 - Docker configuration validation
 - Integration testing
 
+**Discord Notifications**: When Discord webhooks are configured, the repository will automatically send notifications to your Discord channel for issues, pull requests, releases, and pushes to main/develop branches. See [.github/DISCORD-NOTIFICATIONS.md](.github/DISCORD-NOTIFICATIONS.md) for setup instructions.
+
 ## Submitting Changes
 
 ### Pull Request Guidelines
