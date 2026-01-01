@@ -18,10 +18,9 @@ permissions:
 jobs:
   notify-discord:
     runs-on: ubuntu-latest
-    if: secrets.DISCORD_WEBHOOK_URL != ''
     steps:
       - name: Send Discord notification for issue opened
-        if: github.event_name == 'issues' && github.event.action == 'opened'
+        if: github.event_name == 'issues' && github.event.action == 'opened' && secrets.DISCORD_WEBHOOK_URL != ''
         continue-on-error: true
         uses: tsickert/discord-webhook@v5.3.0
         with:
@@ -40,7 +39,7 @@ jobs:
           embed-timestamp: ${{ github.event.issue.created_at }}
 
       - name: Send Discord notification for issue closed
-        if: github.event_name == 'issues' && github.event.action == 'closed'
+        if: github.event_name == 'issues' && github.event.action == 'closed' && secrets.DISCORD_WEBHOOK_URL != ''
         continue-on-error: true
         uses: tsickert/discord-webhook@v5.3.0
         with:
@@ -59,7 +58,7 @@ jobs:
           embed-timestamp: ${{ github.event.issue.updated_at }}
 
       - name: Send Discord notification for issue reopened
-        if: github.event_name == 'issues' && github.event.action == 'reopened'
+        if: github.event_name == 'issues' && github.event.action == 'reopened' && secrets.DISCORD_WEBHOOK_URL != ''
         continue-on-error: true
         uses: tsickert/discord-webhook@v5.3.0
         with:
@@ -78,7 +77,7 @@ jobs:
           embed-timestamp: ${{ github.event.issue.updated_at }}
 
       - name: Send Discord notification for pull request opened
-        if: github.event_name == 'pull_request' && github.event.action == 'opened'
+        if: github.event_name == 'pull_request' && github.event.action == 'opened' && secrets.DISCORD_WEBHOOK_URL != ''
         continue-on-error: true
         uses: tsickert/discord-webhook@v5.3.0
         with:
@@ -97,7 +96,7 @@ jobs:
           embed-timestamp: ${{ github.event.pull_request.created_at }}
 
       - name: Send Discord notification for pull request merged
-        if: github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.merged == true
+        if: github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.merged == true && secrets.DISCORD_WEBHOOK_URL != ''
         continue-on-error: true
         uses: tsickert/discord-webhook@v5.3.0
         with:
@@ -116,7 +115,7 @@ jobs:
           embed-timestamp: ${{ github.event.pull_request.merged_at }}
 
       - name: Send Discord notification for pull request closed without merge
-        if: github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.merged == false
+        if: github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.merged == false && secrets.DISCORD_WEBHOOK_URL != ''
         continue-on-error: true
         uses: tsickert/discord-webhook@v5.3.0
         with:
@@ -135,7 +134,7 @@ jobs:
           embed-timestamp: ${{ github.event.pull_request.updated_at }}
 
       - name: Send Discord notification for pull request reopened
-        if: github.event_name == 'pull_request' && github.event.action == 'reopened'
+        if: github.event_name == 'pull_request' && github.event.action == 'reopened' && secrets.DISCORD_WEBHOOK_URL != ''
         continue-on-error: true
         uses: tsickert/discord-webhook@v5.3.0
         with:
@@ -154,7 +153,7 @@ jobs:
           embed-timestamp: ${{ github.event.pull_request.updated_at }}
 
       - name: Send Discord notification for pull request ready for review
-        if: github.event_name == 'pull_request' && github.event.action == 'ready_for_review'
+        if: github.event_name == 'pull_request' && github.event.action == 'ready_for_review' && secrets.DISCORD_WEBHOOK_URL != ''
         continue-on-error: true
         uses: tsickert/discord-webhook@v5.3.0
         with:
@@ -173,7 +172,7 @@ jobs:
           embed-timestamp: ${{ github.event.pull_request.updated_at }}
 
       - name: Send Discord notification for pull request review requested
-        if: github.event_name == 'pull_request' && github.event.action == 'review_requested'
+        if: github.event_name == 'pull_request' && github.event.action == 'review_requested' && secrets.DISCORD_WEBHOOK_URL != ''
         continue-on-error: true
         uses: tsickert/discord-webhook@v5.3.0
         with:
@@ -192,7 +191,7 @@ jobs:
           embed-timestamp: ${{ github.event.pull_request.updated_at }}
 
       - name: Send Discord notification for push events
-        if: github.event_name == 'push' && github.event.head_commit != null
+        if: github.event_name == 'push' && github.event.head_commit != null && secrets.DISCORD_WEBHOOK_URL != ''
         continue-on-error: true
         uses: tsickert/discord-webhook@v5.3.0
         with:
@@ -210,7 +209,7 @@ jobs:
           embed-timestamp: ${{ github.event.head_commit.timestamp }}
 
       - name: Send Discord notification for release events
-        if: github.event_name == 'release'
+        if: github.event_name == 'release' && secrets.DISCORD_WEBHOOK_URL != ''
         continue-on-error: true
         uses: tsickert/discord-webhook@v5.3.0
         with:
