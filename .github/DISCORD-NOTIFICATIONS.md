@@ -10,7 +10,8 @@ The Discord notification system sends alerts for the following GitHub events:
 - **Opened**: When a new issue is created
 - **Closed**: When an issue is resolved
 - **Reopened**: When a closed issue is reopened
-- **Labeled**: When labels are added to an issue
+
+**Note**: Label events are not included to avoid notification fatigue. If you need label notifications, you can add them back by editing the workflow file.
 
 ### Pull Requests
 - **Opened**: When a new pull request is created
@@ -66,16 +67,18 @@ Each notification includes:
 - **Icon Emoji**: Visual indicator of the event type (🆕, ✅, 🔀, 📦, 🚀, etc.)
 - **Event Type**: Clear description of what happened
 - **Title**: The title of the issue, pull request, or commit message
-- **Description**: Additional context or body text
+- **Description**: Additional context or body text (may be truncated by Discord if extremely long)
 - **Author**: Who triggered the event (with avatar and link to profile)
 - **Link**: Direct link to the issue, pull request, commit, or release
 - **Repository Info**: Which repository the event occurred in
-- **Timestamp**: When the event occurred
+- **Timestamp**: When the event occurred (shows creation time for "opened" events, update time for other events)
 - **Color Coding**: Different colors for different event types
   - Blue: New issues and pull requests
   - Green: Closed/merged items and releases
   - Orange: Reopened items
   - Purple: Labels and other metadata changes
+
+**Note**: Issue and PR descriptions longer than Discord's 4096 character limit may be truncated. Discord will handle this automatically. Avoid including sensitive information (API keys, passwords, etc.) in issue or PR descriptions as they will be posted to Discord.
 
 ## Troubleshooting
 
@@ -88,6 +91,11 @@ If notifications are not appearing in Discord:
 3. **Check Workflow**: View the workflow runs in the **Actions** tab to see if there are any errors
 4. **Webhook Permissions**: Ensure the webhook has permission to post in the target channel
 5. **Rate Limiting**: Discord may rate limit webhooks if too many messages are sent too quickly
+   - Discord typically allows around **30 messages per minute per webhook** (limits may vary; see Discord's official documentation for current limits)
+   - For busy repositories, consider **using separate webhooks for different event types** to distribute traffic
+   - You can **disable less important event types** by editing `.github/workflows/discord-notifications.yml`
+   - The workflow includes `continue-on-error: true` so rate limiting won't block GitHub events
+   - Refer to [Discord's rate limit documentation](https://discord.com/developers/docs/topics/rate-limits) for details
 
 ### Testing the Webhook
 
@@ -121,6 +129,8 @@ To customize which events trigger notifications or how they appear:
 - **Keep Webhook URLs Secret**: Never commit webhook URLs directly to your repository
 - **Use GitHub Secrets**: Always store webhook URLs in GitHub repository secrets
 - **Rotate Webhooks**: If a webhook URL is compromised, delete it in Discord and create a new one
+- **Sensitive Information Warning**: Issue and PR descriptions are sent to Discord. Avoid including sensitive information (API keys, passwords, tokens, private data) in public issues or PRs as they will be posted to your Discord channel
+- **Content Visibility**: Anyone with access to the Discord channel will see the full content of notifications
 - **Monitor Usage**: Regularly check Discord webhook usage to ensure it's not being abused
 
 ## Additional Resources
