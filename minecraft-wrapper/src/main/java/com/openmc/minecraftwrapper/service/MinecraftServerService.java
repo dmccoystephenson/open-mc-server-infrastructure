@@ -232,13 +232,16 @@ public class MinecraftServerService {
             }
         }
 
-        // Cleanup FIFO
-        if (inputFifo != null && Files.exists(inputFifo)) {
+        // Cleanup FIFO - check exists to avoid race conditions
+        if (inputFifo != null) {
             try {
-                Files.delete(inputFifo);
-                log.debug("FIFO deleted");
+                if (Files.exists(inputFifo)) {
+                    Files.delete(inputFifo);
+                    log.debug("FIFO deleted");
+                }
             } catch (IOException e) {
-                log.warn("Failed to delete FIFO", e);
+                // Only log at debug level since file may already be deleted
+                log.debug("Could not delete FIFO (may already be removed): {}", e.getMessage());
             }
         }
     }
