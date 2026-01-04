@@ -34,16 +34,19 @@ public class ServerController {
     private final ActivityTrackerService activityTrackerService;
     private final PluginService pluginService;
     private final AlertNotificationService alertNotificationService;
+    private final com.openmc.webapp.service.MinecraftWrapperService minecraftWrapperService;
     
     public ServerController(RconService rconService, ServerConfig serverConfig, 
                           ActivityTrackerService activityTrackerService,
                           PluginService pluginService,
-                          AlertNotificationService alertNotificationService) {
+                          AlertNotificationService alertNotificationService,
+                          com.openmc.webapp.service.MinecraftWrapperService minecraftWrapperService) {
         this.rconService = rconService;
         this.serverConfig = serverConfig;
         this.activityTrackerService = activityTrackerService;
         this.pluginService = pluginService;
         this.alertNotificationService = alertNotificationService;
+        this.minecraftWrapperService = minecraftWrapperService;
     }
     
     @GetMapping("/")
@@ -291,6 +294,90 @@ public class ServerController {
             return PluginOperationResponse.success(result);
         } else {
             return PluginOperationResponse.error(result);
+        }
+    }
+    
+    @PostMapping("/api/server/start")
+    @ResponseBody
+    public Map<String, Object> startServer(@RequestBody Map<String, String> payload) {
+        String username = payload.get("username");
+        String password = payload.get("password");
+        
+        // Validate credentials
+        if (username == null || password == null || !validateCredentials(username, password)) {
+            alertNotificationService.sendWarningAlert(
+                "Server Start Authentication Failed",
+                "Failed authentication attempt for server start endpoint"
+            );
+            return Map.of("success", false, "message", "Invalid username or password");
+        }
+        
+        boolean success = minecraftWrapperService.startServer();
+        
+        if (success) {
+            alertNotificationService.sendInfoAlert(
+                "Server Start Initiated",
+                String.format("User '%s' initiated server start", username)
+            );
+            return Map.of("success", true, "message", "Server start initiated");
+        } else {
+            return Map.of("success", false, "message", "Failed to start server");
+        }
+    }
+    
+    @PostMapping("/api/server/stop")
+    @ResponseBody
+    public Map<String, Object> stopServer(@RequestBody Map<String, String> payload) {
+        String username = payload.get("username");
+        String password = payload.get("password");
+        
+        // Validate credentials
+        if (username == null || password == null || !validateCredentials(username, password)) {
+            alertNotificationService.sendWarningAlert(
+                "Server Stop Authentication Failed",
+                "Failed authentication attempt for server stop endpoint"
+            );
+            return Map.of("success", false, "message", "Invalid username or password");
+        }
+        
+        boolean success = minecraftWrapperService.stopServer();
+        
+        if (success) {
+            alertNotificationService.sendInfoAlert(
+                "Server Stop Initiated",
+                String.format("User '%s' initiated server stop", username)
+            );
+            return Map.of("success", true, "message", "Server stop initiated");
+        } else {
+            return Map.of("success", false, "message", "Failed to stop server");
+        }
+    }
+    
+    @PostMapping("/api/server/restart")
+    @ResponseBody
+    public Map<String, Object> restartServer(@RequestBody Map<String, String> payload) {
+        String username = payload.get("username");
+        String password = payload.get("password");
+        
+        // Validate credentials
+        if (username == null || password == null || !validateCredentials(username, password)) {
+            alertNotificationService.sendWarningAlert(
+                "Server Restart Authentication Failed",
+                "Failed authentication attempt for server restart endpoint"
+            );
+            return Map.of("success", false, "message", "Invalid username or password");
+        }
+        
+        boolean success = minecraftWrapperService.restartServer();
+        
+        if (success) {
+            alertNotificationService.sendInfoAlert(
+                "Server Restart Initiated",
+                String.format("User '%s' initiated server restart", username)
+            );
+            return Map.of("success", true, "message", "Server restart initiated");
+        } else {
+            return Map.of("success", false, "message", "Failed to restart server");
         }
     }
 }

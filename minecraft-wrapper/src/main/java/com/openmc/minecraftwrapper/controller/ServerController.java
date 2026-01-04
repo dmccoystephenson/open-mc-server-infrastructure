@@ -1,0 +1,162 @@
+package com.openmc.minecraftwrapper.controller;
+
+import com.openmc.minecraftwrapper.model.ServerStatus;
+import com.openmc.minecraftwrapper.service.MinecraftServerService;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.io.IOException;
+import java.util.concurrent.CompletableFuture;
+
+@Slf4j
+@RestController
+@RequestMapping("/api/server")
+public class ServerController {
+
+    private final MinecraftServerService minecraftServerService;
+
+    public ServerController(MinecraftServerService minecraftServerService) {
+        this.minecraftServerService = minecraftServerService;
+    }
+
+    @GetMapping("/status")
+    public ResponseEntity<ServerStatus> getStatus() {
+        log.info("Received request for server status");
+        ServerStatus status = minecraftServerService.getStatus();
+        return ResponseEntity.ok(status);
+    }
+
+    /**
+     * Start the Minecraft server.
+     * Returns 202 Accepted immediately and starts the server asynchronously.
+     * Consider implementing proper authentication/authorization before exposing this endpoint.
+     */
+    @PostMapping("/start")
+    public ResponseEntity<String> start() {
+        log.info("Received start request");
+        
+        // Execute start asynchronously
+        CompletableFuture.runAsync(() -> {
+            try {
+                minecraftServerService.start();
+            } catch (IllegalStateException e) {
+                log.error("Server is already running", e);
+            } catch (Exception e) {
+                log.error("Failed to start server", e);
+            }
+        }).exceptionally(ex -> {
+            log.error("Unexpected error during start", ex);
+            return null;
+        });
+        
+        // Return immediately with 202 Accepted
+        return ResponseEntity.status(HttpStatus.ACCEPTED)
+                .body("Server start initiated");
+    }
+
+    /**
+     * Stop the Minecraft server.
+     * Returns 202 Accepted immediately and stops the server asynchronously.
+     * Consider implementing proper authentication/authorization before exposing this endpoint.
+     */
+    @PostMapping("/stop")
+    public ResponseEntity<String> stop() {
+        log.info("Received stop request");
+        
+        // Execute stop asynchronously
+        CompletableFuture.runAsync(() -> {
+            try {
+                minecraftServerService.stop();
+            } catch (IllegalStateException e) {
+                log.error("Server is not running", e);
+            } catch (Exception e) {
+                log.error("Failed to stop server", e);
+            }
+        }).exceptionally(ex -> {
+            log.error("Unexpected error during stop", ex);
+            return null;
+        });
+        
+        // Return immediately with 202 Accepted
+        return ResponseEntity.status(HttpStatus.ACCEPTED)
+                .body("Server stop initiated");
+    }
+
+    /**
+     * Restart the Minecraft server.
+     * Returns 202 Accepted immediately and restarts the server asynchronously.
+     * Consider implementing proper authentication/authorization before exposing this endpoint.
+     */
+    @PostMapping("/restart")
+    public ResponseEntity<String> restart() {
+        log.info("Received restart request");
+        
+        // Execute restart asynchronously
+        CompletableFuture.runAsync(() -> {
+            try {
+                minecraftServerService.restart();
+            } catch (Exception e) {
+                log.error("Failed to restart server", e);
+            }
+        }).exceptionally(ex -> {
+            log.error("Unexpected error during restart", ex);
+            return null;
+        });
+        
+        // Return immediately with 202 Accepted
+        return ResponseEntity.status(HttpStatus.ACCEPTED)
+                .body("Server restart initiated");
+    }
+
+    @PostMapping("/command")
+    public ResponseEntity<String> sendCommand(@RequestBody String command) {
+        log.info("Received command request: {}", command);
+        
+        // Basic validation - only allow safe commands or require authentication in production
+        // This is a placeholder for proper authentication/authorization
+        if (command == null || command.trim().isEmpty()) {
+            return ResponseEntity.badRequest().body("Command cannot be empty");
+        }
+        
+        try {
+            minecraftServerService.sendCommand(command);
+            return ResponseEntity.ok("Command sent successfully");
+        } catch (IllegalStateException e) {
+            log.error("Server not running", e);
+            return ResponseEntity.badRequest().body("Server is not running");
+        } catch (IOException e) {
+            log.error("Failed to send command", e);
+            return ResponseEntity.internalServerError().body("Failed to send command");
+        }
+    }
+
+    /**
+     * Initiate graceful server shutdown.
+     * Returns 202 Accepted immediately and performs shutdown asynchronously.
+     * The shutdown process takes 30+ seconds to complete with player warnings.
+     * Consider implementing proper authentication/authorization before exposing this endpoint.
+     */
+    @PostMapping("/shutdown")
+    public ResponseEntity<String> shutdown() {
+        log.info("Received shutdown request");
+        
+        // Execute shutdown asynchronously to avoid blocking the HTTP request
+        // Note: Using default ForkJoinPool for simplicity. In production, consider a dedicated executor.
+        CompletableFuture.runAsync(() -> {
+            try {
+                minecraftServerService.shutdown();
+            } catch (Exception e) {
+                log.error("Failed to shutdown server", e);
+            }
+        }).exceptionally(ex -> {
+            log.error("Unexpected error during shutdown", ex);
+            return null;
+        });
+        
+        // Return immediately with 202 Accepted
+        return ResponseEntity.status(HttpStatus.ACCEPTED)
+                .body("Shutdown initiated - server will shut down gracefully in 30+ seconds");
+    }
+}

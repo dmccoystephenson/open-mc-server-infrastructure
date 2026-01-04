@@ -13,7 +13,6 @@ bash -n down.sh
 bash -n upgrade.sh
 bash -n trigger-backup.sh
 bash -n resources/post-create.sh
-bash -n resources/minecraft-wrapper.sh
 echo "✅ Shell script syntax validation passed"
 
 echo "🐳 Checking Docker configuration..."
@@ -44,11 +43,12 @@ test -x down.sh
 test -x upgrade.sh
 test -x trigger-backup.sh
 test -x resources/post-create.sh
-test -x resources/minecraft-wrapper.sh
 echo "✅ File permissions validation passed"
 
-echo "🧪 Testing graceful shutdown functionality..."
-./scripts/test-graceful-shutdown.sh
-echo "✅ Graceful shutdown test passed"
+echo "🧪 Running minecraft-wrapper tests..."
+cd minecraft-wrapper
+./gradlew test --no-daemon
+cd ..
+echo "✅ Minecraft wrapper tests passed"
 
 echo "🎉 All local CI checks passed!"

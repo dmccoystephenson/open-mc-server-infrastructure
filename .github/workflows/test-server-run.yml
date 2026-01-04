@@ -40,13 +40,13 @@ jobs:
         docker compose build alert-manager
         echo "✓ Alert manager built"
         echo "Building Minecraft server (this will take several minutes as it downloads and compiles Spigot)..."
-        docker compose build mcserver
+        docker compose build minecraft-wrapper
         echo "✓ Server image built successfully"
         
     - name: Start services
       run: |
         echo "🚀 Starting services..."
-        docker compose up -d alert-manager mcserver
+        docker compose up -d alert-manager minecraft-wrapper
         echo "✓ Services started"
         
     - name: Wait for server initialization
