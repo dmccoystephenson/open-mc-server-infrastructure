@@ -170,7 +170,7 @@ main() {
         backup_dir="$recent_backup"
     else
         log_info "No recent backup found, checking for any existing backup..."
-        backup_dir=$(ls -td ./backups/backup-* 2>/dev/null | head -1)
+        backup_dir=$(find ./backups -maxdepth 1 -type d -name "backup-*" -printf '%T@ %p\n' 2>/dev/null | sort -rn | head -1 | cut -d' ' -f2-)
         
         if [ -z "$backup_dir" ] || [ ! -f "$backup_dir/mcserver-backup.tar.gz" ]; then
             log_warning "No valid backup found. Creating a new backup..."
@@ -192,7 +192,7 @@ main() {
             echo ""
             
             # Get the most recent backup that was just created
-            backup_dir=$(ls -td ./backups/backup-* 2>/dev/null | head -1)
+            backup_dir=$(find ./backups -maxdepth 1 -type d -name "backup-*" -printf '%T@ %p\n' 2>/dev/null | sort -rn | head -1 | cut -d' ' -f2-)
             
             if [ -z "$backup_dir" ] || [ ! -f "$backup_dir/mcserver-backup.tar.gz" ]; then
                 log_error "Backup creation succeeded but backup file not found!"
