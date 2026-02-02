@@ -1036,20 +1036,28 @@
                     
                     // Player name cell (safely escaped and linked)
                     const nameTd = document.createElement('td');
-                    const nameLink = document.createElement('a');
-                    nameLink.href = `/player/${encodeURIComponent(entry.playerName || 'Unknown')}`;
-                    nameLink.textContent = entry.playerName || 'Unknown';
-                    nameLink.style.color = 'var(--primary-color)';
-                    nameLink.style.textDecoration = 'none';
-                    nameLink.style.fontWeight = '600';
-                    nameLink.style.transition = 'color 0.3s ease';
-                    nameLink.addEventListener('mouseover', () => {
-                        nameLink.style.color = 'var(--secondary-color)';
-                    });
-                    nameLink.addEventListener('mouseout', () => {
+                    const playerName = entry.playerName || 'Unknown';
+                    
+                    // Only create a link if the player name is valid
+                    if (entry.playerName && entry.playerName !== 'Unknown') {
+                        const nameLink = document.createElement('a');
+                        nameLink.href = `/player/${encodeURIComponent(entry.playerName)}`;
+                        nameLink.textContent = entry.playerName;
                         nameLink.style.color = 'var(--primary-color)';
-                    });
-                    nameTd.appendChild(nameLink);
+                        nameLink.style.textDecoration = 'none';
+                        nameLink.style.fontWeight = '600';
+                        nameLink.style.transition = 'color 0.3s ease';
+                        nameLink.addEventListener('mouseover', () => {
+                            nameLink.style.color = 'var(--secondary-color)';
+                        });
+                        nameLink.addEventListener('mouseout', () => {
+                            nameLink.style.color = 'var(--primary-color)';
+                        });
+                        nameTd.appendChild(nameLink);
+                    } else {
+                        // If no valid player name, just show text
+                        nameTd.textContent = playerName;
+                    }
                     tr.appendChild(nameTd);
                     
                     // Hours played cell
