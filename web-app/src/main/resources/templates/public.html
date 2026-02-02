@@ -1034,9 +1034,22 @@
                     rankTd.appendChild(rankSpan);
                     tr.appendChild(rankTd);
                     
-                    // Player name cell (safely escaped)
+                    // Player name cell (safely escaped and linked)
                     const nameTd = document.createElement('td');
-                    nameTd.textContent = entry.playerName || 'Unknown';
+                    const nameLink = document.createElement('a');
+                    nameLink.href = `/player/${encodeURIComponent(entry.playerName || 'Unknown')}`;
+                    nameLink.textContent = entry.playerName || 'Unknown';
+                    nameLink.style.color = 'var(--primary-color)';
+                    nameLink.style.textDecoration = 'none';
+                    nameLink.style.fontWeight = '600';
+                    nameLink.style.transition = 'color 0.3s ease';
+                    nameLink.addEventListener('mouseover', () => {
+                        nameLink.style.color = 'var(--secondary-color)';
+                    });
+                    nameLink.addEventListener('mouseout', () => {
+                        nameLink.style.color = 'var(--primary-color)';
+                    });
+                    nameTd.appendChild(nameLink);
                     tr.appendChild(nameTd);
                     
                     // Hours played cell

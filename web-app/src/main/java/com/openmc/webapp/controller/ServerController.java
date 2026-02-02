@@ -380,4 +380,29 @@ public class ServerController {
             return Map.of("success", false, "message", "Failed to restart server");
         }
     }
+    
+    @GetMapping("/player/{playerName}")
+    public String playerProfile(@PathVariable String playerName, Model model) {
+        com.openmc.webapp.model.PlayerProfile profile = activityTrackerService.getPlayerProfile(playerName);
+        
+        if (profile == null) {
+            model.addAttribute("error", "Player not found: " + playerName);
+            model.addAttribute("playerName", playerName);
+        } else {
+            model.addAttribute("profile", profile);
+        }
+        
+        model.addAttribute("dashboardTitle", serverConfig.getDashboardTitle());
+        model.addAttribute("dashboardSubtitle", serverConfig.getDashboardSubtitle());
+        model.addAttribute("dashboardPrimaryColor", serverConfig.getDashboardPrimaryColor());
+        model.addAttribute("dashboardSecondaryColor", serverConfig.getDashboardSecondaryColor());
+        
+        return "player";
+    }
+    
+    @GetMapping("/api/player/{playerName}")
+    @ResponseBody
+    public com.openmc.webapp.model.PlayerProfile getPlayerProfile(@PathVariable String playerName) {
+        return activityTrackerService.getPlayerProfile(playerName);
+    }
 }

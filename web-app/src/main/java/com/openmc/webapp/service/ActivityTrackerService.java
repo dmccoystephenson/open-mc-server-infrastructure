@@ -288,4 +288,34 @@ public class ActivityTrackerService {
         }
         return baseUrl + path;
     }
+    
+    /**
+     * Get a player profile by player name
+     * @param playerName The name of the player
+     * @return PlayerProfile with player data, or null if not found
+     */
+    public com.openmc.webapp.model.PlayerProfile getPlayerProfile(String playerName) {
+        if (!isEnabled() || playerName == null || playerName.trim().isEmpty()) {
+            return null;
+        }
+        
+        List<LeaderboardEntry> leaderboard = getLeaderboard();
+        
+        // Find the player in the leaderboard
+        for (int i = 0; i < leaderboard.size(); i++) {
+            LeaderboardEntry entry = leaderboard.get(i);
+            if (entry.getPlayerName().equalsIgnoreCase(playerName)) {
+                // Create player profile with rank
+                return new com.openmc.webapp.model.PlayerProfile(
+                    entry.getPlayerUuid(),
+                    entry.getPlayerName(),
+                    entry.getHoursPlayed(),
+                    entry.getTotalLogins(),
+                    i + 1  // Rank is index + 1
+                );
+            }
+        }
+        
+        return null;
+    }
 }
