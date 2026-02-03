@@ -304,7 +304,7 @@ public class ActivityTrackerService {
         // Find the player in the leaderboard
         for (int i = 0; i < leaderboard.size(); i++) {
             LeaderboardEntry entry = leaderboard.get(i);
-            if (entry.getPlayerName().equalsIgnoreCase(playerName)) {
+            if (entry.getPlayerName() != null && entry.getPlayerName().equalsIgnoreCase(playerName)) {
                 // Create player profile with rank
                 return new com.openmc.webapp.model.PlayerProfile(
                     entry.getPlayerUuid(),

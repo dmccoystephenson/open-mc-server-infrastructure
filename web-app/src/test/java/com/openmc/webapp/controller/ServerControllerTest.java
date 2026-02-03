@@ -365,12 +365,11 @@ class ServerControllerTest {
     }
     
     @Test
-    @DisplayName("Should return null via API when player not found")
-    void shouldReturnNullViaApiWhenPlayerNotFound() throws Exception {
+    @DisplayName("Should return 404 via API when player not found")
+    void shouldReturn404ViaApiWhenPlayerNotFound() throws Exception {
         when(activityTrackerService.getPlayerProfile("UnknownPlayer")).thenReturn(null);
         
         mockMvc.perform(get("/api/player/UnknownPlayer"))
-                .andExpect(status().isOk())
-                .andExpect(content().string(""));
+                .andExpect(status().isNotFound());
     }
 }
