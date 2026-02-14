@@ -309,4 +309,67 @@ class ServerControllerTest {
             anyString()
         );
     }
+    
+    @Test
+    @DisplayName("Should return player profile page when player exists")
+    void shouldReturnPlayerProfilePageWhenPlayerExists() throws Exception {
+        com.openmc.webapp.model.PlayerProfile mockProfile = new com.openmc.webapp.model.PlayerProfile(
+            "550e8400-e29b-41d4-a716-446655440000",
+            "TestPlayer",
+            123.5,
+            50,
+            1
+        );
+        
+        when(activityTrackerService.getPlayerProfile("TestPlayer")).thenReturn(mockProfile);
+        
+        mockMvc.perform(get("/player/TestPlayer"))
+                .andExpect(status().isOk())
+                .andExpect(view().name("player"))
+                .andExpect(model().attributeExists("profile"))
+                .andExpect(model().attribute("profile", mockProfile));
+    }
+    
+    @Test
+    @DisplayName("Should return error page when player not found")
+    void shouldReturnErrorPageWhenPlayerNotFound() throws Exception {
+        when(activityTrackerService.getPlayerProfile("UnknownPlayer")).thenReturn(null);
+        
+        mockMvc.perform(get("/player/UnknownPlayer"))
+                .andExpect(status().isOk())
+                .andExpect(view().name("player"))
+                .andExpect(model().attributeExists("error"))
+                .andExpect(model().attributeExists("playerName"));
+    }
+    
+    @Test
+    @DisplayName("Should return player profile via API when player exists")
+    void shouldReturnPlayerProfileViaApiWhenPlayerExists() throws Exception {
+        com.openmc.webapp.model.PlayerProfile mockProfile = new com.openmc.webapp.model.PlayerProfile(
+            "550e8400-e29b-41d4-a716-446655440000",
+            "TestPlayer",
+            123.5,
+            50,
+            1
+        );
+        
+        when(activityTrackerService.getPlayerProfile("TestPlayer")).thenReturn(mockProfile);
+        
+        mockMvc.perform(get("/api/player/TestPlayer"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.playerName").value("TestPlayer"))
+                .andExpect(jsonPath("$.playerUuid").value("550e8400-e29b-41d4-a716-446655440000"))
+                .andExpect(jsonPath("$.hoursPlayed").value(123.5))
+                .andExpect(jsonPath("$.totalLogins").value(50))
+                .andExpect(jsonPath("$.leaderboardRank").value(1));
+    }
+    
+    @Test
+    @DisplayName("Should return 404 via API when player not found")
+    void shouldReturn404ViaApiWhenPlayerNotFound() throws Exception {
+        when(activityTrackerService.getPlayerProfile("UnknownPlayer")).thenReturn(null);
+        
+        mockMvc.perform(get("/api/player/UnknownPlayer"))
+                .andExpect(status().isNotFound());
+    }
 }

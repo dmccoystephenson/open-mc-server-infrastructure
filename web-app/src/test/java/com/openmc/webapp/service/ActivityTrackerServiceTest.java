@@ -102,4 +102,36 @@ class ActivityTrackerServiceTest {
             assertFalse(healthy);
         });
     }
+    
+    @Test
+    @DisplayName("Should return null player profile when disabled")
+    void shouldReturnNullPlayerProfileWhenDisabled() {
+        serverConfig.setActivityTrackerEnabled(false);
+        
+        com.openmc.webapp.model.PlayerProfile profile = activityTrackerService.getPlayerProfile("TestPlayer");
+        
+        assertNull(profile);
+    }
+    
+    @Test
+    @DisplayName("Should return null player profile for null player name")
+    void shouldReturnNullForNullPlayerName() {
+        serverConfig.setActivityTrackerEnabled(true);
+        serverConfig.setActivityTrackerUrl("http://localhost:8080");
+        
+        com.openmc.webapp.model.PlayerProfile profile = activityTrackerService.getPlayerProfile(null);
+        
+        assertNull(profile);
+    }
+    
+    @Test
+    @DisplayName("Should return null player profile for empty player name")
+    void shouldReturnNullForEmptyPlayerName() {
+        serverConfig.setActivityTrackerEnabled(true);
+        serverConfig.setActivityTrackerUrl("http://localhost:8080");
+        
+        com.openmc.webapp.model.PlayerProfile profile = activityTrackerService.getPlayerProfile("");
+        
+        assertNull(profile);
+    }
 }

@@ -13,7 +13,9 @@ import com.openmc.webapp.service.PluginService;
 import com.openmc.webapp.service.RconService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
@@ -379,5 +381,34 @@ public class ServerController {
         } else {
             return Map.of("success", false, "message", "Failed to restart server");
         }
+    }
+    
+    @GetMapping("/player/{playerName}")
+    public String playerProfile(@PathVariable String playerName, Model model) {
+        com.openmc.webapp.model.PlayerProfile profile = activityTrackerService.getPlayerProfile(playerName);
+        
+        if (profile == null) {
+            model.addAttribute("error", "Player not found: " + playerName);
+            model.addAttribute("playerName", playerName);
+        } else {
+            model.addAttribute("profile", profile);
+        }
+        
+        model.addAttribute("dashboardTitle", serverConfig.getDashboardTitle());
+        model.addAttribute("dashboardSubtitle", serverConfig.getDashboardSubtitle());
+        model.addAttribute("dashboardPrimaryColor", serverConfig.getDashboardPrimaryColor());
+        model.addAttribute("dashboardSecondaryColor", serverConfig.getDashboardSecondaryColor());
+        
+        return "player";
+    }
+    
+    @GetMapping("/api/player/{playerName}")
+    @ResponseBody
+    public ResponseEntity<com.openmc.webapp.model.PlayerProfile> getPlayerProfile(@PathVariable String playerName) {
+        com.openmc.webapp.model.PlayerProfile profile = activityTrackerService.getPlayerProfile(playerName);
+        if (profile == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        }
+        return ResponseEntity.ok(profile);
     }
 }
