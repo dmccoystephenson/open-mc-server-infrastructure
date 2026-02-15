@@ -495,6 +495,13 @@
                        style="text-align: center;">
                         🌐 BlueMap
                     </a>
+                    <a th:if="${accordChatUrl != null && !accordChatUrl.isEmpty()}" 
+                       th:href="${accordChatUrl}" 
+                       class="btn btn-primary" 
+                       target="_blank"
+                       style="text-align: center;">
+                        💬 Chat
+                    </a>
                 </div>
             </div>
         </aside>
@@ -580,6 +587,16 @@
                 </a>
                 <span th:if="${bluemapUrl == null || bluemapUrl.isEmpty()}" class="empty-link">
                     🌐 BlueMap (Not configured)
+                </span>
+                
+                <a th:if="${accordChatUrl != null && !accordChatUrl.isEmpty()}" 
+                   th:href="${accordChatUrl}" 
+                   class="btn btn-primary" 
+                   target="_blank">
+                    💬 Chat
+                </a>
+                <span th:if="${accordChatUrl == null || accordChatUrl.isEmpty()}" class="empty-link">
+                    💬 Chat (Not configured)
                 </span>
             </div>
         </div>

@@ -62,6 +62,7 @@ public class ServerController {
         model.addAttribute("status", status);
         model.addAttribute("dynmapUrl", serverConfig.getDynmapUrl());
         model.addAttribute("bluemapUrl", serverConfig.getBluemapUrl());
+        model.addAttribute("accordChatUrl", serverConfig.getAccordChatUrl());
         model.addAttribute("refreshIntervalMs", serverConfig.getRefreshIntervalMs());
         model.addAttribute("lastFetchTime", rconService.getLastFetchTime());
         model.addAttribute("activityTrackerEnabled", activityTrackerService.isEnabled());
@@ -74,6 +75,7 @@ public class ServerController {
     
     @GetMapping("/admin")
     public String adminPage(Model model) {
+        model.addAttribute("accordChatUrl", serverConfig.getAccordChatUrl());
         model.addAttribute("dashboardTitle", serverConfig.getDashboardTitle());
         model.addAttribute("dashboardSubtitle", serverConfig.getDashboardSubtitle());
         model.addAttribute("dashboardPrimaryColor", serverConfig.getDashboardPrimaryColor());
