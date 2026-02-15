@@ -100,28 +100,38 @@ The Activity Tracker data will automatically refresh with the server status upda
 
 ### Accord Chat Integration
 
-The infrastructure includes built-in support for [Accord Chat](https://github.com/dmccoystephenson/accord-prototype), a real-time web-based chat application. When enabled, players and administrators can communicate through a modern web interface accessible from the dashboard.
+The infrastructure supports integration with [Accord Chat](https://github.com/dmccoystephenson/accord-prototype), a real-time web-based chat application. When configured, players and administrators can communicate through a modern web interface accessible from the dashboard.
+
+**Accord Chat runs as a separate application** to avoid duplication and ensure updates can be made to Accord independently of the infrastructure project.
 
 To enable Accord Chat integration:
 
-1. Set the following environment variables in your `.env` file:
+1. **Clone and run Accord Chat separately**:
+   ```bash
+   git clone https://github.com/dmccoystephenson/accord-prototype.git
+   cd accord-prototype
+   # Follow the Accord setup instructions in its README
+   docker compose up -d
+   ```
+
+2. **Configure the web dashboard** to link to your running Accord instance by setting the following in your `.env` file:
    ```bash
    ACCORD_CHAT_URL=http://localhost:3000
-   ACCORD_CHAT_PORT=3000
-   ACCORD_BACKEND_PORT=8082
-   DOCKER_HOST_IP=localhost
    ```
    
-2. For accessing from other machines on your network, set `DOCKER_HOST_IP` to your server's IP address:
+   For accessing from other machines on your network, use your server's IP address:
    ```bash
-   DOCKER_HOST_IP=192.168.1.100
+   ACCORD_CHAT_URL=http://192.168.1.100:3000
    ```
 
-3. Start or restart the services with `./up.sh`
+3. **Restart the infrastructure services** to apply the configuration:
+   ```bash
+   ./up.sh
+   ```
 
-The Accord Chat service will be available at `http://localhost:3000` (or your configured port), and a "Chat" link will appear in the web dashboard's External Services section.
+Once configured, a "Chat" link will appear in the web dashboard's External Services section pointing to your Accord Chat instance.
 
-**Note**: By default, Accord Chat uses an in-memory H2 database, so chat messages are not persisted between restarts. For production use with persistent storage, you'll need to configure a persistent database (see the [Accord Chat documentation](https://github.com/dmccoystephenson/accord-prototype)). Additionally, CORS is set to allow all origins (`*`) by default for development. For production, set `ACCORD_CORS_ALLOWED_ORIGINS` to your specific domain(s).
+**Note**: For production use with persistent storage and other configuration options, refer to the [Accord Chat documentation](https://github.com/dmccoystephenson/accord-prototype).
 
 ## Configuration
 
@@ -162,10 +172,7 @@ These settings allow you to run multiple server instances in parallel without co
 - `ADMIN_PASSWORD`: Password for admin console authentication (default: `admin`)
 - `DYNMAP_URL`: URL to Dynmap web interface (optional)
 - `BLUEMAP_URL`: URL to BlueMap web interface (optional)
-- `ACCORD_CHAT_URL`: URL to Accord Chat web interface (optional, e.g., `http://localhost:3000`)
-- `ACCORD_CHAT_PORT`: Host port for Accord Chat webapp (default: `3000`)
-- `ACCORD_BACKEND_PORT`: Host port for Accord Chat backend API (default: `8082`)
-- `DOCKER_HOST_IP`: Docker host IP for accessing services from external browsers (default: `localhost`)
+- `ACCORD_CHAT_URL`: URL to Accord Chat web interface (optional, e.g., `http://localhost:3000`). Accord runs separately - see Accord Chat Integration section.
 - `ACTIVITY_TRACKER_URL`: URL to Activity Tracker plugin REST API (optional, e.g., `http://localhost:8080`)
 - `ACTIVITY_TRACKER_ENABLED`: Enable Activity Tracker integration (default: `false`)
 
