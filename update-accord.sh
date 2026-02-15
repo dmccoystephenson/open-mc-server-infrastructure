@@ -183,6 +183,7 @@ detect_new_env_vars() {
     while IFS= read -r var; do
         if [ -n "$var" ]; then
             # Get the full assignment line from accord sample.env and preserve it as-is
+            # Using || true to handle case where variable might not exist in sample.env
             local line
             line=$(grep -m1 "^${var}=" "$accord_sample_env" || true)
             if [ -n "$line" ]; then
