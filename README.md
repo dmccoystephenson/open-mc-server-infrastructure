@@ -106,10 +106,11 @@ The infrastructure supports integration with [Accord Chat](https://github.com/dm
 
 To enable Accord Chat integration:
 
-1. **Clone and run Accord Chat separately**:
+1. **Initialize and run the Accord Chat submodule**:
    ```bash
-   git clone https://github.com/dmccoystephenson/accord-prototype.git
-   cd accord-prototype
+   # Initialize the accord-chat submodule
+   git submodule update --init accord-chat
+   cd accord-chat
    # Follow the Accord setup instructions in its README
    docker compose up -d
    ```
