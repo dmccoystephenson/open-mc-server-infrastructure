@@ -91,77 +91,23 @@ else
 fi
 echo ""
 
-# Test 4: Create test environment with mock .env files
-test_log "Test 4: Testing environment variable detection..."
+# Test 4: Test accord-chat .env creation
+test_log "Test 4: Testing accord-chat .env file handling..."
 TEST_DIR="/tmp/accord-update-test"
 mkdir -p "$TEST_DIR/accord-chat"
 
-# Create a mock accord-chat/sample.env with some variables
+# Create a mock accord-chat/sample.env
 cat > "$TEST_DIR/accord-chat/sample.env" <<'EOF'
 # Test environment variables
-EXISTING_VAR=value1
-NEW_VAR_1=value2
-NEW_VAR_2=value3
-ANOTHER_EXISTING_VAR=value4
+TEST_VAR_1=value1
+TEST_VAR_2=value2
 EOF
 
-# Create a mock root sample.env with only some of the variables
-cat > "$TEST_DIR/sample.env" <<'EOF'
-# Root environment variables
-EXISTING_VAR=root_value1
-ANOTHER_EXISTING_VAR=root_value2
-EOF
-
-# Test extraction of environment variables
-test_info "Testing environment variable extraction..."
-
-# Create a temporary script to test the env var extraction function
-cat > "$TEST_DIR/test_env_extract.sh" <<'EOF'
-#!/bin/bash
-get_env_vars() {
-    local env_file="$1"
-    if [ ! -f "$env_file" ]; then
-        echo ""
-        return
-    fi
-    grep -E '^[A-Z_][A-Z0-9_]*=' "$env_file" | cut -d'=' -f1 | sort -u
-}
-
-accord_vars=$(get_env_vars "accord-chat/sample.env")
-root_vars=$(get_env_vars "sample.env")
-
-echo "Accord vars:"
-echo "$accord_vars"
-echo ""
-echo "Root vars:"
-echo "$root_vars"
-echo ""
-
-# Find new variables
-new_vars=""
-while IFS= read -r var; do
-    if ! echo "$root_vars" | grep -q "^${var}$"; then
-        new_vars="${new_vars}${var}\n"
-    fi
-done <<< "$accord_vars"
-
-echo "New vars:"
-echo -e "$new_vars" | grep -v '^$'
-EOF
-
-chmod +x "$TEST_DIR/test_env_extract.sh"
-
-cd "$TEST_DIR"
-output=$("$TEST_DIR/test_env_extract.sh")
-cd - > /dev/null
-
-# Verify that NEW_VAR_1 and NEW_VAR_2 are detected
-if echo "$output" | grep -q "NEW_VAR_1" && echo "$output" | grep -q "NEW_VAR_2"; then
-    test_success "Environment variable detection works correctly"
+# Test that function exists
+if grep -q "^ensure_accord_env()" update-accord.sh; then
+    test_success "Accord .env handling function exists"
 else
-    test_error "Environment variable detection failed"
-    echo "Output was:"
-    echo "$output"
+    test_error "Accord .env handling function not found"
     exit 1
 fi
 echo ""
@@ -171,7 +117,7 @@ test_log "Test 5: Verifying script structure for testability..."
 
 # Extract function definitions to verify they exist
 if grep -q "^check_submodule()" update-accord.sh && \
-   grep -q "^detect_new_env_vars()" update-accord.sh && \
+   grep -q "^ensure_accord_env()" update-accord.sh && \
    grep -q "^pull_updates()" update-accord.sh && \
    grep -q "^restart_accord_services()" update-accord.sh; then
     test_success "All required functions are present in the script"

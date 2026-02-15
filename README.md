@@ -146,9 +146,10 @@ For automated/non-interactive environments (CI/CD, scripts):
 The update script will:
 1. Pull the latest code from the specified Git branch (default: `main`)
 2. Check for uncommitted changes and warn if present
-3. Detect any new environment variables required by Accord
-4. Offer to automatically append new variables to your `.env` file
-5. Restart only the Accord backend and webapp services without affecting the rest of the infrastructure
+3. Ensure `accord-chat/.env` exists (created from `sample.env` if needed)
+4. Restart only the Accord backend and webapp services without affecting the rest of the infrastructure
+
+**Note on Configuration**: Accord services use their own `.env` file in the `accord-chat/` directory. The root compose.yml references this file via `env_file` directive, eliminating the need to duplicate environment variables in the root `.env`. To customize Accord configuration, edit `accord-chat/.env` directly.
 
 This streamlined process allows you to quickly iterate on Accord Chat development without disrupting your Minecraft server or other services.
 
@@ -162,6 +163,9 @@ This streamlined process allows you to quickly iterate on Accord Chat developmen
 
 # Non-interactive mode for automation
 ./update-accord.sh --yes --branch main
+
+# Customize Accord configuration
+vim accord-chat/.env
 
 # View logs to verify the update
 docker compose logs -f accord-backend accord-webapp

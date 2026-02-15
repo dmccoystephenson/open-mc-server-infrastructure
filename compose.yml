@@ -150,23 +150,12 @@ services:
     container_name: ${ACCORD_BACKEND_CONTAINER_NAME:-accord-backend}
     ports:
       - "${ACCORD_BACKEND_PORT:-8082}:8080"
+    env_file:
+      - ./accord-chat/.env
     environment:
-      - SPRING_APPLICATION_NAME=accord-chat
-      - SERVER_PORT=8080
-      - SPRING_DATASOURCE_URL=jdbc:h2:mem:chatdb
-      - SPRING_DATASOURCE_DRIVER_CLASS_NAME=org.h2.Driver
-      - SPRING_DATASOURCE_USERNAME=sa
-      - SPRING_DATASOURCE_PASSWORD=
-      # Note: create-drop is intentional for H2 in-memory database - chat data is ephemeral by design
-      - SPRING_JPA_DATABASE_PLATFORM=org.hibernate.dialect.H2Dialect
-      - SPRING_JPA_HIBERNATE_DDL_AUTO=create-drop
-      - SPRING_JPA_SHOW_SQL=false
-      - SPRING_H2_CONSOLE_ENABLED=true
-      - SPRING_H2_CONSOLE_PATH=/h2-console
+      # Override specific values from root .env if needed
       - APP_CORS_ALLOWED_ORIGINS=${ACCORD_CORS_ALLOWED_ORIGINS:-*}
-      - APP_MESSAGE_MAX_LENGTH=1000
-      - APP_USERNAME_MAX_LENGTH=50
-      - APP_USERNAME_MIN_LENGTH=3
+      - DOCKER_HOST_IP=${DOCKER_HOST_IP:-localhost}
     healthcheck:
       test: ["CMD", "sh", "-c", "wget --no-verbose --tries=1 --spider http://localhost:8080/api/messages"]
       interval: 30s
@@ -183,12 +172,12 @@ services:
     container_name: ${ACCORD_WEBAPP_CONTAINER_NAME:-accord-webapp}
     ports:
       - "${ACCORD_CHAT_PORT:-3000}:3000"
+    env_file:
+      - ./accord-chat/.env
     environment:
-      - SPRING_APPLICATION_NAME=accord-webapp
-      - SERVER_PORT=3000
-      - ACCORD_BACKEND_URL=http://accord-backend:8080
-      - ACCORD_BACKEND_WS_URL=http://accord-backend:8080/ws
+      # Override specific values from root .env if needed
       - DOCKER_HOST_IP=${DOCKER_HOST_IP:-localhost}
+      - ACCORD_BACKEND_PORT=${ACCORD_BACKEND_PORT:-8082}
       - ACCORD_BACKEND_CLIENT_URL=http://${DOCKER_HOST_IP:-localhost}:${ACCORD_BACKEND_PORT:-8082}
       - ACCORD_BACKEND_CLIENT_WS_URL=http://${DOCKER_HOST_IP:-localhost}:${ACCORD_BACKEND_PORT:-8082}/ws
     depends_on:

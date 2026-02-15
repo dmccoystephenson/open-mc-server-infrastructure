@@ -83,117 +83,24 @@ check_submodule() {
     fi
 }
 
-# Function to get environment variables from a .env file
-get_env_vars() {
-    local env_file="$1"
-    if [ ! -f "$env_file" ]; then
-        echo ""
-        return
-    fi
-    
-    # Extract variable names (lines that start with a word character and contain =)
-    # Exclude comments and empty lines
-    grep -E '^[A-Z_][A-Z0-9_]*=' "$env_file" | cut -d'=' -f1 | sort -u
-}
-
-# Function to detect new environment variables
-detect_new_env_vars() {
+# Function to ensure accord-chat .env exists
+ensure_accord_env() {
+    local accord_env="accord-chat/.env"
     local accord_sample_env="accord-chat/sample.env"
-    local root_env=".env"
-    local root_sample_env="sample.env"
     
-    log_info "Checking for new environment variables..."
-    
-    if [ ! -f "$accord_sample_env" ]; then
-        log_warning "Accord sample.env not found, skipping environment variable detection"
-        return
-    fi
-    
-    # Get environment variables from accord-chat/sample.env
-    local accord_vars
-    accord_vars=$(get_env_vars "$accord_sample_env")
-    
-    if [ -z "$accord_vars" ]; then
-        log_info "No environment variables found in Accord sample.env"
-        return
-    fi
-    
-    # Determine which file to compare against
-    local compare_file=""
-    if [ -f "$root_env" ]; then
-        compare_file="$root_env"
-    elif [ -f "$root_sample_env" ]; then
-        compare_file="$root_sample_env"
-        log_warning "Root .env not found, comparing with sample.env"
-    else
-        log_warning "Neither .env nor sample.env found in root directory"
-        log_info "Cannot detect new variables without a reference file"
-        return
-    fi
-    
-    local existing_vars
-    existing_vars=$(get_env_vars "$compare_file")
-    
-    # Find variables that are in Accord but not in root
-    local new_vars=""
-    while IFS= read -r var; do
-        if ! echo "$existing_vars" | grep -q "^${var}$"; then
-            new_vars="${new_vars}${var}\n"
+    if [ ! -f "$accord_env" ]; then
+        if [ -f "$accord_sample_env" ]; then
+            log_info "Creating accord-chat/.env from sample.env..."
+            cp "$accord_sample_env" "$accord_env"
+            log_success "Created accord-chat/.env"
+            log_info "Edit accord-chat/.env to customize Accord configuration"
+        else
+            log_warning "accord-chat/sample.env not found"
+            log_warning "This may cause issues when starting Accord services"
         fi
-    done <<< "$accord_vars"
-    
-    if [ -z "$new_vars" ]; then
-        log_success "No new environment variables detected"
-        return
-    fi
-    
-    log_warning "New environment variables detected:"
-    echo -e "$new_vars" | grep -v '^$' | sed 's/^/  - /'
-    echo ""
-    
-    # If .env doesn't exist but sample.env does, suggest creating it
-    if [ ! -f "$root_env" ] && [ -f "$root_sample_env" ]; then
-        log_info "You should create .env from sample.env first:"
-        log_info "  cp sample.env .env"
-        return
-    fi
-    
-    if [ ! -f "$root_env" ]; then
-        log_warning "Cannot append new variables: .env file not found"
-        return
-    fi
-    
-    # Ask user if they want to append new variables
-    if [ "$NON_INTERACTIVE" = true ]; then
-        confirm="yes"
-        log_info "Non-interactive mode: automatically appending variables"
     else
-        read -r -p "Would you like to append these variables to .env? (yes/no): " confirm
+        log_info "accord-chat/.env already exists"
     fi
-    
-    if [ "$confirm" != "yes" ] && [ "$confirm" != "y" ]; then
-        log_info "Skipping environment variable update"
-        return
-    fi
-    
-    # Append new variables to .env
-    echo "" >> "$root_env"
-    echo "# Accord Chat Variables (added by update-accord.sh on $(date -u -Iseconds))" >> "$root_env"
-    
-    while IFS= read -r var; do
-        if [ -n "$var" ]; then
-            # Get the full assignment line from accord sample.env and preserve it as-is
-            # Using || true to handle case where variable might not exist in sample.env
-            local line
-            line=$(grep -m1 "^${var}=" "$accord_sample_env" || true)
-            if [ -n "$line" ]; then
-                printf '%s\n' "$line" >> "$root_env"
-                log_success "Added ${var} to .env"
-            fi
-        fi
-    done <<< "$(echo -e "$new_vars" | grep -v '^$')"
-    
-    log_success "Environment variables updated in .env"
 }
 
 # Function to pull updates from Git
@@ -285,6 +192,10 @@ main() {
     check_submodule
     echo ""
     
+    # Ensure accord-chat/.env exists
+    ensure_accord_env
+    echo ""
+    
     # Pull updates and track if there were updates
     local has_updates=false
     if pull_updates; then
@@ -294,10 +205,6 @@ main() {
         echo ""
         log_info "No code updates available"
     fi
-    
-    # Detect new environment variables
-    detect_new_env_vars
-    echo ""
     
     # If there are updates, restart services
     if [ "$has_updates" = true ]; then
