@@ -123,6 +123,42 @@ The Accord Chat service will be available at `http://localhost:3000` (or your co
 
 **Note**: By default, Accord Chat uses an in-memory H2 database, so chat messages are not persisted between restarts. For production use with persistent storage, you'll need to configure a persistent database (see the [Accord Chat documentation](https://github.com/dmccoystephenson/accord-prototype)). Additionally, CORS is set to allow all origins (`*`) by default for development. For production, set `ACCORD_CORS_ALLOWED_ORIGINS` to your specific domain(s).
 
+#### Updating Accord Chat
+
+Since Accord Chat is under active development, you can easily pull updates and restart the service using the update script:
+
+```bash
+./update-accord.sh
+```
+
+Or to pull from a specific branch:
+
+```bash
+./update-accord.sh --branch feature-branch-name
+```
+
+The update script will:
+1. Pull the latest code from the specified Git branch (default: `main`)
+2. Detect any new environment variables required by Accord
+3. Offer to automatically append new variables to your `.env` file
+4. Restart only the Accord backend and webapp services without affecting the rest of the infrastructure
+
+This streamlined process allows you to quickly iterate on Accord Chat development without disrupting your Minecraft server or other services.
+
+**Example workflow:**
+```bash
+# Update Accord from main branch
+./update-accord.sh
+
+# Or update from a specific development branch
+./update-accord.sh --branch experimental-features
+
+# View logs to verify the update
+docker compose logs -f accord-backend accord-webapp
+```
+
+For more details, run `./update-accord.sh --help`.
+
 ## Configuration
 
 Copy `sample.env` to `.env` and modify the following settings:
