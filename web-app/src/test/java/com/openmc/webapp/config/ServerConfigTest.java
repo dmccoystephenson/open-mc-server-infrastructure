@@ -145,4 +145,17 @@ class ServerConfigTest {
         serverConfig.setRefreshIntervalMs(60000);
         assertEquals(60000, serverConfig.getRefreshIntervalMs());
     }
+
+    @Test
+    @DisplayName("Should have empty Accord Chat URL by default")
+    void shouldHaveEmptyAccordChatUrl() {
+        assertEquals("", serverConfig.getAccordChatUrl());
+    }
+
+    @Test
+    @DisplayName("Should allow setting Accord Chat URL")
+    void shouldAllowSettingAccordChatUrl() {
+        serverConfig.setAccordChatUrl("http://localhost:3000");
+        assertEquals("http://localhost:3000", serverConfig.getAccordChatUrl());
+    }
 }
