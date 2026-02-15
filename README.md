@@ -121,6 +121,8 @@ To enable Accord Chat integration:
 
 The Accord Chat service will be available at `http://localhost:3000` (or your configured port), and a "Chat" link will appear in the web dashboard's External Services section.
 
+**Note**: By default, Accord Chat uses an in-memory H2 database, so chat messages are not persisted between restarts. For production use with persistent storage, you'll need to configure a persistent database (see the [Accord Chat documentation](https://github.com/dmccoystephenson/accord-prototype)). Additionally, CORS is set to allow all origins (`*`) by default for development. For production, set `ACCORD_CORS_ALLOWED_ORIGINS` to your specific domain(s).
+
 ## Configuration
 
 Copy `sample.env` to `.env` and modify the following settings:

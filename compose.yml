@@ -157,12 +157,13 @@ services:
       - SPRING_DATASOURCE_DRIVER_CLASS_NAME=org.h2.Driver
       - SPRING_DATASOURCE_USERNAME=sa
       - SPRING_DATASOURCE_PASSWORD=
+      # Note: create-drop is intentional for H2 in-memory database - chat data is ephemeral by design
       - SPRING_JPA_DATABASE_PLATFORM=org.hibernate.dialect.H2Dialect
       - SPRING_JPA_HIBERNATE_DDL_AUTO=create-drop
       - SPRING_JPA_SHOW_SQL=false
       - SPRING_H2_CONSOLE_ENABLED=true
       - SPRING_H2_CONSOLE_PATH=/h2-console
-      - APP_CORS_ALLOWED_ORIGINS=*
+      - APP_CORS_ALLOWED_ORIGINS=${ACCORD_CORS_ALLOWED_ORIGINS:-*}
       - APP_MESSAGE_MAX_LENGTH=1000
       - APP_USERNAME_MAX_LENGTH=50
       - APP_USERNAME_MIN_LENGTH=3
