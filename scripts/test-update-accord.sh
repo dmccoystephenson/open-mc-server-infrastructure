@@ -27,6 +27,7 @@ test_info() {
 }
 
 # Cleanup function
+# shellcheck disable=SC2317  # Function called via signal trap
 cleanup() {
     test_log "Cleaning up test environment..."
     rm -rf /tmp/accord-update-test
@@ -70,7 +71,10 @@ echo ""
 
 # Test 3: Verify script handles invalid arguments
 test_log "Test 3: Verifying invalid argument handling..."
-output=$(./update-accord.sh --invalid-option 2>&1) || exit_code=$?
+# We expect the script to fail, so capture both output and ignore failure
+set +e
+output=$(./update-accord.sh --invalid-option 2>&1)
+set -e
 if echo "$output" | grep -q "Unknown option"; then
     test_success "Script correctly handles invalid arguments"
 else

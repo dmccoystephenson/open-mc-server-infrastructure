@@ -103,7 +103,8 @@ detect_new_env_vars() {
     fi
     
     # Get environment variables from accord-chat/sample.env
-    local accord_vars=$(get_env_vars "$accord_sample_env")
+    local accord_vars
+    accord_vars=$(get_env_vars "$accord_sample_env")
     
     if [ -z "$accord_vars" ]; then
         log_info "No environment variables found in Accord sample.env"
@@ -123,7 +124,8 @@ detect_new_env_vars() {
         return
     fi
     
-    local existing_vars=$(get_env_vars "$compare_file")
+    local existing_vars
+    existing_vars=$(get_env_vars "$compare_file")
     
     # Find variables that are in Accord but not in root
     local new_vars=""
@@ -169,7 +171,8 @@ detect_new_env_vars() {
     while IFS= read -r var; do
         if [ -n "$var" ]; then
             # Get the value from accord sample.env
-            local value=$(grep "^${var}=" "$accord_sample_env" | head -1 | cut -d'=' -f2-)
+            local value
+            value=$(grep "^${var}=" "$accord_sample_env" | head -1 | cut -d'=' -f2-)
             echo "${var}=${value}" >> "$root_env"
             log_success "Added ${var} to .env"
         fi
@@ -195,14 +198,16 @@ pull_updates() {
     fi
     
     # Get current commit
-    local current_commit=$(git rev-parse HEAD)
+    local current_commit
+    current_commit=$(git rev-parse HEAD)
     
     # Checkout and pull the specified branch
     git checkout "$BRANCH"
     git pull origin "$BRANCH"
     
     # Get new commit
-    local new_commit=$(git rev-parse HEAD)
+    local new_commit
+    new_commit=$(git rev-parse HEAD)
     
     cd ..
     
