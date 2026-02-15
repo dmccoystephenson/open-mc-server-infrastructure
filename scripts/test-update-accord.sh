@@ -67,6 +67,14 @@ else
     test_error "Help message not displaying correctly"
     exit 1
 fi
+
+# Verify --yes flag is documented
+if ./update-accord.sh --help | grep -q "\-y, \-\-yes"; then
+    test_success "Non-interactive mode documented"
+else
+    test_error "--yes flag not documented"
+    exit 1
+fi
 echo ""
 
 # Test 3: Verify script handles invalid arguments
@@ -187,8 +195,7 @@ echo ""
 # Test 7: Verify Docker Compose commands are present
 test_log "Test 7: Verifying Docker Compose integration..."
 if grep -q "docker compose stop accord-backend accord-webapp" update-accord.sh && \
-   grep -q "docker compose build accord-backend accord-webapp" update-accord.sh && \
-   grep -q "docker compose up -d accord-backend accord-webapp" update-accord.sh; then
+   grep -q "docker compose up -d --build accord-backend accord-webapp" update-accord.sh; then
     test_success "Docker Compose commands are correctly integrated"
 else
     test_error "Docker Compose commands are missing or incorrect"

@@ -37,22 +37,29 @@ usage() {
     echo ""
     echo "Options:"
     echo "  -b, --branch BRANCH    Git branch to pull from (default: main)"
+    echo "  -y, --yes              Skip all prompts and use default behaviors (non-interactive mode)"
     echo "  -h, --help             Display this help message"
     echo ""
     echo "Examples:"
     echo "  $0                     # Update from main branch"
     echo "  $0 -b feature-chat     # Update from feature-chat branch"
+    echo "  $0 --yes               # Non-interactive update with auto-confirmation"
     echo ""
 }
 
 # Parse command line arguments
 BRANCH="main"
+NON_INTERACTIVE=false
 
 while [[ $# -gt 0 ]]; do
     case $1 in
         -b|--branch)
             BRANCH="$2"
             shift 2
+            ;;
+        -y|--yes)
+            NON_INTERACTIVE=true
+            shift
             ;;
         -h|--help)
             usage
@@ -157,7 +164,12 @@ detect_new_env_vars() {
     fi
     
     # Ask user if they want to append new variables
-    read -r -p "Would you like to append these variables to .env? (yes/no): " confirm
+    if [ "$NON_INTERACTIVE" = true ]; then
+        confirm="yes"
+        log_info "Non-interactive mode: automatically appending variables"
+    else
+        read -r -p "Would you like to append these variables to .env? (yes/no): " confirm
+    fi
     
     if [ "$confirm" != "yes" ] && [ "$confirm" != "y" ]; then
         log_info "Skipping environment variable update"
@@ -166,15 +178,17 @@ detect_new_env_vars() {
     
     # Append new variables to .env
     echo "" >> "$root_env"
-    echo "# Accord Chat Variables (added by update-accord.sh on $(date))" >> "$root_env"
+    echo "# Accord Chat Variables (added by update-accord.sh on $(date -u -Iseconds))" >> "$root_env"
     
     while IFS= read -r var; do
         if [ -n "$var" ]; then
-            # Get the value from accord sample.env
-            local value
-            value=$(grep "^${var}=" "$accord_sample_env" | head -1 | cut -d'=' -f2-)
-            echo "${var}=${value}" >> "$root_env"
-            log_success "Added ${var} to .env"
+            # Get the full assignment line from accord sample.env and preserve it as-is
+            local line
+            line=$(grep -m1 "^${var}=" "$accord_sample_env" || true)
+            if [ -n "$line" ]; then
+                printf '%s\n' "$line" >> "$root_env"
+                log_success "Added ${var} to .env"
+            fi
         fi
     done <<< "$(echo -e "$new_vars" | grep -v '^$')"
     
@@ -185,7 +199,16 @@ detect_new_env_vars() {
 pull_updates() {
     log_info "Pulling updates from branch: $BRANCH"
     
-    cd accord-chat
+    # Use pushd/popd for safer directory navigation
+    pushd accord-chat > /dev/null
+    
+    # Check for uncommitted changes
+    if ! git diff --quiet || ! git diff --cached --quiet; then
+        log_warning "Uncommitted changes detected in accord-chat submodule"
+        log_error "Please commit or stash your changes before updating"
+        popd > /dev/null
+        exit 1
+    fi
     
     # Fetch all branches
     git fetch origin
@@ -193,7 +216,7 @@ pull_updates() {
     # Check if branch exists
     if ! git rev-parse --verify "origin/$BRANCH" >/dev/null 2>&1; then
         log_error "Branch '$BRANCH' does not exist in remote repository"
-        cd ..
+        popd > /dev/null
         exit 1
     fi
     
@@ -209,7 +232,7 @@ pull_updates() {
     local new_commit
     new_commit=$(git rev-parse HEAD)
     
-    cd ..
+    popd > /dev/null
     
     # Check if there were any updates
     if [ "$current_commit" = "$new_commit" ]; then
@@ -229,13 +252,9 @@ restart_accord_services() {
     log_info "Stopping accord-backend and accord-webapp..."
     docker compose stop accord-backend accord-webapp
     
-    # Rebuild the services
-    log_info "Rebuilding Accord services..."
-    docker compose build accord-backend accord-webapp
-    
-    # Start the services
-    log_info "Starting accord-backend and accord-webapp..."
-    docker compose up -d accord-backend accord-webapp
+    # Rebuild and start Accord services in one step
+    log_info "Rebuilding and starting accord-backend and accord-webapp..."
+    docker compose up -d --build accord-backend accord-webapp
     
     log_success "Accord services restarted successfully"
 }
@@ -256,18 +275,21 @@ main() {
     echo ""
     
     log_info "Target branch: $BRANCH"
+    if [ "$NON_INTERACTIVE" = true ]; then
+        log_info "Running in non-interactive mode"
+    fi
     echo ""
     
     # Check submodule initialization
     check_submodule
     echo ""
     
-    # Pull updates
+    # Pull updates and track if there were updates
+    local has_updates=false
     if pull_updates; then
-        local has_updates=true
+        has_updates=true
         echo ""
     else
-        local has_updates=false
         echo ""
         log_info "No code updates available"
     fi
@@ -279,7 +301,13 @@ main() {
     # If there are updates, restart services
     if [ "$has_updates" = true ]; then
         log_warning "Code updates detected. Services need to be restarted."
-        read -r -p "Would you like to restart Accord services now? (yes/no): " confirm
+        
+        if [ "$NON_INTERACTIVE" = true ]; then
+            confirm="yes"
+            log_info "Non-interactive mode: automatically restarting services"
+        else
+            read -r -p "Would you like to restart Accord services now? (yes/no): " confirm
+        fi
         
         if [ "$confirm" = "yes" ] || [ "$confirm" = "y" ]; then
             echo ""
@@ -289,7 +317,7 @@ main() {
         else
             log_info "Skipping service restart"
             log_warning "Remember to restart services manually with:"
-            echo "  docker compose restart accord-backend accord-webapp"
+            echo "  docker compose up -d --build accord-backend accord-webapp"
         fi
     else
         log_info "No service restart needed"
@@ -303,7 +331,7 @@ main() {
     
     log_info "Quick reference:"
     echo "  - View logs: docker compose logs -f accord-backend accord-webapp"
-    echo "  - Restart manually: docker compose restart accord-backend accord-webapp"
+    echo "  - Rebuild and restart: docker compose up -d --build accord-backend accord-webapp"
     echo "  - Stop services: docker compose stop accord-backend accord-webapp"
     echo "  - Start services: docker compose up -d accord-backend accord-webapp"
     echo ""

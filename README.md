@@ -137,11 +137,18 @@ Or to pull from a specific branch:
 ./update-accord.sh --branch feature-branch-name
 ```
 
+For automated/non-interactive environments (CI/CD, scripts):
+
+```bash
+./update-accord.sh --yes
+```
+
 The update script will:
 1. Pull the latest code from the specified Git branch (default: `main`)
-2. Detect any new environment variables required by Accord
-3. Offer to automatically append new variables to your `.env` file
-4. Restart only the Accord backend and webapp services without affecting the rest of the infrastructure
+2. Check for uncommitted changes and warn if present
+3. Detect any new environment variables required by Accord
+4. Offer to automatically append new variables to your `.env` file
+5. Restart only the Accord backend and webapp services without affecting the rest of the infrastructure
 
 This streamlined process allows you to quickly iterate on Accord Chat development without disrupting your Minecraft server or other services.
 
@@ -152,6 +159,9 @@ This streamlined process allows you to quickly iterate on Accord Chat developmen
 
 # Or update from a specific development branch
 ./update-accord.sh --branch experimental-features
+
+# Non-interactive mode for automation
+./update-accord.sh --yes --branch main
 
 # View logs to verify the update
 docker compose logs -f accord-backend accord-webapp
