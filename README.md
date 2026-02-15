@@ -149,7 +149,7 @@ The update script will:
 3. Ensure `accord-chat/.env` exists (created from `sample.env` if needed)
 4. Restart only the Accord backend and webapp services without affecting the rest of the infrastructure
 
-**Note on Configuration**: Accord services use their own `.env` file in the `accord-chat/` directory. The root compose.yml references this file via `env_file` directive, eliminating the need to duplicate environment variables in the root `.env`. To customize Accord configuration, edit `accord-chat/.env` directly.
+**Note on Configuration**: Accord services are defined in `accord-chat/compose.yml` and referenced via `compose.accord.yml` in the root directory. The root `compose.yml` includes `compose.accord.yml`, which defines the accord-backend and accord-webapp services based on the accord-chat definitions. This approach eliminates duplication while allowing infrastructure-specific overrides (ports, container names). To customize Accord configuration, edit `accord-chat/.env` directly.
 
 This streamlined process allows you to quickly iterate on Accord Chat development without disrupting your Minecraft server or other services.
 
