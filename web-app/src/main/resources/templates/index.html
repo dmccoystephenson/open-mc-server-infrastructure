@@ -220,7 +220,8 @@
                 <a th:if="${dynmapUrl != null && !dynmapUrl.isEmpty()}" 
                    th:href="${dynmapUrl}" 
                    class="btn btn-primary" 
-                   target="_blank">
+                   target="_blank"
+                   rel="noopener noreferrer">
                     🗺️ Dynmap
                 </a>
                 <span th:if="${dynmapUrl == null || dynmapUrl.isEmpty()}" class="empty-link">
@@ -230,7 +231,8 @@
                 <a th:if="${bluemapUrl != null && !bluemapUrl.isEmpty()}" 
                    th:href="${bluemapUrl}" 
                    class="btn btn-primary" 
-                   target="_blank">
+                   target="_blank"
+                   rel="noopener noreferrer">
                     🌐 BlueMap
                 </a>
                 <span th:if="${bluemapUrl == null || bluemapUrl.isEmpty()}" class="empty-link">
@@ -240,7 +242,8 @@
                 <a th:if="${accordChatUrl != null && !accordChatUrl.isEmpty()}" 
                    th:href="${accordChatUrl}" 
                    class="btn btn-primary" 
-                   target="_blank">
+                   target="_blank"
+                   rel="noopener noreferrer">
                     💬 Chat
                 </a>
                 <span th:if="${accordChatUrl == null || accordChatUrl.isEmpty()}" class="empty-link">
