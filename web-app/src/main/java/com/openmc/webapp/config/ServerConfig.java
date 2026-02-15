@@ -24,6 +24,7 @@ public class ServerConfig {
     private String dashboardPrimaryColor = "#667eea";
     private String dashboardSecondaryColor = "#764ba2";
     private String pluginsDirectory = "/mcserver/plugins";
+    private String accordChatUrl = "";
     
     // Getters and setters
     public String getHost() {
@@ -160,5 +161,13 @@ public class ServerConfig {
     
     public void setPluginsDirectory(String pluginsDirectory) {
         this.pluginsDirectory = pluginsDirectory;
+    }
+    
+    public String getAccordChatUrl() {
+        return accordChatUrl;
+    }
+    
+    public void setAccordChatUrl(String accordChatUrl) {
+        this.accordChatUrl = accordChatUrl;
     }
 }

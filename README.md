@@ -56,7 +56,7 @@ The server includes a built-in web dashboard that provides:
 
 - **Server Status**: Real-time view of server status, player count, and MOTD
 - **Admin Console**: Send commands to the server using RCON
-- **External Links**: Quick access to Dynmap, BlueMap, and other services
+- **External Links**: Quick access to Dynmap, BlueMap, Accord Chat, and other services
 - **Activity Tracker Integration**: View player statistics and leaderboards (optional)
 - **Secure Access**: HTTPS encryption with reverse proxy to protect credentials
 
@@ -98,6 +98,31 @@ To enable Activity Tracker integration:
 
 The Activity Tracker data will automatically refresh with the server status updates. If the Activity Tracker API is not available, the sections will be hidden without affecting other dashboard functionality.
 
+### Accord Chat Integration
+
+The infrastructure includes built-in support for [Accord Chat](https://github.com/dmccoystephenson/accord-prototype), a real-time web-based chat application. When enabled, players and administrators can communicate through a modern web interface accessible from the dashboard.
+
+To enable Accord Chat integration:
+
+1. Set the following environment variables in your `.env` file:
+   ```bash
+   ACCORD_CHAT_URL=http://localhost:3000
+   ACCORD_CHAT_PORT=3000
+   ACCORD_BACKEND_PORT=8082
+   DOCKER_HOST_IP=localhost
+   ```
+   
+2. For accessing from other machines on your network, set `DOCKER_HOST_IP` to your server's IP address:
+   ```bash
+   DOCKER_HOST_IP=192.168.1.100
+   ```
+
+3. Start or restart the services with `./up.sh`
+
+The Accord Chat service will be available at `http://localhost:3000` (or your configured port), and a "Chat" link will appear in the web dashboard's External Services section.
+
+**Note**: By default, Accord Chat uses an in-memory H2 database, so chat messages are not persisted between restarts. For production use with persistent storage, you'll need to configure a persistent database (see the [Accord Chat documentation](https://github.com/dmccoystephenson/accord-prototype)). Additionally, CORS is set to allow all origins (`*`) by default for development. For production, set `ACCORD_CORS_ALLOWED_ORIGINS` to your specific domain(s).
+
 ## Configuration
 
 Copy `sample.env` to `.env` and modify the following settings:
@@ -137,6 +162,10 @@ These settings allow you to run multiple server instances in parallel without co
 - `ADMIN_PASSWORD`: Password for admin console authentication (default: `admin`)
 - `DYNMAP_URL`: URL to Dynmap web interface (optional)
 - `BLUEMAP_URL`: URL to BlueMap web interface (optional)
+- `ACCORD_CHAT_URL`: URL to Accord Chat web interface (optional, e.g., `http://localhost:3000`)
+- `ACCORD_CHAT_PORT`: Host port for Accord Chat webapp (default: `3000`)
+- `ACCORD_BACKEND_PORT`: Host port for Accord Chat backend API (default: `8082`)
+- `DOCKER_HOST_IP`: Docker host IP for accessing services from external browsers (default: `localhost`)
 - `ACTIVITY_TRACKER_URL`: URL to Activity Tracker plugin REST API (optional, e.g., `http://localhost:8080`)
 - `ACTIVITY_TRACKER_ENABLED`: Enable Activity Tracker integration (default: `false`)
 

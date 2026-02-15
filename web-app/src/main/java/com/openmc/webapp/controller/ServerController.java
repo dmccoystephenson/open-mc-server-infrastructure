@@ -51,6 +51,21 @@ public class ServerController {
         this.minecraftWrapperService = minecraftWrapperService;
     }
     
+    /**
+     * Adds common attributes to all views to avoid duplication across handler methods.
+     * This ensures consistency and reduces the risk of missing attributes on specific pages.
+     */
+    @ModelAttribute
+    public void addCommonAttributes(Model model) {
+        model.addAttribute("dashboardTitle", serverConfig.getDashboardTitle());
+        model.addAttribute("dashboardSubtitle", serverConfig.getDashboardSubtitle());
+        model.addAttribute("dashboardPrimaryColor", serverConfig.getDashboardPrimaryColor());
+        model.addAttribute("dashboardSecondaryColor", serverConfig.getDashboardSecondaryColor());
+        model.addAttribute("dynmapUrl", serverConfig.getDynmapUrl());
+        model.addAttribute("bluemapUrl", serverConfig.getBluemapUrl());
+        model.addAttribute("accordChatUrl", serverConfig.getAccordChatUrl());
+    }
+    
     @GetMapping("/")
     public String index() {
         return "redirect:/public";
@@ -60,24 +75,14 @@ public class ServerController {
     public String publicPage(Model model) {
         RconService.ServerStatus status = rconService.getServerStatus();
         model.addAttribute("status", status);
-        model.addAttribute("dynmapUrl", serverConfig.getDynmapUrl());
-        model.addAttribute("bluemapUrl", serverConfig.getBluemapUrl());
         model.addAttribute("refreshIntervalMs", serverConfig.getRefreshIntervalMs());
         model.addAttribute("lastFetchTime", rconService.getLastFetchTime());
         model.addAttribute("activityTrackerEnabled", activityTrackerService.isEnabled());
-        model.addAttribute("dashboardTitle", serverConfig.getDashboardTitle());
-        model.addAttribute("dashboardSubtitle", serverConfig.getDashboardSubtitle());
-        model.addAttribute("dashboardPrimaryColor", serverConfig.getDashboardPrimaryColor());
-        model.addAttribute("dashboardSecondaryColor", serverConfig.getDashboardSecondaryColor());
         return "public";
     }
     
     @GetMapping("/admin")
     public String adminPage(Model model) {
-        model.addAttribute("dashboardTitle", serverConfig.getDashboardTitle());
-        model.addAttribute("dashboardSubtitle", serverConfig.getDashboardSubtitle());
-        model.addAttribute("dashboardPrimaryColor", serverConfig.getDashboardPrimaryColor());
-        model.addAttribute("dashboardSecondaryColor", serverConfig.getDashboardSecondaryColor());
         return "admin";
     }
     
@@ -393,11 +398,6 @@ public class ServerController {
         } else {
             model.addAttribute("profile", profile);
         }
-        
-        model.addAttribute("dashboardTitle", serverConfig.getDashboardTitle());
-        model.addAttribute("dashboardSubtitle", serverConfig.getDashboardSubtitle());
-        model.addAttribute("dashboardPrimaryColor", serverConfig.getDashboardPrimaryColor());
-        model.addAttribute("dashboardSecondaryColor", serverConfig.getDashboardSecondaryColor());
         
         return "player";
     }

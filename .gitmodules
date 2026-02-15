@@ -1,0 +1,3 @@
+[submodule "accord-chat"]
+	path = accord-chat
+	url = https://github.com/dmccoystephenson/accord-prototype.git
