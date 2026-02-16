@@ -25,6 +25,7 @@ public class ServerConfig {
     private String dashboardSecondaryColor = "#764ba2";
     private String pluginsDirectory = "/mcserver/plugins";
     private String accordChatUrl = "";
+    private boolean dashboardDarkMode = true;
     
     // Getters and setters
     public String getHost() {
@@ -169,5 +170,13 @@ public class ServerConfig {
     
     public void setAccordChatUrl(String accordChatUrl) {
         this.accordChatUrl = accordChatUrl;
+    }
+    
+    public boolean isDashboardDarkMode() {
+        return dashboardDarkMode;
+    }
+    
+    public void setDashboardDarkMode(boolean dashboardDarkMode) {
+        this.dashboardDarkMode = dashboardDarkMode;
     }
 }

@@ -158,4 +158,17 @@ class ServerConfigTest {
         serverConfig.setAccordChatUrl("http://localhost:3000");
         assertEquals("http://localhost:3000", serverConfig.getAccordChatUrl());
     }
+
+    @Test
+    @DisplayName("Should have dark mode enabled by default")
+    void shouldHaveDarkModeEnabledByDefault() {
+        assertTrue(serverConfig.isDashboardDarkMode());
+    }
+
+    @Test
+    @DisplayName("Should allow setting dark mode")
+    void shouldAllowSettingDarkMode() {
+        serverConfig.setDashboardDarkMode(false);
+        assertFalse(serverConfig.isDashboardDarkMode());
+    }
 }

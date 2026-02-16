@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
+<html xmlns:th="http://www.thymeleaf.org" th:classappend="${dashboardDarkMode} ? 'dark' : ''">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -9,6 +9,31 @@
             --primary-color: /*[[${dashboardPrimaryColor}]]*/ #667eea;
             --secondary-color: /*[[${dashboardSecondaryColor}]]*/ #764ba2;
             --gradient-bg: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+            --bg-color: #ffffff;
+            --card-bg: #ffffff;
+            --text-primary: #111827;
+            --text-secondary: #333;
+            --text-muted: #6b7280;
+            --text-faint: #9ca3af;
+            --border-color: #e5e7eb;
+            --input-bg: #ffffff;
+            --input-border: #e5e7eb;
+            --code-bg: #f9fafb;
+            --hover-bg: #f9fafb;
+        }
+        
+        html.dark {
+            --bg-color: #1a1a2e;
+            --card-bg: #16213e;
+            --text-primary: #e2e8f0;
+            --text-secondary: #cbd5e1;
+            --text-muted: #94a3b8;
+            --text-faint: #64748b;
+            --border-color: #334155;
+            --input-bg: #1e293b;
+            --input-border: #475569;
+            --code-bg: #1e293b;
+            --hover-bg: #1e293b;
         }
         
         * {
@@ -20,6 +45,7 @@
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
             background: var(--gradient-bg);
+            color: var(--text-primary);
             min-height: 100vh;
             padding: 20px;
         }
@@ -74,7 +100,7 @@
         }
         
         .card {
-            background: white;
+            background: var(--card-bg);
             border-radius: 12px;
             padding: 25px;
             margin-bottom: 20px;
@@ -88,7 +114,7 @@
         }
         
         .card h2 {
-            color: #333;
+            color: var(--text-secondary);
             margin-bottom: 15px;
             font-size: 1.5em;
         }
@@ -124,15 +150,17 @@
         
         .command-input {
             padding: 12px;
-            border: 2px solid #e5e7eb;
+            border: 2px solid var(--input-border);
             border-radius: 8px;
             font-size: 1em;
             transition: border-color 0.3s ease;
+            background: var(--input-bg);
+            color: var(--text-primary);
         }
         
         .command-input:focus {
             outline: none;
-            border-color: #667eea;
+            border-color: var(--primary-color);
         }
         
         .command-row {
@@ -147,13 +175,14 @@
         .command-output {
             margin-top: 15px;
             padding: 15px;
-            background: #f9fafb;
+            background: var(--code-bg);
             border-radius: 8px;
             font-family: 'Courier New', monospace;
             white-space: pre-wrap;
             word-wrap: break-word;
             min-height: 60px;
             display: none;
+            color: var(--text-primary);
         }
         
         .command-output.show {
@@ -162,7 +191,7 @@
         
         .plugins-list {
             margin-top: 15px;
-            border: 1px solid #e5e7eb;
+            border: 1px solid var(--border-color);
             border-radius: 8px;
             overflow: hidden;
         }
@@ -172,8 +201,8 @@
             justify-content: space-between;
             align-items: center;
             padding: 12px 15px;
-            border-bottom: 1px solid #e5e7eb;
-            background: white;
+            border-bottom: 1px solid var(--border-color);
+            background: var(--card-bg);
         }
         
         .plugin-item:last-child {
@@ -181,12 +210,12 @@
         }
         
         .plugin-item:hover {
-            background: #f9fafb;
+            background: var(--hover-bg);
         }
         
         .plugin-name {
             font-family: 'Courier New', monospace;
-            color: #333;
+            color: var(--text-secondary);
         }
         
         .btn-danger {
@@ -242,7 +271,7 @@
         .empty-state {
             padding: 40px 20px;
             text-align: center;
-            color: #9ca3af;
+            color: var(--text-faint);
         }
     </style>
 </head>
@@ -267,7 +296,7 @@
         <!-- Credentials Card -->
         <div class="card">
             <h2>Authentication</h2>
-            <p style="color: #6b7280; margin-bottom: 15px;">Enter your admin credentials to access all admin features</p>
+            <p style="color: var(--text-muted); margin-bottom: 15px;">Enter your admin credentials to access all admin features</p>
             <input type="text" 
                    id="usernameInput" 
                    class="command-input" 
@@ -284,7 +313,7 @@
         <!-- Server Commands Card -->
         <div class="card">
             <h2>Server Commands</h2>
-            <p style="color: #6b7280; margin-bottom: 15px;">Send commands to the server using RCON</p>
+            <p style="color: var(--text-muted); margin-bottom: 15px;">Send commands to the server using RCON</p>
             <form class="command-form" onsubmit="sendCommand(event)">
                 <div class="command-row">
                     <input type="text" 
@@ -301,7 +330,7 @@
         <!-- Server Control Card -->
         <div class="card">
             <h2>Server Control</h2>
-            <p style="color: #6b7280; margin-bottom: 15px;">Start, stop, or restart the Minecraft server</p>
+            <p style="color: var(--text-muted); margin-bottom: 15px;">Start, stop, or restart the Minecraft server</p>
             <div style="display: flex; gap: 10px; flex-wrap: wrap;">
                 <button onclick="startServer()" class="btn btn-primary" style="background: #10b981;">
                     ▶ Start Server
@@ -319,7 +348,7 @@
         <!-- Plugin Management Card -->
         <div class="card">
             <h2>Plugin Management</h2>
-            <p style="color: #6b7280; margin-bottom: 15px;">Upload and manage server plugins</p>
+            <p style="color: var(--text-muted); margin-bottom: 15px;">Upload and manage server plugins</p>
             
             <div class="upload-section">
                 <div class="file-input-wrapper">
@@ -331,7 +360,7 @@
                            accept=".jar"
                            onchange="updateFileName(this)">
                 </div>
-                <span id="selectedFileName" style="color: #6b7280;"></span>
+                <span id="selectedFileName" style="color: var(--text-muted);"></span>
                 <button onclick="uploadPlugin()" class="btn btn-primary">Upload Plugin</button>
                 <button onclick="refreshPlugins()" class="btn btn-primary">Refresh List</button>
             </div>
