@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
+<html xmlns:th="http://www.thymeleaf.org" th:classappend="${dashboardDarkMode} ? 'dark' : ''">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -9,6 +9,40 @@
             --primary-color: /*[[${dashboardPrimaryColor}]]*/ #667eea;
             --secondary-color: /*[[${dashboardSecondaryColor}]]*/ #764ba2;
             --gradient-bg: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+            --bg-color: #ffffff;
+            --card-bg: #ffffff;
+            --sidebar-bg: rgba(255, 255, 255, 0.95);
+            --text-primary: #111827;
+            --text-secondary: #333;
+            --text-muted: #6b7280;
+            --text-faint: #9ca3af;
+            --border-color: #e5e7eb;
+            --input-bg: #ffffff;
+            --input-border: #e5e7eb;
+            --code-bg: #f9fafb;
+            --hover-bg: #f9fafb;
+            --chart-grid: #e5e7eb;
+            --chart-text: #6b7280;
+            --chart-no-data: #9ca3af;
+        }
+        
+        html.dark {
+            --gradient-bg: #111827;
+            --bg-color: #111827;
+            --card-bg: #1f2937;
+            --sidebar-bg: rgba(31, 41, 55, 0.95);
+            --text-primary: #e2e8f0;
+            --text-secondary: #cbd5e1;
+            --text-muted: #94a3b8;
+            --text-faint: #64748b;
+            --border-color: #374151;
+            --input-bg: #1f2937;
+            --input-border: #4b5563;
+            --code-bg: #1f2937;
+            --hover-bg: #283548;
+            --chart-grid: #374151;
+            --chart-text: #94a3b8;
+            --chart-no-data: #64748b;
         }
         
         * {
@@ -20,6 +54,7 @@
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
             background: var(--gradient-bg);
+            color: var(--text-primary);
             min-height: 100vh;
             padding: 20px;
         }
@@ -110,7 +145,7 @@
         }
         
         .card {
-            background: white;
+            background: var(--card-bg);
             border-radius: 12px;
             padding: 25px;
             margin-bottom: 20px;
@@ -124,19 +159,19 @@
         }
         
         .card h2 {
-            color: #333;
+            color: var(--text-secondary);
             margin-bottom: 15px;
             font-size: 1.5em;
         }
         
         .card h3 {
-            color: #555;
+            color: var(--text-muted);
             margin-bottom: 10px;
             font-size: 1.2em;
         }
         
         .sidebar-card {
-            background: rgba(255, 255, 255, 0.95);
+            background: var(--sidebar-bg);
             border-radius: 12px;
             padding: 20px;
             margin-bottom: 15px;
@@ -144,7 +179,7 @@
         }
         
         .sidebar-card h3 {
-            color: #333;
+            color: var(--text-secondary);
             margin-bottom: 10px;
             font-size: 1.1em;
             border-bottom: 2px solid var(--primary-color);
@@ -173,7 +208,7 @@
             display: flex;
             justify-content: space-between;
             padding: 12px 0;
-            border-bottom: 1px solid #e5e7eb;
+            border-bottom: 1px solid var(--border-color);
             flex-wrap: wrap;
         }
         
@@ -183,17 +218,17 @@
         
         .info-label {
             font-weight: 600;
-            color: #6b7280;
+            color: var(--text-muted);
         }
         
         .info-value {
-            color: #111827;
+            color: var(--text-primary);
             text-align: right;
         }
         
         .relative-time {
             font-size: 0.9em;
-            color: #6b7280;
+            color: var(--text-muted);
         }
         
         .links {
@@ -225,7 +260,7 @@
         }
         
         .empty-link {
-            color: #9ca3af;
+            color: var(--text-faint);
             font-style: italic;
         }
         
@@ -235,7 +270,7 @@
             height: 300px;
             margin-top: 20px;
             padding: 20px;
-            background: #f9fafb;
+            background: var(--code-bg);
             border-radius: 8px;
         }
         
@@ -264,7 +299,7 @@
             align-items: center;
             gap: 8px;
             font-size: 14px;
-            color: #6b7280;
+            color: var(--text-muted);
         }
         
         .chart-legend-color {
@@ -276,12 +311,12 @@
         .chart-section-title {
             font-size: 18px;
             font-weight: 600;
-            color: #374151;
+            color: var(--text-secondary);
             margin-bottom: 10px;
         }
         
         .history-size-control {
-            background: #f9fafb;
+            background: var(--code-bg);
             padding: 15px 20px;
             border-radius: 8px;
             margin-bottom: 20px;
@@ -293,7 +328,7 @@
         
         .history-size-control label {
             font-weight: 600;
-            color: #374151;
+            color: var(--text-secondary);
             font-size: 14px;
         }
         
@@ -339,7 +374,7 @@
         
         .history-size-info {
             font-size: 12px;
-            color: #6b7280;
+            color: var(--text-muted);
             width: 100%;
             margin-top: 5px;
         }
@@ -367,11 +402,11 @@
         
         .leaderboard-table td {
             padding: 12px;
-            border-bottom: 1px solid #e5e7eb;
+            border-bottom: 1px solid var(--border-color);
         }
         
         .leaderboard-table tr:hover {
-            background-color: #f9fafb;
+            background-color: var(--hover-bg);
         }
         
         .leaderboard-rank {
@@ -397,7 +432,7 @@
             justify-content: space-between;
             align-items: center;
             padding: 10px 0;
-            border-bottom: 1px solid #e5e7eb;
+            border-bottom: 1px solid var(--border-color);
         }
         
         .quick-stat:last-child {
@@ -406,18 +441,18 @@
         
         .quick-stat-label {
             font-size: 0.9em;
-            color: #6b7280;
+            color: var(--text-muted);
         }
         
         .quick-stat-value {
             font-weight: 700;
             font-size: 1.1em;
-            color: #111827;
+            color: var(--text-primary);
         }
         
         .activity-item {
             padding: 10px 0;
-            border-bottom: 1px solid #e5e7eb;
+            border-bottom: 1px solid var(--border-color);
             font-size: 0.9em;
         }
         
@@ -426,12 +461,12 @@
         }
         
         .activity-time {
-            color: #9ca3af;
+            color: var(--text-faint);
             font-size: 0.85em;
         }
         
         .activity-text {
-            color: #374151;
+            color: var(--text-secondary);
             margin-top: 4px;
         }
     </style>
@@ -620,15 +655,15 @@
         
         <div th:if="${activityTrackerEnabled}" class="card">
             <h2>🏆 Player Leaderboard</h2>
-            <p style="color: #6b7280; margin-bottom: 15px;">Top 10 players by hours played</p>
+            <p style="color: var(--text-muted); margin-bottom: 15px;">Top 10 players by hours played</p>
             <div id="leaderboardTable">
-                <div style="text-align: center; padding: 40px; color: #9ca3af;">Loading...</div>
+                <div style="text-align: center; padding: 40px; color: var(--text-faint);">Loading...</div>
             </div>
         </div>
         
         <div class="card">
             <h2>Data Visualization</h2>
-            <p style="color: #6b7280; margin-bottom: 15px;">Historical server metrics</p>
+            <p style="color: var(--text-muted); margin-bottom: 15px;">Historical server metrics</p>
             
             <div class="history-size-control">
                 <label for="historySizeSlider">History Size:</label>
@@ -726,6 +761,12 @@
         updateRelativeTime();
         setInterval(updateRelativeTime, 10000);
         
+        // Get CSS variable values for chart colors
+        const rootStyles = getComputedStyle(document.documentElement);
+        const chartGridColor = rootStyles.getPropertyValue('--chart-grid').trim() || '#e5e7eb';
+        const chartTextColor = rootStyles.getPropertyValue('--chart-text').trim() || '#6b7280';
+        const chartNoDataColor = rootStyles.getPropertyValue('--chart-no-data').trim() || '#9ca3af';
+        
         // Simple line chart drawing function
         function drawLineChart(canvas, data, options = {}) {
             const ctx = canvas.getContext('2d');
@@ -748,7 +789,7 @@
             ctx.clearRect(0, 0, width, height);
             
             if (data.length === 0) {
-                ctx.fillStyle = '#9ca3af';
+                ctx.fillStyle = chartNoDataColor;
                 ctx.font = '14px sans-serif';
                 ctx.textAlign = 'center';
                 ctx.fillText('No data available', width / 2, height / 2);
@@ -763,7 +804,7 @@
             
             // Draw grid
             if (showGrid) {
-                ctx.strokeStyle = '#e5e7eb';
+                ctx.strokeStyle = chartGridColor;
                 ctx.lineWidth = 1;
                 
                 // Horizontal grid lines
@@ -776,7 +817,7 @@
                     
                     // Y-axis labels
                     const value = maxValue - (valueRange / 4) * i;
-                    ctx.fillStyle = '#6b7280';
+                    ctx.fillStyle = chartTextColor;
                     ctx.font = '12px sans-serif';
                     ctx.textAlign = 'right';
                     ctx.fillText(value.toFixed(1), padding - 10, y + 4);
@@ -817,7 +858,7 @@
                 
                 // X-axis labels (time)
                 if (point.label) {
-                    ctx.fillStyle = '#6b7280';
+                    ctx.fillStyle = chartTextColor;
                     ctx.font = '10px sans-serif';
                     ctx.textAlign = 'center';
                     ctx.save();
@@ -988,7 +1029,7 @@
                     console.warn('[Activity Tracker] Stats data is null - integration may be disabled or unavailable');
                     const container = document.getElementById('activityTrackerStats');
                     if (container) {
-                        container.innerHTML = '<div style="text-align: center; padding: 20px; color: #9ca3af;">Statistics not available</div>';
+                        container.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--text-faint);">Statistics not available</div>';
                     }
                 }
             } catch (error) {
@@ -1015,7 +1056,7 @@
                 const container = document.getElementById('leaderboardTable');
                 if (!leaderboard || leaderboard.length === 0) {
                     console.warn('[Activity Tracker] Leaderboard is empty - no player data available or integration disabled');
-                    container.innerHTML = '<div style="text-align: center; padding: 40px; color: #9ca3af;">No player data available</div>';
+                    container.innerHTML = '<div style="text-align: center; padding: 40px; color: var(--text-faint);">No player data available</div>';
                     return;
                 }
                 

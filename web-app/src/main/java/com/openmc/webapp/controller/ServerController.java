@@ -61,6 +61,7 @@ public class ServerController {
         model.addAttribute("dashboardSubtitle", serverConfig.getDashboardSubtitle());
         model.addAttribute("dashboardPrimaryColor", serverConfig.getDashboardPrimaryColor());
         model.addAttribute("dashboardSecondaryColor", serverConfig.getDashboardSecondaryColor());
+        model.addAttribute("dashboardDarkMode", serverConfig.isDashboardDarkMode());
         model.addAttribute("dynmapUrl", serverConfig.getDynmapUrl());
         model.addAttribute("bluemapUrl", serverConfig.getBluemapUrl());
         model.addAttribute("accordChatUrl", serverConfig.getAccordChatUrl());
