@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
+<html xmlns:th="http://www.thymeleaf.org" th:classappend="${dashboardDarkMode} ? 'dark' : ''">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -9,6 +9,18 @@
             --primary-color: #667eea;
             --secondary-color: #764ba2;
             --gradient-bg: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+            --card-bg: #ffffff;
+            --text-primary: #111827;
+            --text-secondary: #333;
+            --text-muted: #6b7280;
+            --text-faint: #9ca3af;
+            --border-color: #e5e7eb;
+            --input-bg: #ffffff;
+            --input-border: #e5e7eb;
+            --code-bg: #f9fafb;
+        }
+        
+        html.dark {
             --card-bg: #16213e;
             --text-primary: #e2e8f0;
             --text-secondary: #cbd5e1;

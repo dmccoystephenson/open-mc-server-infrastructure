@@ -16,6 +16,7 @@
             --text-muted: #6b7280;
             --text-faint: #9ca3af;
             --border-color: #e5e7eb;
+            --code-bg: #f3f4f6;
         }
         
         html.dark {
@@ -26,6 +27,7 @@
             --text-muted: #94a3b8;
             --text-faint: #64748b;
             --border-color: #334155;
+            --code-bg: #1e293b;
         }
         
         * {
@@ -193,12 +195,12 @@
         }
         
         .btn-secondary {
-            background: var(--code-bg, #f3f4f6);
-            color: var(--text-secondary, #374151);
+            background: var(--code-bg);
+            color: var(--text-secondary);
         }
         
         .btn-secondary:hover {
-            background: var(--border-color, #e5e7eb);
+            background: var(--border-color);
         }
         
         .nav-buttons {
