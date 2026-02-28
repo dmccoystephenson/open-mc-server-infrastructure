@@ -24,6 +24,7 @@ class ConfirmationServiceTest {
         ReflectionTestUtils.setField(confirmationService, "startServerRequiresConfirmation", true);
         ReflectionTestUtils.setField(confirmationService, "stopServerRequiresConfirmation", true);
         ReflectionTestUtils.setField(confirmationService, "restartServerRequiresConfirmation", true);
+        ReflectionTestUtils.setField(confirmationService, "triggerBackupRequiresConfirmation", true);
     }
 
     @Test
@@ -63,6 +64,25 @@ class ConfirmationServiceTest {
     void shouldNotRequireConfirmationForRestartServerWhenDisabled() {
         ReflectionTestUtils.setField(confirmationService, "restartServerRequiresConfirmation", false);
         assertFalse(confirmationService.requiresConfirmation("restart_server"));
+    }
+
+    @Test
+    @DisplayName("Should never require confirmation for get_server_status")
+    void shouldNeverRequireConfirmationForGetServerStatus() {
+        assertFalse(confirmationService.requiresConfirmation("get_server_status"));
+    }
+
+    @Test
+    @DisplayName("Should require confirmation for trigger_backup when enabled")
+    void shouldRequireConfirmationForTriggerBackup() {
+        assertTrue(confirmationService.requiresConfirmation("trigger_backup"));
+    }
+
+    @Test
+    @DisplayName("Should not require confirmation for trigger_backup when disabled")
+    void shouldNotRequireConfirmationForTriggerBackupWhenDisabled() {
+        ReflectionTestUtils.setField(confirmationService, "triggerBackupRequiresConfirmation", false);
+        assertFalse(confirmationService.requiresConfirmation("trigger_backup"));
     }
 
     @Test

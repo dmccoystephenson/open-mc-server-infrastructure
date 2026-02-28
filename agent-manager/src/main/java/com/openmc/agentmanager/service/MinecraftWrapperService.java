@@ -52,6 +52,25 @@ public class MinecraftWrapperService {
         return callWrapper("/api/server/restart", "restart");
     }
 
+    /**
+     * Get the current server status.
+     * @return response message from the wrapper
+     */
+    public String getServerStatus() {
+        log.info("Calling minecraft-wrapper to get server status");
+        String url = wrapperUrl + "/api/server/status";
+        try {
+            log.debug("Sending GET request to minecraft-wrapper: {}", url);
+            ResponseEntity<String> response = restTemplate.getForEntity(url, String.class);
+            String body = response.getBody();
+            log.info("Minecraft wrapper status response: {} - {}", response.getStatusCode(), body);
+            return body != null ? body : "No status information available";
+        } catch (Exception e) {
+            log.error("Failed to get server status via minecraft-wrapper at {}: {}", url, e.getMessage(), e);
+            throw new RuntimeException("Failed to get server status: " + e.getMessage(), e);
+        }
+    }
+
     private String callWrapper(String path, String action) {
         String url = wrapperUrl + path;
         try {
