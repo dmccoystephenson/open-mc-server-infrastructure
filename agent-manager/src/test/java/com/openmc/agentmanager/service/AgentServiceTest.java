@@ -66,6 +66,7 @@ class AgentServiceTest {
 
         when(anthropicService.sendMessage("start the server")).thenReturn(response);
         when(anthropicService.findToolUseBlock(response)).thenReturn(toolBlock);
+        when(toolExecutionService.isRecognizedTool("start_server")).thenReturn(true);
         when(confirmationService.requiresConfirmation("start_server")).thenReturn(true);
 
         AgentService.AgentResponse result = agentService.processMessage("start the server");
@@ -104,6 +105,7 @@ class AgentServiceTest {
 
         when(anthropicService.sendMessage("start the server")).thenReturn(response);
         when(anthropicService.findToolUseBlock(response)).thenReturn(toolBlock);
+        when(toolExecutionService.isRecognizedTool("start_server")).thenReturn(true);
         when(confirmationService.requiresConfirmation("start_server")).thenReturn(false);
         when(toolExecutionService.executeTool("tool-1", "start_server")).thenReturn(toolResult);
         when(anthropicService.sendToolResult(eq("start the server"), anyList(), eq(toolResult)))
@@ -150,6 +152,7 @@ class AgentServiceTest {
 
         when(anthropicService.sendMessage("stop the server")).thenReturn(response);
         when(anthropicService.findToolUseBlock(response)).thenReturn(toolBlock);
+        when(toolExecutionService.isRecognizedTool("stop_server")).thenReturn(true);
         when(confirmationService.requiresConfirmation("stop_server")).thenReturn(false);
         when(toolExecutionService.executeTool("tool-1", "stop_server")).thenReturn(toolResult);
         when(anthropicService.sendToolResult(eq("stop the server"), anyList(), eq(toolResult)))
@@ -159,5 +162,29 @@ class AgentServiceTest {
 
         assertFalse(result.requiresConfirmation());
         assertTrue(result.textResponse().contains("✅"));
+    }
+
+    @Test
+    @DisplayName("Should reject unrecognized tool from Anthropic")
+    void shouldRejectUnrecognizedTool() {
+        AnthropicResponse.ContentBlock toolBlock = AnthropicResponse.ContentBlock.builder()
+                .type("tool_use")
+                .id("tool-1")
+                .name("delete_world")
+                .build();
+
+        AnthropicResponse response = AnthropicResponse.builder()
+                .content(List.of(toolBlock))
+                .build();
+
+        when(anthropicService.sendMessage("delete the world")).thenReturn(response);
+        when(anthropicService.findToolUseBlock(response)).thenReturn(toolBlock);
+        when(toolExecutionService.isRecognizedTool("delete_world")).thenReturn(false);
+
+        AgentService.AgentResponse result = agentService.processMessage("delete the world");
+
+        assertFalse(result.requiresConfirmation());
+        assertTrue(result.textResponse().contains("don't have the ability"));
+        verify(toolExecutionService, never()).executeTool(anyString(), anyString());
     }
 }

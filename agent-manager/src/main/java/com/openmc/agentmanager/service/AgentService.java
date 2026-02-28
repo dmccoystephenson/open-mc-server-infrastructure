@@ -61,10 +61,18 @@ public class AgentService {
                     false, null, null, null, userMessage);
         }
 
-        // Step 3: Tool call found — check if confirmation is required
+        // Step 3: Tool call found — check if the tool is recognized
         String toolName = toolUseBlock.getName();
         String toolUseId = toolUseBlock.getId();
 
+        if (!toolExecutionService.isRecognizedTool(toolName)) {
+            log.warn("Unrecognized tool returned by Anthropic: {}", toolName);
+            return new AgentResponse(
+                    "I'm sorry, I don't have the ability to perform that action. I can only start, stop, or restart the Minecraft server.",
+                    false, null, null, null, userMessage);
+        }
+
+        // Step 4: Check if confirmation is required
         if (confirmationService.requiresConfirmation(toolName)) {
             log.info("Tool {} requires confirmation", toolName);
             return new AgentResponse(
@@ -72,7 +80,7 @@ public class AgentService {
                     true, toolName, toolUseId, response.getContent(), userMessage);
         }
 
-        // Step 4: No confirmation needed — execute immediately
+        // Step 5: No confirmation needed — execute immediately
         return executeToolAndRespond(userMessage, response.getContent(), toolUseId, toolName);
     }
 

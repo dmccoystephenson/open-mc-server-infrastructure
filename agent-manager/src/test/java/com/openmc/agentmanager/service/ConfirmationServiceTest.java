@@ -8,6 +8,8 @@ import org.mockito.InjectMocks;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.time.Instant;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -50,16 +52,16 @@ class ConfirmationServiceTest {
     }
 
     @Test
-    @DisplayName("Should require confirmation for unknown tools")
-    void shouldRequireConfirmationForUnknownTools() {
-        assertTrue(confirmationService.requiresConfirmation("unknown_tool"));
+    @DisplayName("Should not require confirmation for unknown tools")
+    void shouldNotRequireConfirmationForUnknownTools() {
+        assertFalse(confirmationService.requiresConfirmation("unknown_tool"));
     }
 
     @Test
     @DisplayName("Should store and consume pending confirmation")
     void shouldStoreAndConsumePendingConfirmation() {
         ConfirmationService.PendingConfirmation pending = new ConfirmationService.PendingConfirmation(
-                "tool-1", "start_server", "start the server", null, "channel-1");
+                "tool-1", "start_server", "start the server", null, "channel-1", "user-1", Instant.now());
 
         confirmationService.addPendingConfirmation("msg-1", pending);
         assertTrue(confirmationService.hasPendingConfirmation("msg-1"));
@@ -80,5 +82,35 @@ class ConfirmationServiceTest {
     @DisplayName("Should not have pending confirmation for unknown message ID")
     void shouldNotHavePendingConfirmationForUnknownId() {
         assertFalse(confirmationService.hasPendingConfirmation("unknown-id"));
+    }
+
+    @Test
+    @DisplayName("Should clean up expired confirmations")
+    void shouldCleanUpExpiredConfirmations() {
+        // Create a confirmation with a timestamp in the past (beyond TTL)
+        ConfirmationService.PendingConfirmation expired = new ConfirmationService.PendingConfirmation(
+                "tool-1", "start_server", "start the server", null, "channel-1", "user-1",
+                Instant.now().minusSeconds(600));
+
+        confirmationService.addPendingConfirmation("expired-msg", expired);
+        assertTrue(confirmationService.hasPendingConfirmation("expired-msg"));
+
+        confirmationService.cleanupExpiredConfirmations();
+
+        assertFalse(confirmationService.hasPendingConfirmation("expired-msg"));
+    }
+
+    @Test
+    @DisplayName("Should not clean up non-expired confirmations")
+    void shouldNotCleanUpNonExpiredConfirmations() {
+        ConfirmationService.PendingConfirmation recent = new ConfirmationService.PendingConfirmation(
+                "tool-1", "start_server", "start the server", null, "channel-1", "user-1",
+                Instant.now());
+
+        confirmationService.addPendingConfirmation("recent-msg", recent);
+
+        confirmationService.cleanupExpiredConfirmations();
+
+        assertTrue(confirmationService.hasPendingConfirmation("recent-msg"));
     }
 }

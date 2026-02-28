@@ -5,7 +5,6 @@ import jakarta.annotation.PreDestroy;
 import lombok.extern.slf4j.Slf4j;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
-import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.entities.emoji.Emoji;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
@@ -14,6 +13,10 @@ import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.dv8tion.jda.api.requests.GatewayIntent;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+
+import java.time.Instant;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 /**
  * Service that manages the Discord bot connection and listens for messages
@@ -25,6 +28,7 @@ public class DiscordBotService extends ListenerAdapter {
 
     private final AgentService agentService;
     private final ConfirmationService confirmationService;
+    private final ExecutorService executor = Executors.newCachedThreadPool();
 
     @Value("${discord.bot.token:}")
     private String botToken;
@@ -76,6 +80,7 @@ public class DiscordBotService extends ListenerAdapter {
             log.info("Shutting down Discord bot");
             jda.shutdown();
         }
+        executor.shutdown();
     }
 
     @Override
@@ -95,38 +100,43 @@ public class DiscordBotService extends ListenerAdapter {
             return;
         }
 
+        String userId = event.getAuthor().getId();
         log.info("Received Discord message from {}: {}", event.getAuthor().getName(), userMessage);
 
-        // Process the message asynchronously to not block the event listener
         MessageChannel channel = event.getChannel();
         channel.sendTyping().queue();
 
-        try {
-            AgentService.AgentResponse response = agentService.processMessage(userMessage);
+        // Offload processing to a dedicated executor to avoid blocking JDA's event thread
+        executor.submit(() -> {
+            try {
+                AgentService.AgentResponse response = agentService.processMessage(userMessage);
 
-            if (response.requiresConfirmation()) {
-                // Send confirmation message and add reaction
-                channel.sendMessage(response.textResponse()).queue(sentMessage -> {
-                    sentMessage.addReaction(Emoji.fromUnicode("✅")).queue();
-                    // Store pending confirmation
-                    confirmationService.addPendingConfirmation(
-                            sentMessage.getId(),
-                            new ConfirmationService.PendingConfirmation(
-                                    response.toolUseId(),
-                                    response.toolName(),
-                                    response.userMessage(),
-                                    response.assistantContent(),
-                                    channelId
-                            )
-                    );
-                });
-            } else {
-                channel.sendMessage(response.textResponse()).queue();
+                if (response.requiresConfirmation()) {
+                    // Send confirmation message and add reaction
+                    channel.sendMessage(response.textResponse()).queue(sentMessage -> {
+                        sentMessage.addReaction(Emoji.fromUnicode("✅")).queue();
+                        // Store pending confirmation with requesting user ID
+                        confirmationService.addPendingConfirmation(
+                                sentMessage.getId(),
+                                new ConfirmationService.PendingConfirmation(
+                                        response.toolUseId(),
+                                        response.toolName(),
+                                        response.userMessage(),
+                                        response.assistantContent(),
+                                        channelId,
+                                        userId,
+                                        Instant.now()
+                                )
+                        );
+                    });
+                } else {
+                    channel.sendMessage(response.textResponse()).queue();
+                }
+            } catch (Exception e) {
+                log.error("Error processing Discord message", e);
+                channel.sendMessage("❌ An error occurred while processing your request. Please try again.").queue();
             }
-        } catch (Exception e) {
-            log.error("Error processing Discord message", e);
-            channel.sendMessage("❌ An error occurred while processing your request. Please try again.").queue();
-        }
+        });
     }
 
     @Override
@@ -149,9 +159,23 @@ public class DiscordBotService extends ListenerAdapter {
         }
 
         String messageId = event.getMessageId();
+        String reactingUserId = event.getUserId();
+
+        // Peek at the pending confirmation to verify user before consuming
+        if (!confirmationService.hasPendingConfirmation(messageId)) {
+            return;
+        }
+
         ConfirmationService.PendingConfirmation pending = confirmationService.consumePendingConfirmation(messageId);
 
         if (pending == null) {
+            return;
+        }
+
+        // Ensure only the original requesting user can confirm this action
+        if (reactingUserId == null || !reactingUserId.equals(pending.requestingUserId())) {
+            // Put it back — wrong user reacted
+            confirmationService.addPendingConfirmation(messageId, pending);
             return;
         }
 
@@ -160,14 +184,17 @@ public class DiscordBotService extends ListenerAdapter {
         MessageChannel channel = event.getChannel().asGuildMessageChannel();
         channel.sendTyping().queue();
 
-        try {
-            AgentService.AgentResponse response = agentService.executeToolAndRespond(
-                    pending.userMessage(), pending.assistantContent(),
-                    pending.toolUseId(), pending.toolName());
-            channel.sendMessage(response.textResponse()).queue();
-        } catch (Exception e) {
-            log.error("Error executing confirmed tool: {}", pending.toolName(), e);
-            channel.sendMessage("❌ An error occurred while executing the action. Please try again.").queue();
-        }
+        // Offload execution to a dedicated executor
+        executor.submit(() -> {
+            try {
+                AgentService.AgentResponse response = agentService.executeToolAndRespond(
+                        pending.userMessage(), pending.assistantContent(),
+                        pending.toolUseId(), pending.toolName());
+                channel.sendMessage(response.textResponse()).queue();
+            } catch (Exception e) {
+                log.error("Error executing confirmed tool: {}", pending.toolName(), e);
+                channel.sendMessage("❌ An error occurred while executing the action. Please try again.").queue();
+            }
+        });
     }
 }

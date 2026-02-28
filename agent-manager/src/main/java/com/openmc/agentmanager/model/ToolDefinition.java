@@ -1,5 +1,6 @@
 package com.openmc.agentmanager.model;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -18,6 +19,8 @@ import java.util.Map;
 public class ToolDefinition {
     private String name;
     private String description;
+
+    @JsonProperty("input_schema")
     private Map<String, Object> inputSchema;
 
     /**

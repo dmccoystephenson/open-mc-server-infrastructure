@@ -2,8 +2,10 @@ package com.openmc.agentmanager.service;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
+import java.time.Instant;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -14,6 +16,8 @@ import java.util.concurrent.ConcurrentHashMap;
 @Slf4j
 @Service
 public class ConfirmationService {
+
+    private static final long CONFIRMATION_TTL_SECONDS = 300; // 5 minutes
 
     @Value("${agent.start-server.requires-confirmation:true}")
     private boolean startServerRequiresConfirmation;
@@ -29,7 +33,7 @@ public class ConfirmationService {
      */
     public record PendingConfirmation(String toolUseId, String toolName, String userMessage,
                                       java.util.List<com.openmc.agentmanager.model.AnthropicResponse.ContentBlock> assistantContent,
-                                      String channelId) {
+                                      String channelId, String requestingUserId, Instant createdAt) {
     }
 
     private final Map<String, PendingConfirmation> pendingConfirmations = new ConcurrentHashMap<>();
@@ -44,7 +48,10 @@ public class ConfirmationService {
             case "start_server" -> startServerRequiresConfirmation;
             case "stop_server" -> stopServerRequiresConfirmation;
             case "restart_server" -> restartServerRequiresConfirmation;
-            default -> true;
+            default -> {
+                log.warn("Unknown toolName '{}' passed to requiresConfirmation; defaulting to no confirmation required", toolName);
+                yield false;
+            }
         };
     }
 
@@ -78,5 +85,26 @@ public class ConfirmationService {
      */
     public boolean hasPendingConfirmation(String messageId) {
         return pendingConfirmations.containsKey(messageId);
+    }
+
+    /**
+     * Remove expired pending confirmations.
+     * Runs every 60 seconds to clean up confirmations older than the TTL.
+     */
+    @Scheduled(fixedRate = 60000)
+    public void cleanupExpiredConfirmations() {
+        Instant cutoff = Instant.now().minusSeconds(CONFIRMATION_TTL_SECONDS);
+        int removed = 0;
+        var iterator = pendingConfirmations.entrySet().iterator();
+        while (iterator.hasNext()) {
+            var entry = iterator.next();
+            if (entry.getValue().createdAt().isBefore(cutoff)) {
+                iterator.remove();
+                removed++;
+            }
+        }
+        if (removed > 0) {
+            log.info("Cleaned up {} expired pending confirmation(s)", removed);
+        }
     }
 }
