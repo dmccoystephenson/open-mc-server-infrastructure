@@ -17,6 +17,7 @@ import org.springframework.stereotype.Service;
 import java.time.Instant;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Service that manages the Discord bot connection and listens for messages
@@ -28,7 +29,7 @@ public class DiscordBotService extends ListenerAdapter {
 
     private final AgentService agentService;
     private final ConfirmationService confirmationService;
-    private final ExecutorService executor = Executors.newCachedThreadPool();
+    private final ExecutorService executor = Executors.newFixedThreadPool(4);
 
     @Value("${discord.bot.token:}")
     private String botToken;
@@ -81,6 +82,14 @@ public class DiscordBotService extends ListenerAdapter {
             jda.shutdown();
         }
         executor.shutdown();
+        try {
+            if (!executor.awaitTermination(30, TimeUnit.SECONDS)) {
+                executor.shutdownNow();
+            }
+        } catch (InterruptedException e) {
+            executor.shutdownNow();
+            Thread.currentThread().interrupt();
+        }
     }
 
     @Override
@@ -161,21 +170,10 @@ public class DiscordBotService extends ListenerAdapter {
         String messageId = event.getMessageId();
         String reactingUserId = event.getUserId();
 
-        // Peek at the pending confirmation to verify user before consuming
-        if (!confirmationService.hasPendingConfirmation(messageId)) {
-            return;
-        }
-
-        ConfirmationService.PendingConfirmation pending = confirmationService.consumePendingConfirmation(messageId);
+        // Atomically consume the pending confirmation only if the requesting user matches
+        ConfirmationService.PendingConfirmation pending = confirmationService.consumeIfRequestingUser(messageId, reactingUserId);
 
         if (pending == null) {
-            return;
-        }
-
-        // Ensure only the original requesting user can confirm this action
-        if (reactingUserId == null || !reactingUserId.equals(pending.requestingUserId())) {
-            // Put it back — wrong user reacted
-            confirmationService.addPendingConfirmation(messageId, pending);
             return;
         }
 

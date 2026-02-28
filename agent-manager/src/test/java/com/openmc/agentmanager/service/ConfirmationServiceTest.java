@@ -113,4 +113,37 @@ class ConfirmationServiceTest {
 
         assertTrue(confirmationService.hasPendingConfirmation("recent-msg"));
     }
+
+    @Test
+    @DisplayName("Should consume confirmation only for requesting user")
+    void shouldConsumeOnlyForRequestingUser() {
+        ConfirmationService.PendingConfirmation pending = new ConfirmationService.PendingConfirmation(
+                "tool-1", "start_server", "start the server", null, "channel-1", "user-1",
+                Instant.now());
+
+        confirmationService.addPendingConfirmation("msg-2", pending);
+
+        // Wrong user should not consume
+        assertNull(confirmationService.consumeIfRequestingUser("msg-2", "user-2"));
+        assertTrue(confirmationService.hasPendingConfirmation("msg-2"));
+
+        // Correct user should consume
+        ConfirmationService.PendingConfirmation consumed = confirmationService.consumeIfRequestingUser("msg-2", "user-1");
+        assertNotNull(consumed);
+        assertEquals("start_server", consumed.toolName());
+        assertFalse(confirmationService.hasPendingConfirmation("msg-2"));
+    }
+
+    @Test
+    @DisplayName("Should return null for null user ID in consumeIfRequestingUser")
+    void shouldReturnNullForNullUserInConsumeIfRequestingUser() {
+        ConfirmationService.PendingConfirmation pending = new ConfirmationService.PendingConfirmation(
+                "tool-1", "start_server", "start the server", null, "channel-1", "user-1",
+                Instant.now());
+
+        confirmationService.addPendingConfirmation("msg-3", pending);
+
+        assertNull(confirmationService.consumeIfRequestingUser("msg-3", null));
+        assertTrue(confirmationService.hasPendingConfirmation("msg-3"));
+    }
 }

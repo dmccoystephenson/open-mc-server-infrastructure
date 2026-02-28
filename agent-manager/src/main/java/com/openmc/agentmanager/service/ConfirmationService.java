@@ -79,6 +79,30 @@ public class ConfirmationService {
     }
 
     /**
+     * Atomically consume a pending confirmation only if the requesting user matches.
+     * @param messageId the Discord message ID
+     * @param userId the user ID attempting to confirm
+     * @return the pending confirmation if the user matches, or null otherwise
+     */
+    public PendingConfirmation consumeIfRequestingUser(String messageId, String userId) {
+        if (userId == null) {
+            return null;
+        }
+        final PendingConfirmation[] result = {null};
+        pendingConfirmations.computeIfPresent(messageId, (key, pending) -> {
+            if (userId.equals(pending.requestingUserId())) {
+                result[0] = pending;
+                return null; // remove from map
+            }
+            return pending; // keep in map — wrong user
+        });
+        if (result[0] != null) {
+            log.info("Consumed pending confirmation for message {} by user {} - tool: {}", messageId, userId, result[0].toolName());
+        }
+        return result[0];
+    }
+
+    /**
      * Check if a message has a pending confirmation.
      * @param messageId the Discord message ID
      * @return true if there is a pending confirmation
