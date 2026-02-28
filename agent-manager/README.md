@@ -207,16 +207,18 @@ The agent-manager exposes Spring Boot Actuator's `/loggers` endpoint, which allo
 
 ### View Current Log Levels
 
+Since the management server is bound to `127.0.0.1` inside the container, all actuator commands must be run via `docker exec`:
+
 View all configured loggers:
 
 ```bash
-curl -s http://localhost:8094/actuator/loggers | jq .
+docker exec open-mc-agent-manager curl -s http://localhost:8094/actuator/loggers | jq .
 ```
 
 View the log level for the agent-manager package:
 
 ```bash
-curl -s http://localhost:8094/actuator/loggers/com.openmc.agentmanager | jq .
+docker exec open-mc-agent-manager curl -s http://localhost:8094/actuator/loggers/com.openmc.agentmanager | jq .
 ```
 
 Example response:
@@ -232,7 +234,7 @@ Example response:
 Enable DEBUG logging for detailed message flow, API calls, and confirmation tracking:
 
 ```bash
-curl -X POST http://localhost:8094/actuator/loggers/com.openmc.agentmanager \
+docker exec open-mc-agent-manager curl -X POST http://localhost:8094/actuator/loggers/com.openmc.agentmanager \
   -H 'Content-Type: application/json' \
   -d '{"configuredLevel": "DEBUG"}'
 ```
@@ -240,7 +242,7 @@ curl -X POST http://localhost:8094/actuator/loggers/com.openmc.agentmanager \
 Reset back to INFO:
 
 ```bash
-curl -X POST http://localhost:8094/actuator/loggers/com.openmc.agentmanager \
+docker exec open-mc-agent-manager curl -X POST http://localhost:8094/actuator/loggers/com.openmc.agentmanager \
   -H 'Content-Type: application/json' \
   -d '{"configuredLevel": "INFO"}'
 ```
@@ -249,31 +251,17 @@ You can also target specific services for more focused debugging:
 
 ```bash
 # Debug only the Discord bot service
-curl -X POST http://localhost:8094/actuator/loggers/com.openmc.agentmanager.service.DiscordBotService \
+docker exec open-mc-agent-manager curl -X POST http://localhost:8094/actuator/loggers/com.openmc.agentmanager.service.DiscordBotService \
   -H 'Content-Type: application/json' \
   -d '{"configuredLevel": "DEBUG"}'
 
 # Debug only the Anthropic API client
-curl -X POST http://localhost:8094/actuator/loggers/com.openmc.agentmanager.service.AnthropicService \
+docker exec open-mc-agent-manager curl -X POST http://localhost:8094/actuator/loggers/com.openmc.agentmanager.service.AnthropicService \
   -H 'Content-Type: application/json' \
   -d '{"configuredLevel": "DEBUG"}'
 
 # Debug only tool execution
-curl -X POST http://localhost:8094/actuator/loggers/com.openmc.agentmanager.service.ToolExecutionService \
-  -H 'Content-Type: application/json' \
-  -d '{"configuredLevel": "DEBUG"}'
-```
-
-### From Inside the Docker Network
-
-Since the management server is bound to `127.0.0.1` inside the container, use `docker exec`:
-
-```bash
-# View log level
-docker exec open-mc-agent-manager curl -s http://localhost:8094/actuator/loggers/com.openmc.agentmanager
-
-# Enable DEBUG
-docker exec open-mc-agent-manager curl -X POST http://localhost:8094/actuator/loggers/com.openmc.agentmanager \
+docker exec open-mc-agent-manager curl -X POST http://localhost:8094/actuator/loggers/com.openmc.agentmanager.service.ToolExecutionService \
   -H 'Content-Type: application/json' \
   -d '{"configuredLevel": "DEBUG"}'
 ```

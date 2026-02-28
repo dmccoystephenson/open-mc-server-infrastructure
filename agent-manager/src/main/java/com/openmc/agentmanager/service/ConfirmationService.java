@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 import java.time.Instant;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Service for managing per-tool confirmation requirements.
@@ -118,18 +119,18 @@ public class ConfirmationService {
     @Scheduled(fixedRate = 60000)
     public void cleanupExpiredConfirmations() {
         Instant cutoff = Instant.now().minusSeconds(CONFIRMATION_TTL_SECONDS);
-        int sizeBefore = pendingConfirmations.size();
+        AtomicInteger removed = new AtomicInteger(0);
         pendingConfirmations.entrySet().removeIf(entry -> {
             if (entry.getValue().createdAt().isBefore(cutoff)) {
                 log.debug("Removing expired confirmation for message {} - tool: {} (created at {})",
                         entry.getKey(), entry.getValue().toolName(), entry.getValue().createdAt());
+                removed.incrementAndGet();
                 return true;
             }
             return false;
         });
-        int removed = sizeBefore - pendingConfirmations.size();
-        if (removed > 0) {
-            log.info("Cleaned up {} expired pending confirmation(s)", removed);
+        if (removed.get() > 0) {
+            log.info("Cleaned up {} expired pending confirmation(s)", removed.get());
         } else {
             log.debug("Confirmation cleanup ran — no expired entries (total pending: {})", pendingConfirmations.size());
         }
