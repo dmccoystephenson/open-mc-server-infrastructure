@@ -141,6 +141,27 @@ services:
       - MINECRAFT_RCON_PASSWORD=${RCON_PASSWORD:-minecraft}
       - MINECRAFT_RCON_ENABLED=${MINECRAFT_RCON_ENABLED:-true}
 
+  agent-manager:
+    build:
+      context: ./agent-manager
+    image: open-mc-server-agent-manager
+    restart: always
+    container_name: ${AGENT_CONTAINER_NAME:-open-mc-agent-manager}
+    ports:
+      - "${AGENT_PORT:-8093}:8093"
+    depends_on:
+      alert-manager:
+        condition: service_healthy
+    environment:
+      - AGENT_DISCORD_BOT_TOKEN=${AGENT_DISCORD_BOT_TOKEN:-}
+      - AGENT_DISCORD_CHANNEL_ID=${AGENT_DISCORD_CHANNEL_ID:-}
+      - AGENT_ANTHROPIC_API_KEY=${AGENT_ANTHROPIC_API_KEY:-}
+      - AGENT_ENABLED=${AGENT_ENABLED:-false}
+      - MINECRAFT_WRAPPER_URL=${MINECRAFT_WRAPPER_URL:-http://minecraft-wrapper:8092}
+      - AGENT_START_SERVER_REQUIRES_CONFIRMATION=${AGENT_START_SERVER_REQUIRES_CONFIRMATION:-true}
+      - AGENT_STOP_SERVER_REQUIRES_CONFIRMATION=${AGENT_STOP_SERVER_REQUIRES_CONFIRMATION:-true}
+      - AGENT_RESTART_SERVER_REQUIRES_CONFIRMATION=${AGENT_RESTART_SERVER_REQUIRES_CONFIRMATION:-true}
+
 volumes:
   mcserver:
     name: ${VOLUME_NAME:-mcserver}
