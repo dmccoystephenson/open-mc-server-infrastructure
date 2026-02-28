@@ -158,13 +158,13 @@ The agent-manager exposes Spring Boot Actuator's `/loggers` endpoint, which allo
 View all configured loggers:
 
 ```bash
-curl -s http://localhost:8093/actuator/loggers | jq .
+curl -s http://localhost:8094/actuator/loggers | jq .
 ```
 
 View the log level for the agent-manager package:
 
 ```bash
-curl -s http://localhost:8093/actuator/loggers/com.openmc.agentmanager | jq .
+curl -s http://localhost:8094/actuator/loggers/com.openmc.agentmanager | jq .
 ```
 
 Example response:
@@ -180,7 +180,7 @@ Example response:
 Enable DEBUG logging for detailed message flow, API calls, and confirmation tracking:
 
 ```bash
-curl -X POST http://localhost:8093/actuator/loggers/com.openmc.agentmanager \
+curl -X POST http://localhost:8094/actuator/loggers/com.openmc.agentmanager \
   -H 'Content-Type: application/json' \
   -d '{"configuredLevel": "DEBUG"}'
 ```
@@ -188,7 +188,7 @@ curl -X POST http://localhost:8093/actuator/loggers/com.openmc.agentmanager \
 Reset back to INFO:
 
 ```bash
-curl -X POST http://localhost:8093/actuator/loggers/com.openmc.agentmanager \
+curl -X POST http://localhost:8094/actuator/loggers/com.openmc.agentmanager \
   -H 'Content-Type: application/json' \
   -d '{"configuredLevel": "INFO"}'
 ```
@@ -197,31 +197,31 @@ You can also target specific services for more focused debugging:
 
 ```bash
 # Debug only the Discord bot service
-curl -X POST http://localhost:8093/actuator/loggers/com.openmc.agentmanager.service.DiscordBotService \
+curl -X POST http://localhost:8094/actuator/loggers/com.openmc.agentmanager.service.DiscordBotService \
   -H 'Content-Type: application/json' \
   -d '{"configuredLevel": "DEBUG"}'
 
 # Debug only the Anthropic API client
-curl -X POST http://localhost:8093/actuator/loggers/com.openmc.agentmanager.service.AnthropicService \
+curl -X POST http://localhost:8094/actuator/loggers/com.openmc.agentmanager.service.AnthropicService \
   -H 'Content-Type: application/json' \
   -d '{"configuredLevel": "DEBUG"}'
 
 # Debug only tool execution
-curl -X POST http://localhost:8093/actuator/loggers/com.openmc.agentmanager.service.ToolExecutionService \
+curl -X POST http://localhost:8094/actuator/loggers/com.openmc.agentmanager.service.ToolExecutionService \
   -H 'Content-Type: application/json' \
   -d '{"configuredLevel": "DEBUG"}'
 ```
 
 ### From Inside the Docker Network
 
-If port 8093 is not exposed on the host, use `docker exec`:
+Since the management server is bound to `127.0.0.1` inside the container, use `docker exec`:
 
 ```bash
 # View log level
-docker exec open-mc-agent-manager curl -s http://localhost:8093/actuator/loggers/com.openmc.agentmanager
+docker exec open-mc-agent-manager curl -s http://localhost:8094/actuator/loggers/com.openmc.agentmanager
 
 # Enable DEBUG
-docker exec open-mc-agent-manager curl -X POST http://localhost:8093/actuator/loggers/com.openmc.agentmanager \
+docker exec open-mc-agent-manager curl -X POST http://localhost:8094/actuator/loggers/com.openmc.agentmanager \
   -H 'Content-Type: application/json' \
   -d '{"configuredLevel": "DEBUG"}'
 ```
@@ -247,7 +247,7 @@ At DEBUG level, the agent-manager logs additional detail at each step:
 - Only the user who requested an action can confirm it via reaction
 - Pending confirmations expire after 5 minutes to prevent stale actions
 - The Discord bot only listens in the configured channel
-- The Actuator management endpoints (`/loggers`, `/health`) are bound to `127.0.0.1` and are only accessible from inside the container
+- The Actuator management endpoints (`/loggers`, `/health`) run on a separate port (8094) and are bound to `127.0.0.1` — only accessible from inside the container
 
 ## Troubleshooting
 
