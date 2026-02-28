@@ -40,6 +40,9 @@ public class DiscordBotService extends ListenerAdapter {
     @Value("${agent.enabled:false}")
     private boolean agentEnabled;
 
+    @Value("${anthropic.api.key:}")
+    private String anthropicApiKey;
+
     private JDA jda;
 
     public DiscordBotService(AgentService agentService, ConfirmationService confirmationService) {
@@ -61,6 +64,11 @@ public class DiscordBotService extends ListenerAdapter {
 
         if (channelId == null || channelId.isBlank()) {
             log.warn("Discord channel ID is not configured. Discord bot will not start.");
+            return;
+        }
+
+        if (anthropicApiKey == null || anthropicApiKey.isBlank()) {
+            log.warn("Anthropic API key is not configured. Discord bot will not start.");
             return;
         }
 

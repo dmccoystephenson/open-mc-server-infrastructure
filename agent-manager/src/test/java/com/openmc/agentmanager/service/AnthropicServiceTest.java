@@ -109,4 +109,30 @@ class AnthropicServiceTest {
     void shouldReturnNullForNullResponseFindingToolUse() {
         assertNull(anthropicService.findToolUseBlock(null));
     }
+
+    @Test
+    @DisplayName("Should concatenate multiple text blocks with newlines")
+    void shouldConcatenateMultipleTextBlocks() {
+        AnthropicResponse response = AnthropicResponse.builder()
+                .content(List.of(
+                        AnthropicResponse.ContentBlock.builder()
+                                .type("text")
+                                .text("First block.")
+                                .build(),
+                        AnthropicResponse.ContentBlock.builder()
+                                .type("tool_use")
+                                .id("tool-1")
+                                .name("start_server")
+                                .build(),
+                        AnthropicResponse.ContentBlock.builder()
+                                .type("text")
+                                .text("Second block.")
+                                .build()
+                ))
+                .build();
+
+        String text = anthropicService.extractTextContent(response);
+
+        assertEquals("First block.\nSecond block.", text);
+    }
 }

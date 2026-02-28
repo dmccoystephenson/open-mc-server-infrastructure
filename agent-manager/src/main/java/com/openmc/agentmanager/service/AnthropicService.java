@@ -13,6 +13,7 @@ import org.springframework.web.client.RestTemplate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * Service for communicating with the Anthropic Messages API.
@@ -155,8 +156,7 @@ public class AnthropicService {
         return response.getContent().stream()
                 .filter(block -> "text".equals(block.getType()))
                 .map(AnthropicResponse.ContentBlock::getText)
-                .findFirst()
-                .orElse("");
+                .collect(Collectors.joining("\n"));
     }
 
     /**

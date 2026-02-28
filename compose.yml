@@ -152,6 +152,8 @@ services:
     depends_on:
       alert-manager:
         condition: service_healthy
+      minecraft-wrapper:
+        condition: service_started
     environment:
       - AGENT_DISCORD_BOT_TOKEN=${AGENT_DISCORD_BOT_TOKEN:-}
       - AGENT_DISCORD_CHANNEL_ID=${AGENT_DISCORD_CHANNEL_ID:-}
