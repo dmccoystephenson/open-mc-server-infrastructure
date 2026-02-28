@@ -113,4 +113,81 @@ class AlertServiceTest {
         assertNotNull(alert);
         assertTrue(alert.getDestinations().contains("DISCORD"));
     }
+
+    @Test
+    @DisplayName("Should format stop_server action description correctly")
+    void shouldFormatStopServerActionDescription() {
+        ReflectionTestUtils.setField(alertService, "alertManagerUrl", "http://alert-manager:8090/api/alerts");
+
+        alertService.sendToolExecutionAlert("player1", "stop_server", "stop it", true);
+
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<HttpEntity<Alert>> captor = ArgumentCaptor.forClass(HttpEntity.class);
+        verify(restTemplate).postForEntity(anyString(), captor.capture(), eq(String.class));
+
+        Alert alert = captor.getValue().getBody();
+        assertNotNull(alert);
+        assertEquals("Agent Action Executed: Stop Server", alert.getTitle());
+        assertTrue(alert.getMessage().contains("Stop Server"));
+    }
+
+    @Test
+    @DisplayName("Should format restart_server action description correctly")
+    void shouldFormatRestartServerActionDescription() {
+        ReflectionTestUtils.setField(alertService, "alertManagerUrl", "http://alert-manager:8090/api/alerts");
+
+        alertService.sendToolExecutionAlert("player2", "restart_server", "restart please", true);
+
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<HttpEntity<Alert>> captor = ArgumentCaptor.forClass(HttpEntity.class);
+        verify(restTemplate).postForEntity(anyString(), captor.capture(), eq(String.class));
+
+        Alert alert = captor.getValue().getBody();
+        assertNotNull(alert);
+        assertEquals("Agent Action Executed: Restart Server", alert.getTitle());
+        assertTrue(alert.getMessage().contains("Restart Server"));
+    }
+
+    @Test
+    @DisplayName("Should handle unknown tool name in action description")
+    void shouldHandleUnknownToolNameInActionDescription() {
+        ReflectionTestUtils.setField(alertService, "alertManagerUrl", "http://alert-manager:8090/api/alerts");
+
+        alertService.sendToolExecutionAlert("player3", "custom_tool", "do something", true);
+
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<HttpEntity<Alert>> captor = ArgumentCaptor.forClass(HttpEntity.class);
+        verify(restTemplate).postForEntity(anyString(), captor.capture(), eq(String.class));
+
+        Alert alert = captor.getValue().getBody();
+        assertNotNull(alert);
+        assertEquals("Agent Action Executed: custom_tool", alert.getTitle());
+    }
+
+    @Test
+    @DisplayName("Should include original prompt in alert message")
+    void shouldIncludeOriginalPromptInAlertMessage() {
+        ReflectionTestUtils.setField(alertService, "alertManagerUrl", "http://alert-manager:8090/api/alerts");
+
+        String prompt = "hey can you please start the minecraft server for us?";
+        alertService.sendToolExecutionAlert("player4", "start_server", prompt, true);
+
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<HttpEntity<Alert>> captor = ArgumentCaptor.forClass(HttpEntity.class);
+        verify(restTemplate).postForEntity(anyString(), captor.capture(), eq(String.class));
+
+        Alert alert = captor.getValue().getBody();
+        assertNotNull(alert);
+        assertTrue(alert.getMessage().contains(prompt));
+    }
+
+    @Test
+    @DisplayName("Should skip alert when alert manager URL is whitespace only")
+    void shouldSkipAlertWhenUrlIsWhitespace() {
+        ReflectionTestUtils.setField(alertService, "alertManagerUrl", "   ");
+
+        alertService.sendToolExecutionAlert("testuser", "start_server", "start", true);
+
+        verify(restTemplate, never()).postForEntity(anyString(), any(), any());
+    }
 }

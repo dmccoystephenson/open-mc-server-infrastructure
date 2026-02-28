@@ -151,7 +151,7 @@ docker logs -f ${AGENT_CONTAINER_NAME}
 
 ## Dynamic Log Level Management
 
-The agent-manager exposes Spring Boot Actuator's `/loggers` endpoint, which allows you to view and change log levels at runtime without restarting the container. This is useful for enabling debug-level logging to diagnose issues in production.
+The agent-manager exposes Spring Boot Actuator's `/loggers` endpoint, which allows you to view and change log levels at runtime without restarting the container. This endpoint is bound to `127.0.0.1` (localhost only), so it is not accessible from outside the container — use `docker exec` to access it.
 
 ### View Current Log Levels
 
@@ -247,6 +247,7 @@ At DEBUG level, the agent-manager logs additional detail at each step:
 - Only the user who requested an action can confirm it via reaction
 - Pending confirmations expire after 5 minutes to prevent stale actions
 - The Discord bot only listens in the configured channel
+- The Actuator management endpoints (`/loggers`, `/health`) are bound to `127.0.0.1` and are only accessible from inside the container
 
 ## Troubleshooting
 

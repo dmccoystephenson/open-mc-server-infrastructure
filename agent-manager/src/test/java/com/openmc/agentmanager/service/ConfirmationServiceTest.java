@@ -46,9 +46,23 @@ class ConfirmationServiceTest {
     }
 
     @Test
+    @DisplayName("Should not require confirmation for stop_server when disabled")
+    void shouldNotRequireConfirmationForStopServerWhenDisabled() {
+        ReflectionTestUtils.setField(confirmationService, "stopServerRequiresConfirmation", false);
+        assertFalse(confirmationService.requiresConfirmation("stop_server"));
+    }
+
+    @Test
     @DisplayName("Should require confirmation for restart_server when enabled")
     void shouldRequireConfirmationForRestartServer() {
         assertTrue(confirmationService.requiresConfirmation("restart_server"));
+    }
+
+    @Test
+    @DisplayName("Should not require confirmation for restart_server when disabled")
+    void shouldNotRequireConfirmationForRestartServerWhenDisabled() {
+        ReflectionTestUtils.setField(confirmationService, "restartServerRequiresConfirmation", false);
+        assertFalse(confirmationService.requiresConfirmation("restart_server"));
     }
 
     @Test
@@ -145,5 +159,73 @@ class ConfirmationServiceTest {
 
         assertNull(confirmationService.consumeIfRequestingUser("msg-3", null));
         assertTrue(confirmationService.hasPendingConfirmation("msg-3"));
+    }
+
+    @Test
+    @DisplayName("Should clean up only expired among mixed confirmations")
+    void shouldCleanUpOnlyExpiredAmongMixed() {
+        ConfirmationService.PendingConfirmation expired = new ConfirmationService.PendingConfirmation(
+                "tool-1", "start_server", "start", null, "channel-1", "user-1", "testuser",
+                Instant.now().minusSeconds(600));
+        ConfirmationService.PendingConfirmation recent = new ConfirmationService.PendingConfirmation(
+                "tool-2", "stop_server", "stop", null, "channel-1", "user-2", "testuser2",
+                Instant.now());
+
+        confirmationService.addPendingConfirmation("expired-msg", expired);
+        confirmationService.addPendingConfirmation("recent-msg", recent);
+
+        confirmationService.cleanupExpiredConfirmations();
+
+        assertFalse(confirmationService.hasPendingConfirmation("expired-msg"));
+        assertTrue(confirmationService.hasPendingConfirmation("recent-msg"));
+    }
+
+    @Test
+    @DisplayName("Should preserve all fields in PendingConfirmation record")
+    void shouldPreserveAllFieldsInPendingConfirmation() {
+        Instant now = Instant.now();
+        ConfirmationService.PendingConfirmation pending = new ConfirmationService.PendingConfirmation(
+                "tool-use-123", "restart_server", "restart please", null, "channel-42", "user-99", "player1", now);
+
+        confirmationService.addPendingConfirmation("msg-fields", pending);
+        ConfirmationService.PendingConfirmation consumed = confirmationService.consumePendingConfirmation("msg-fields");
+
+        assertNotNull(consumed);
+        assertEquals("tool-use-123", consumed.toolUseId());
+        assertEquals("restart_server", consumed.toolName());
+        assertEquals("restart please", consumed.userMessage());
+        assertEquals("channel-42", consumed.channelId());
+        assertEquals("user-99", consumed.requestingUserId());
+        assertEquals("player1", consumed.discordUsername());
+        assertEquals(now, consumed.createdAt());
+    }
+
+    @Test
+    @DisplayName("Should allow overwriting a pending confirmation for the same message ID")
+    void shouldOverwritePendingConfirmationForSameMessageId() {
+        ConfirmationService.PendingConfirmation first = new ConfirmationService.PendingConfirmation(
+                "tool-1", "start_server", "start", null, "channel-1", "user-1", "testuser", Instant.now());
+        ConfirmationService.PendingConfirmation second = new ConfirmationService.PendingConfirmation(
+                "tool-2", "stop_server", "stop", null, "channel-1", "user-2", "testuser2", Instant.now());
+
+        confirmationService.addPendingConfirmation("msg-overwrite", first);
+        confirmationService.addPendingConfirmation("msg-overwrite", second);
+
+        ConfirmationService.PendingConfirmation consumed = confirmationService.consumePendingConfirmation("msg-overwrite");
+        assertNotNull(consumed);
+        assertEquals("stop_server", consumed.toolName());
+        assertEquals("user-2", consumed.requestingUserId());
+    }
+
+    @Test
+    @DisplayName("Should return null for consumeIfRequestingUser with non-existent message")
+    void shouldReturnNullForConsumeIfRequestingUserWithNonExistentMessage() {
+        assertNull(confirmationService.consumeIfRequestingUser("non-existent", "user-1"));
+    }
+
+    @Test
+    @DisplayName("Should handle cleanup with no pending confirmations")
+    void shouldHandleCleanupWithNoPendingConfirmations() {
+        assertDoesNotThrow(() -> confirmationService.cleanupExpiredConfirmations());
     }
 }

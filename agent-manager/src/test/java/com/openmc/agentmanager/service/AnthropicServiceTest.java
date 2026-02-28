@@ -11,6 +11,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.client.RestTemplate;
 
+import java.util.Collections;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -134,5 +135,70 @@ class AnthropicServiceTest {
         String text = anthropicService.extractTextContent(response);
 
         assertEquals("First block.\nSecond block.", text);
+    }
+
+    @Test
+    @DisplayName("Should return empty string for response with null content list")
+    void shouldReturnEmptyStringForNullContentList() {
+        AnthropicResponse response = AnthropicResponse.builder()
+                .content(null)
+                .build();
+
+        assertEquals("", anthropicService.extractTextContent(response));
+    }
+
+    @Test
+    @DisplayName("Should return empty string for response with empty content list")
+    void shouldReturnEmptyStringForEmptyContentList() {
+        AnthropicResponse response = AnthropicResponse.builder()
+                .content(Collections.emptyList())
+                .build();
+
+        assertEquals("", anthropicService.extractTextContent(response));
+    }
+
+    @Test
+    @DisplayName("Should return null for findToolUseBlock with null content list")
+    void shouldReturnNullForFindToolUseBlockWithNullContent() {
+        AnthropicResponse response = AnthropicResponse.builder()
+                .content(null)
+                .build();
+
+        assertNull(anthropicService.findToolUseBlock(response));
+    }
+
+    @Test
+    @DisplayName("Should return null for findToolUseBlock with empty content list")
+    void shouldReturnNullForFindToolUseBlockWithEmptyContent() {
+        AnthropicResponse response = AnthropicResponse.builder()
+                .content(Collections.emptyList())
+                .build();
+
+        assertNull(anthropicService.findToolUseBlock(response));
+    }
+
+    @Test
+    @DisplayName("Should find first tool_use block when multiple exist")
+    void shouldFindFirstToolUseBlockWhenMultipleExist() {
+        AnthropicResponse response = AnthropicResponse.builder()
+                .content(List.of(
+                        AnthropicResponse.ContentBlock.builder()
+                                .type("tool_use")
+                                .id("tool-1")
+                                .name("start_server")
+                                .build(),
+                        AnthropicResponse.ContentBlock.builder()
+                                .type("tool_use")
+                                .id("tool-2")
+                                .name("stop_server")
+                                .build()
+                ))
+                .build();
+
+        AnthropicResponse.ContentBlock toolBlock = anthropicService.findToolUseBlock(response);
+
+        assertNotNull(toolBlock);
+        assertEquals("start_server", toolBlock.getName());
+        assertEquals("tool-1", toolBlock.getId());
     }
 }

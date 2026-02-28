@@ -118,17 +118,16 @@ public class ConfirmationService {
     @Scheduled(fixedRate = 60000)
     public void cleanupExpiredConfirmations() {
         Instant cutoff = Instant.now().minusSeconds(CONFIRMATION_TTL_SECONDS);
-        int removed = 0;
-        var iterator = pendingConfirmations.entrySet().iterator();
-        while (iterator.hasNext()) {
-            var entry = iterator.next();
+        int sizeBefore = pendingConfirmations.size();
+        pendingConfirmations.entrySet().removeIf(entry -> {
             if (entry.getValue().createdAt().isBefore(cutoff)) {
                 log.debug("Removing expired confirmation for message {} - tool: {} (created at {})",
                         entry.getKey(), entry.getValue().toolName(), entry.getValue().createdAt());
-                iterator.remove();
-                removed++;
+                return true;
             }
-        }
+            return false;
+        });
+        int removed = sizeBefore - pendingConfirmations.size();
         if (removed > 0) {
             log.info("Cleaned up {} expired pending confirmation(s)", removed);
         } else {
