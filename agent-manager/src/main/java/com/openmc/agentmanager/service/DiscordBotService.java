@@ -73,6 +73,7 @@ public class DiscordBotService extends ListenerAdapter {
         }
 
         try {
+            log.debug("Initializing JDA with gateway intents: GUILD_MESSAGES, MESSAGE_CONTENT, GUILD_MESSAGE_REACTIONS");
             jda = JDABuilder.createDefault(botToken)
                     .enableIntents(GatewayIntent.GUILD_MESSAGES, GatewayIntent.MESSAGE_CONTENT, GatewayIntent.GUILD_MESSAGE_REACTIONS)
                     .addEventListeners(this)
@@ -104,21 +105,24 @@ public class DiscordBotService extends ListenerAdapter {
     public void onMessageReceived(MessageReceivedEvent event) {
         // Ignore bot messages
         if (event.getAuthor().isBot()) {
+            log.debug("Ignoring message from bot user: {}", event.getAuthor().getName());
             return;
         }
 
         // Only respond in the configured channel
         if (!event.getChannel().getId().equals(channelId)) {
+            log.debug("Ignoring message from non-configured channel: {}", event.getChannel().getId());
             return;
         }
 
         String userMessage = event.getMessage().getContentRaw();
         if (userMessage.isBlank()) {
+            log.debug("Ignoring blank message from {}", event.getAuthor().getName());
             return;
         }
 
         String userId = event.getAuthor().getId();
-        log.info("Received Discord message from {}: {}", event.getAuthor().getName(), userMessage);
+        log.info("Received Discord message from {} (ID: {}): {}", event.getAuthor().getName(), userId, userMessage);
 
         MessageChannel channel = event.getChannel();
         channel.sendTyping().queue();
@@ -126,12 +130,17 @@ public class DiscordBotService extends ListenerAdapter {
         // Offload processing to a dedicated executor to avoid blocking JDA's event thread
         executor.submit(() -> {
             try {
+                log.debug("Processing message from {} on executor thread", event.getAuthor().getName());
                 AgentService.AgentResponse response = agentService.processMessage(userMessage);
 
                 if (response.requiresConfirmation()) {
+                    log.debug("Sending confirmation prompt for tool: {}", response.toolName());
                     // Send confirmation message and add reaction
                     channel.sendMessage(response.textResponse()).queue(sentMessage -> {
-                        sentMessage.addReaction(Emoji.fromUnicode("✅")).queue();
+                        sentMessage.addReaction(Emoji.fromUnicode("✅")).queue(
+                                success -> log.debug("Added ✅ reaction to confirmation message {}", sentMessage.getId()),
+                                failure -> log.error("Failed to add ✅ reaction to message {}", sentMessage.getId(), failure)
+                        );
                         // Store pending confirmation with requesting user ID
                         confirmationService.addPendingConfirmation(
                                 sentMessage.getId(),
@@ -145,13 +154,20 @@ public class DiscordBotService extends ListenerAdapter {
                                         Instant.now()
                                 )
                         );
-                    });
+                    }, failure -> log.error("RestAction queue returned failure: {}", failure.getMessage(), failure));
                 } else {
-                    channel.sendMessage(response.textResponse()).queue();
+                    log.debug("Sending direct response (no confirmation required)");
+                    channel.sendMessage(response.textResponse()).queue(
+                            success -> log.debug("Response sent successfully to channel {}", channelId),
+                            failure -> log.error("RestAction queue returned failure: {}", failure.getMessage(), failure)
+                    );
                 }
             } catch (Exception e) {
                 log.error("Error processing Discord message", e);
-                channel.sendMessage("❌ An error occurred while processing your request. Please try again.").queue();
+                channel.sendMessage("❌ An error occurred while processing your request. Please try again.").queue(
+                        null,
+                        failure -> log.error("Failed to send error message to Discord", failure)
+                );
             }
         });
     }
@@ -160,6 +176,7 @@ public class DiscordBotService extends ListenerAdapter {
     public void onMessageReactionAdd(MessageReactionAddEvent event) {
         // Ignore bot reactions
         if (event.getUser() != null && event.getUser().isBot()) {
+            log.debug("Ignoring reaction from bot user");
             return;
         }
 
@@ -172,20 +189,23 @@ public class DiscordBotService extends ListenerAdapter {
         if (!"✅".equals(event.getReaction().getEmoji().getAsReactionCode()) &&
                 !"U+2705".equals(event.getReaction().getEmoji().getAsReactionCode()) &&
                 !"✅".equals(event.getReaction().getEmoji().getName())) {
+            log.debug("Ignoring non-checkmark reaction: {}", event.getReaction().getEmoji().getName());
             return;
         }
 
         String messageId = event.getMessageId();
         String reactingUserId = event.getUserId();
+        log.debug("Received ✅ reaction on message {} from user {}", messageId, reactingUserId);
 
         // Atomically consume the pending confirmation only if the requesting user matches
         ConfirmationService.PendingConfirmation pending = confirmationService.consumeIfRequestingUser(messageId, reactingUserId);
 
         if (pending == null) {
+            log.debug("No pending confirmation found for message {} by user {} (either no confirmation exists, user mismatch, or already consumed)", messageId, reactingUserId);
             return;
         }
 
-        log.info("Confirmation received for tool: {}", pending.toolName());
+        log.info("Confirmation received for tool: {} (message: {}, user: {})", pending.toolName(), messageId, reactingUserId);
 
         MessageChannel channel = event.getChannel().asGuildMessageChannel();
         channel.sendTyping().queue();
@@ -193,13 +213,20 @@ public class DiscordBotService extends ListenerAdapter {
         // Offload execution to a dedicated executor
         executor.submit(() -> {
             try {
+                log.debug("Executing confirmed tool {} on executor thread", pending.toolName());
                 AgentService.AgentResponse response = agentService.executeToolAndRespond(
                         pending.userMessage(), pending.assistantContent(),
                         pending.toolUseId(), pending.toolName());
-                channel.sendMessage(response.textResponse()).queue();
+                channel.sendMessage(response.textResponse()).queue(
+                        success -> log.debug("Tool execution response sent for {}", pending.toolName()),
+                        failure -> log.error("Failed to send tool execution response to Discord", failure)
+                );
             } catch (Exception e) {
                 log.error("Error executing confirmed tool: {}", pending.toolName(), e);
-                channel.sendMessage("❌ An error occurred while executing the action. Please try again.").queue();
+                channel.sendMessage("❌ An error occurred while executing the action. Please try again.").queue(
+                        null,
+                        failure -> log.error("Failed to send error message to Discord", failure)
+                );
             }
         });
     }

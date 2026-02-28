@@ -129,6 +129,95 @@ Or use your custom container name:
 docker logs -f ${AGENT_CONTAINER_NAME}
 ```
 
+## Dynamic Log Level Management
+
+The agent-manager exposes Spring Boot Actuator's `/loggers` endpoint, which allows you to view and change log levels at runtime without restarting the container. This is useful for enabling debug-level logging to diagnose issues in production.
+
+### View Current Log Levels
+
+View all configured loggers:
+
+```bash
+curl -s http://localhost:8093/actuator/loggers | jq .
+```
+
+View the log level for the agent-manager package:
+
+```bash
+curl -s http://localhost:8093/actuator/loggers/com.openmc.agentmanager | jq .
+```
+
+Example response:
+```json
+{
+  "configuredLevel": "INFO",
+  "effectiveLevel": "INFO"
+}
+```
+
+### Change Log Level at Runtime
+
+Enable DEBUG logging for detailed message flow, API calls, and confirmation tracking:
+
+```bash
+curl -X POST http://localhost:8093/actuator/loggers/com.openmc.agentmanager \
+  -H 'Content-Type: application/json' \
+  -d '{"configuredLevel": "DEBUG"}'
+```
+
+Reset back to INFO:
+
+```bash
+curl -X POST http://localhost:8093/actuator/loggers/com.openmc.agentmanager \
+  -H 'Content-Type: application/json' \
+  -d '{"configuredLevel": "INFO"}'
+```
+
+You can also target specific services for more focused debugging:
+
+```bash
+# Debug only the Discord bot service
+curl -X POST http://localhost:8093/actuator/loggers/com.openmc.agentmanager.service.DiscordBotService \
+  -H 'Content-Type: application/json' \
+  -d '{"configuredLevel": "DEBUG"}'
+
+# Debug only the Anthropic API client
+curl -X POST http://localhost:8093/actuator/loggers/com.openmc.agentmanager.service.AnthropicService \
+  -H 'Content-Type: application/json' \
+  -d '{"configuredLevel": "DEBUG"}'
+
+# Debug only tool execution
+curl -X POST http://localhost:8093/actuator/loggers/com.openmc.agentmanager.service.ToolExecutionService \
+  -H 'Content-Type: application/json' \
+  -d '{"configuredLevel": "DEBUG"}'
+```
+
+### From Inside the Docker Network
+
+If port 8093 is not exposed on the host, use `docker exec`:
+
+```bash
+# View log level
+docker exec open-mc-agent-manager curl -s http://localhost:8093/actuator/loggers/com.openmc.agentmanager
+
+# Enable DEBUG
+docker exec open-mc-agent-manager curl -X POST http://localhost:8093/actuator/loggers/com.openmc.agentmanager \
+  -H 'Content-Type: application/json' \
+  -d '{"configuredLevel": "DEBUG"}'
+```
+
+### What DEBUG Logging Shows
+
+At DEBUG level, the agent-manager logs additional detail at each step:
+
+| Area | Debug Details |
+|------|--------------|
+| **Discord Bot** | Ignored messages (bot/wrong channel/blank), executor thread dispatch, reaction handling, RestAction success/failure callbacks |
+| **Agent Loop** | Anthropic response metadata (stop_reason, content block count), tool call IDs, confirmation flow decisions |
+| **Anthropic API** | Request parameters (model, tool count), API URL, response status codes |
+| **Tool Execution** | Tool execution IDs, wrapper request URLs |
+| **Confirmations** | Expired entry details during cleanup, pending confirmation counts |
+
 ## Security Notes
 
 - Store the Discord bot token, Anthropic API key, and channel ID securely in environment variables, never in code

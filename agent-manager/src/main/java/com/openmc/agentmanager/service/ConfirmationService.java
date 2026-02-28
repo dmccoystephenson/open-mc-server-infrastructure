@@ -61,7 +61,7 @@ public class ConfirmationService {
      * @param confirmation the pending confirmation data
      */
     public void addPendingConfirmation(String messageId, PendingConfirmation confirmation) {
-        log.info("Added pending confirmation for message {} - tool: {}", messageId, confirmation.toolName());
+        log.info("Added pending confirmation for message {} - tool: {} (requested by user: {})", messageId, confirmation.toolName(), confirmation.requestingUserId());
         pendingConfirmations.put(messageId, confirmation);
     }
 
@@ -123,12 +123,16 @@ public class ConfirmationService {
         while (iterator.hasNext()) {
             var entry = iterator.next();
             if (entry.getValue().createdAt().isBefore(cutoff)) {
+                log.debug("Removing expired confirmation for message {} - tool: {} (created at {})",
+                        entry.getKey(), entry.getValue().toolName(), entry.getValue().createdAt());
                 iterator.remove();
                 removed++;
             }
         }
         if (removed > 0) {
             log.info("Cleaned up {} expired pending confirmation(s)", removed);
+        } else {
+            log.debug("Confirmation cleanup ran — no expired entries (total pending: {})", pendingConfirmations.size());
         }
     }
 }

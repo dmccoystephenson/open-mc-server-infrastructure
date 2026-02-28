@@ -58,6 +58,7 @@ public class AnthropicService {
      */
     public AnthropicResponse sendMessage(String userMessage) {
         log.info("Sending message to Anthropic API");
+        log.debug("User message: {}", userMessage);
         List<AnthropicRequest.Message> messages = new ArrayList<>();
         messages.add(AnthropicRequest.Message.builder()
                 .role("user")
@@ -75,7 +76,8 @@ public class AnthropicService {
      * @return the Anthropic API response with a natural language summary
      */
     public AnthropicResponse sendToolResult(String userMessage, List<AnthropicResponse.ContentBlock> assistantContent, ToolResult toolResult) {
-        log.info("Sending tool result to Anthropic API for tool: {}", toolResult.getToolName());
+        log.info("Sending tool result to Anthropic API for tool: {} (success={})", toolResult.getToolName(), toolResult.isSuccess());
+        log.debug("Tool result message: {}", toolResult.getMessage());
         List<AnthropicRequest.Message> messages = new ArrayList<>();
 
         messages.add(AnthropicRequest.Message.builder()
@@ -119,6 +121,7 @@ public class AnthropicService {
     }
 
     private AnthropicResponse callApi(List<AnthropicRequest.Message> messages) {
+        log.debug("Building Anthropic API request with model: {}, max_tokens: 1024, tools: {}", model, ToolDefinition.allTools().size());
         AnthropicRequest request = AnthropicRequest.builder()
                 .model(model)
                 .system(SYSTEM_PROMPT)
@@ -135,11 +138,15 @@ public class AnthropicService {
         HttpEntity<AnthropicRequest> entity = new HttpEntity<>(request, headers);
 
         try {
+            log.debug("Calling Anthropic API at {}", apiUrl);
             ResponseEntity<AnthropicResponse> response = restTemplate.exchange(
                     apiUrl, HttpMethod.POST, entity, AnthropicResponse.class);
-            return response.getBody();
+            AnthropicResponse body = response.getBody();
+            log.debug("Anthropic API response status: {}, stop_reason: {}", response.getStatusCode(),
+                    body != null ? body.getStopReason() : "null");
+            return body;
         } catch (Exception e) {
-            log.error("Failed to call Anthropic API", e);
+            log.error("Failed to call Anthropic API: {}", e.getMessage(), e);
             throw new RuntimeException("Failed to call Anthropic API: " + e.getMessage(), e);
         }
     }

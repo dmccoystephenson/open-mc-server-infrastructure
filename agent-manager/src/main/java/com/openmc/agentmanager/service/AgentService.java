@@ -46,9 +46,13 @@ public class AgentService {
         AnthropicResponse response = anthropicService.sendMessage(userMessage);
 
         if (response == null) {
+            log.warn("Anthropic API returned null response for message: {}", userMessage);
             return new AgentResponse("I'm sorry, I wasn't able to process your request. Please try again.",
                     false, null, null, null, userMessage);
         }
+
+        log.debug("Anthropic API response stop_reason: {}, content blocks: {}", response.getStopReason(),
+                response.getContent() != null ? response.getContent().size() : 0);
 
         // Step 2: Check if the response contains a tool call
         AnthropicResponse.ContentBlock toolUseBlock = anthropicService.findToolUseBlock(response);
@@ -56,6 +60,7 @@ public class AgentService {
         if (toolUseBlock == null) {
             // No tool call — return the text response directly
             String text = anthropicService.extractTextContent(response);
+            log.debug("No tool call in response. Text response length: {} chars", text.length());
             return new AgentResponse(
                     text.isEmpty() ? "I can help you start, stop, or restart the Minecraft server. What would you like to do?" : text,
                     false, null, null, null, userMessage);
@@ -64,6 +69,7 @@ public class AgentService {
         // Step 3: Tool call found — check if the tool is recognized
         String toolName = toolUseBlock.getName();
         String toolUseId = toolUseBlock.getId();
+        log.info("Anthropic API returned tool call: {} (ID: {})", toolName, toolUseId);
 
         if (!toolExecutionService.isRecognizedTool(toolName)) {
             log.warn("Unrecognized tool returned by Anthropic: {}", toolName);
@@ -74,13 +80,14 @@ public class AgentService {
 
         // Step 4: Check if confirmation is required
         if (confirmationService.requiresConfirmation(toolName)) {
-            log.info("Tool {} requires confirmation", toolName);
+            log.info("Tool {} requires confirmation, prompting user", toolName);
             return new AgentResponse(
                     formatConfirmationMessage(toolName),
                     true, toolName, toolUseId, response.getContent(), userMessage);
         }
 
         // Step 5: No confirmation needed — execute immediately
+        log.info("Tool {} does not require confirmation, executing immediately", toolName);
         return executeToolAndRespond(userMessage, response.getContent(), toolUseId, toolName);
     }
 
@@ -95,17 +102,22 @@ public class AgentService {
     public AgentResponse executeToolAndRespond(String userMessage,
                                                 java.util.List<AnthropicResponse.ContentBlock> assistantContent,
                                                 String toolUseId, String toolName) {
+        log.info("Executing tool: {} (ID: {})", toolName, toolUseId);
         // Execute the tool
         ToolResult toolResult = toolExecutionService.executeTool(toolUseId, toolName);
+        log.info("Tool {} execution result: success={}, message={}", toolName, toolResult.isSuccess(), toolResult.getMessage());
 
         // Send the tool result back to Anthropic for a natural language response
         try {
+            log.debug("Sending tool result back to Anthropic for natural language summary");
             AnthropicResponse followUpResponse = anthropicService.sendToolResult(
                     userMessage, assistantContent, toolResult);
             String text = anthropicService.extractTextContent(followUpResponse);
             if (!text.isEmpty()) {
+                log.debug("Received follow-up response from Anthropic ({} chars)", text.length());
                 return new AgentResponse(text, false, toolName, toolUseId, null, userMessage);
             }
+            log.warn("Anthropic follow-up response was empty, falling back to default message");
         } catch (Exception e) {
             log.error("Failed to get follow-up response from Anthropic", e);
         }

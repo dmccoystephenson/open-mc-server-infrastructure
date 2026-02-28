@@ -24,7 +24,7 @@ public class ToolExecutionService {
      * @return the result of the tool execution
      */
     public ToolResult executeTool(String toolUseId, String toolName) {
-        log.info("Executing tool: {}", toolName);
+        log.info("Executing tool: {} (ID: {})", toolName, toolUseId);
         try {
             String result = switch (toolName) {
                 case "start_server" -> minecraftWrapperService.startServer();
@@ -32,6 +32,7 @@ public class ToolExecutionService {
                 case "restart_server" -> minecraftWrapperService.restartServer();
                 default -> throw new IllegalArgumentException("Unknown tool: " + toolName);
             };
+            log.info("Tool {} executed successfully: {}", toolName, result);
             return ToolResult.builder()
                     .toolUseId(toolUseId)
                     .toolName(toolName)
@@ -47,7 +48,7 @@ public class ToolExecutionService {
                     .message("Unknown tool: " + toolName)
                     .build();
         } catch (Exception e) {
-            log.error("Tool execution failed for {}", toolName, e);
+            log.error("Tool execution failed for {}: {}", toolName, e.getMessage(), e);
             return ToolResult.builder()
                     .toolUseId(toolUseId)
                     .toolName(toolName)

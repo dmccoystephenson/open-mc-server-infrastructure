@@ -53,8 +53,9 @@ public class MinecraftWrapperService {
     }
 
     private String callWrapper(String path, String action) {
+        String url = wrapperUrl + path;
         try {
-            String url = wrapperUrl + path;
+            log.debug("Sending POST request to minecraft-wrapper: {}", url);
             HttpHeaders headers = new HttpHeaders();
             HttpEntity<String> entity = new HttpEntity<>(headers);
             ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.POST, entity, String.class);
@@ -62,7 +63,7 @@ public class MinecraftWrapperService {
             log.info("Minecraft wrapper {} response: {} - {}", action, response.getStatusCode(), body);
             return body != null ? body : "Server " + action + " initiated";
         } catch (Exception e) {
-            log.error("Failed to {} server via minecraft-wrapper", action, e);
+            log.error("Failed to {} server via minecraft-wrapper at {}: {}", action, url, e.getMessage(), e);
             throw new RuntimeException("Failed to " + action + " server: " + e.getMessage(), e);
         }
     }
