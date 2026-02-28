@@ -16,13 +16,16 @@ public class AgentService {
     private final AnthropicService anthropicService;
     private final ToolExecutionService toolExecutionService;
     private final ConfirmationService confirmationService;
+    private final AlertService alertService;
 
     public AgentService(AnthropicService anthropicService,
                         ToolExecutionService toolExecutionService,
-                        ConfirmationService confirmationService) {
+                        ConfirmationService confirmationService,
+                        AlertService alertService) {
         this.anthropicService = anthropicService;
         this.toolExecutionService = toolExecutionService;
         this.confirmationService = confirmationService;
+        this.alertService = alertService;
     }
 
     /**
@@ -37,9 +40,10 @@ public class AgentService {
     /**
      * Process a user message through the agent loop.
      * @param userMessage the natural language user message
+     * @param discordUsername the Discord username who sent the message
      * @return the agent response, which may include a text reply or a confirmation request
      */
-    public AgentResponse processMessage(String userMessage) {
+    public AgentResponse processMessage(String userMessage, String discordUsername) {
         log.info("Processing user message: {}", userMessage);
 
         // Step 1: Send message to Anthropic API
@@ -88,7 +92,7 @@ public class AgentService {
 
         // Step 5: No confirmation needed — execute immediately
         log.info("Tool {} does not require confirmation, executing immediately", toolName);
-        return executeToolAndRespond(userMessage, response.getContent(), toolUseId, toolName);
+        return executeToolAndRespond(userMessage, response.getContent(), toolUseId, toolName, discordUsername);
     }
 
     /**
@@ -97,15 +101,19 @@ public class AgentService {
      * @param assistantContent the assistant's response content
      * @param toolUseId the tool use ID
      * @param toolName the tool name
+     * @param discordUsername the Discord username who triggered the action
      * @return the final agent response
      */
     public AgentResponse executeToolAndRespond(String userMessage,
                                                 java.util.List<AnthropicResponse.ContentBlock> assistantContent,
-                                                String toolUseId, String toolName) {
+                                                String toolUseId, String toolName, String discordUsername) {
         log.info("Executing tool: {} (ID: {})", toolName, toolUseId);
         // Execute the tool
         ToolResult toolResult = toolExecutionService.executeTool(toolUseId, toolName);
         log.info("Tool {} execution result: success={}, message={}", toolName, toolResult.isSuccess(), toolResult.getMessage());
+
+        // Send alert for tool execution
+        alertService.sendToolExecutionAlert(discordUsername, toolName, userMessage, toolResult.isSuccess());
 
         // Send the tool result back to Anthropic for a natural language response
         try {

@@ -122,7 +122,8 @@ public class DiscordBotService extends ListenerAdapter {
         }
 
         String userId = event.getAuthor().getId();
-        log.info("Received Discord message from {} (ID: {}): {}", event.getAuthor().getName(), userId, userMessage);
+        String username = event.getAuthor().getName();
+        log.info("Received Discord message from {} (ID: {}): {}", username, userId, userMessage);
 
         MessageChannel channel = event.getChannel();
         channel.sendTyping().queue();
@@ -130,8 +131,8 @@ public class DiscordBotService extends ListenerAdapter {
         // Offload processing to a dedicated executor to avoid blocking JDA's event thread
         executor.submit(() -> {
             try {
-                log.debug("Processing message from {} on executor thread", event.getAuthor().getName());
-                AgentService.AgentResponse response = agentService.processMessage(userMessage);
+                log.debug("Processing message from {} on executor thread", username);
+                AgentService.AgentResponse response = agentService.processMessage(userMessage, username);
 
                 if (response.requiresConfirmation()) {
                     log.debug("Sending confirmation prompt for tool: {}", response.toolName());
@@ -141,7 +142,7 @@ public class DiscordBotService extends ListenerAdapter {
                                 success -> log.debug("Added ✅ reaction to confirmation message {}", sentMessage.getId()),
                                 failure -> log.error("Failed to add ✅ reaction to message {}", sentMessage.getId(), failure)
                         );
-                        // Store pending confirmation with requesting user ID
+                        // Store pending confirmation with requesting user ID and username
                         confirmationService.addPendingConfirmation(
                                 sentMessage.getId(),
                                 new ConfirmationService.PendingConfirmation(
@@ -151,6 +152,7 @@ public class DiscordBotService extends ListenerAdapter {
                                         response.assistantContent(),
                                         channelId,
                                         userId,
+                                        username,
                                         Instant.now()
                                 )
                         );
@@ -216,7 +218,7 @@ public class DiscordBotService extends ListenerAdapter {
                 log.debug("Executing confirmed tool {} on executor thread", pending.toolName());
                 AgentService.AgentResponse response = agentService.executeToolAndRespond(
                         pending.userMessage(), pending.assistantContent(),
-                        pending.toolUseId(), pending.toolName());
+                        pending.toolUseId(), pending.toolName(), pending.discordUsername());
                 channel.sendMessage(response.textResponse()).queue(
                         success -> log.debug("Tool execution response sent for {}", pending.toolName()),
                         failure -> log.error("Failed to send tool execution response to Discord", failure)

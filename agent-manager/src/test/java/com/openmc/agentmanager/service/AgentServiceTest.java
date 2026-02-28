@@ -28,6 +28,9 @@ class AgentServiceTest {
     @Mock
     private ConfirmationService confirmationService;
 
+    @Mock
+    private AlertService alertService;
+
     @InjectMocks
     private AgentService agentService;
 
@@ -45,7 +48,7 @@ class AgentServiceTest {
         when(anthropicService.findToolUseBlock(response)).thenReturn(null);
         when(anthropicService.extractTextContent(response)).thenReturn("I can help you manage the server.");
 
-        AgentService.AgentResponse result = agentService.processMessage("hello");
+        AgentService.AgentResponse result = agentService.processMessage("hello", "testuser");
 
         assertFalse(result.requiresConfirmation());
         assertEquals("I can help you manage the server.", result.textResponse());
@@ -69,7 +72,7 @@ class AgentServiceTest {
         when(toolExecutionService.isRecognizedTool("start_server")).thenReturn(true);
         when(confirmationService.requiresConfirmation("start_server")).thenReturn(true);
 
-        AgentService.AgentResponse result = agentService.processMessage("start the server");
+        AgentService.AgentResponse result = agentService.processMessage("start the server", "testuser");
 
         assertTrue(result.requiresConfirmation());
         assertEquals("start_server", result.toolName());
@@ -112,11 +115,12 @@ class AgentServiceTest {
                 .thenReturn(followUpResponse);
         when(anthropicService.extractTextContent(followUpResponse)).thenReturn("The server has been started.");
 
-        AgentService.AgentResponse result = agentService.processMessage("start the server");
+        AgentService.AgentResponse result = agentService.processMessage("start the server", "testuser");
 
         assertFalse(result.requiresConfirmation());
         assertEquals("The server has been started.", result.textResponse());
         verify(toolExecutionService).executeTool("tool-1", "start_server");
+        verify(alertService).sendToolExecutionAlert("testuser", "start_server", "start the server", true);
     }
 
     @Test
@@ -124,7 +128,7 @@ class AgentServiceTest {
     void shouldHandleNullResponseFromAnthropicApi() {
         when(anthropicService.sendMessage("test")).thenReturn(null);
 
-        AgentService.AgentResponse result = agentService.processMessage("test");
+        AgentService.AgentResponse result = agentService.processMessage("test", "testuser");
 
         assertFalse(result.requiresConfirmation());
         assertTrue(result.textResponse().contains("sorry"));
@@ -158,10 +162,11 @@ class AgentServiceTest {
         when(anthropicService.sendToolResult(eq("stop the server"), anyList(), eq(toolResult)))
                 .thenThrow(new RuntimeException("API error"));
 
-        AgentService.AgentResponse result = agentService.processMessage("stop the server");
+        AgentService.AgentResponse result = agentService.processMessage("stop the server", "testuser");
 
         assertFalse(result.requiresConfirmation());
         assertTrue(result.textResponse().contains("✅"));
+        verify(alertService).sendToolExecutionAlert("testuser", "stop_server", "stop the server", true);
     }
 
     @Test
@@ -181,7 +186,7 @@ class AgentServiceTest {
         when(anthropicService.findToolUseBlock(response)).thenReturn(toolBlock);
         when(toolExecutionService.isRecognizedTool("delete_world")).thenReturn(false);
 
-        AgentService.AgentResponse result = agentService.processMessage("delete the world");
+        AgentService.AgentResponse result = agentService.processMessage("delete the world", "testuser");
 
         assertFalse(result.requiresConfirmation());
         assertTrue(result.textResponse().contains("don't have the ability"));

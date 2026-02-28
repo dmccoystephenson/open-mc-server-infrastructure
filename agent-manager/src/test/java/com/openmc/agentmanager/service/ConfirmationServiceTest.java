@@ -61,7 +61,7 @@ class ConfirmationServiceTest {
     @DisplayName("Should store and consume pending confirmation")
     void shouldStoreAndConsumePendingConfirmation() {
         ConfirmationService.PendingConfirmation pending = new ConfirmationService.PendingConfirmation(
-                "tool-1", "start_server", "start the server", null, "channel-1", "user-1", Instant.now());
+                "tool-1", "start_server", "start the server", null, "channel-1", "user-1", "testuser", Instant.now());
 
         confirmationService.addPendingConfirmation("msg-1", pending);
         assertTrue(confirmationService.hasPendingConfirmation("msg-1"));
@@ -89,7 +89,7 @@ class ConfirmationServiceTest {
     void shouldCleanUpExpiredConfirmations() {
         // Create a confirmation with a timestamp in the past (beyond TTL)
         ConfirmationService.PendingConfirmation expired = new ConfirmationService.PendingConfirmation(
-                "tool-1", "start_server", "start the server", null, "channel-1", "user-1",
+                "tool-1", "start_server", "start the server", null, "channel-1", "user-1", "testuser",
                 Instant.now().minusSeconds(600));
 
         confirmationService.addPendingConfirmation("expired-msg", expired);
@@ -104,7 +104,7 @@ class ConfirmationServiceTest {
     @DisplayName("Should not clean up non-expired confirmations")
     void shouldNotCleanUpNonExpiredConfirmations() {
         ConfirmationService.PendingConfirmation recent = new ConfirmationService.PendingConfirmation(
-                "tool-1", "start_server", "start the server", null, "channel-1", "user-1",
+                "tool-1", "start_server", "start the server", null, "channel-1", "user-1", "testuser",
                 Instant.now());
 
         confirmationService.addPendingConfirmation("recent-msg", recent);
@@ -118,7 +118,7 @@ class ConfirmationServiceTest {
     @DisplayName("Should consume confirmation only for requesting user")
     void shouldConsumeOnlyForRequestingUser() {
         ConfirmationService.PendingConfirmation pending = new ConfirmationService.PendingConfirmation(
-                "tool-1", "start_server", "start the server", null, "channel-1", "user-1",
+                "tool-1", "start_server", "start the server", null, "channel-1", "user-1", "testuser",
                 Instant.now());
 
         confirmationService.addPendingConfirmation("msg-2", pending);
@@ -138,7 +138,7 @@ class ConfirmationServiceTest {
     @DisplayName("Should return null for null user ID in consumeIfRequestingUser")
     void shouldReturnNullForNullUserInConsumeIfRequestingUser() {
         ConfirmationService.PendingConfirmation pending = new ConfirmationService.PendingConfirmation(
-                "tool-1", "start_server", "start the server", null, "channel-1", "user-1",
+                "tool-1", "start_server", "start the server", null, "channel-1", "user-1", "testuser",
                 Instant.now());
 
         confirmationService.addPendingConfirmation("msg-3", pending);

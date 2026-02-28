@@ -33,7 +33,7 @@ public class ConfirmationService {
      */
     public record PendingConfirmation(String toolUseId, String toolName, String userMessage,
                                       java.util.List<com.openmc.agentmanager.model.AnthropicResponse.ContentBlock> assistantContent,
-                                      String channelId, String requestingUserId, Instant createdAt) {
+                                      String channelId, String requestingUserId, String discordUsername, Instant createdAt) {
     }
 
     private final Map<String, PendingConfirmation> pendingConfirmations = new ConcurrentHashMap<>();

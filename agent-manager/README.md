@@ -10,6 +10,7 @@ A Discord-based server management agent for the Minecraft server infrastructure.
 - **Server Management Tools**: Start, stop, and restart the Minecraft server
 - **Confirmation Flow**: Optional per-tool confirmation via Discord reactions (✅)
 - **Graceful Shutdown**: Stop and restart leverage minecraft-wrapper's graceful shutdown with player countdown warnings
+- **Alert Integration**: Sends alerts to `alert-manager` when tool executions occur, including the Discord user, action, and original prompt
 - **Configurable**: Environment-based configuration for all credentials and behavior toggles
 - **Containerized**: Runs in its own Docker container for isolation
 
@@ -23,8 +24,12 @@ A Discord-based server management agent for the Minecraft server infrastructure.
                      │  - Agent Loop    │
                      │  - Tool Executor │     ┌───────────────┐
                      │  - Confirmation  │────→│  Minecraft    │
-                     └──────────────────┘     │  Wrapper API  │
-                                              │  (port 8092)  │
+                     │  - Alert Client  │     │  Wrapper API  │
+                     └────────┬─────────┘     │  (port 8092)  │
+                              │               └───────────────┘
+                              │               ┌───────────────┐
+                              └──────────────→│  Alert Manager │
+                                              │  (port 8090)  │
                                               └───────────────┘
 ```
 
@@ -36,6 +41,20 @@ A Discord-based server management agent for the Minecraft server infrastructure.
 4. Only the original requesting user can confirm the action
 5. On confirmation (or immediately if confirmation is disabled), the agent calls the `minecraft-wrapper` REST API
 6. The result is sent back to the Anthropic API for a natural language summary, which is posted to Discord
+7. An alert is sent to `alert-manager` with the Discord username, action taken, and original prompt
+
+### Alerts
+
+When a tool execution occurs (start, stop, or restart), the agent-manager sends an alert to `alert-manager` via its REST API. Each alert includes:
+
+- **Discord User**: The username of the player who triggered the action
+- **Action**: The tool that was executed (e.g., Start Server, Stop Server, Restart Server)
+- **Result**: Whether the action succeeded or failed
+- **Original Prompt**: The natural language message the user sent
+
+Alerts are sent with level `INFO` for successful executions and `WARNING` for failures. The source is set to `agent-manager` and the destination is `DISCORD`, so alerts are forwarded to the configured Discord webhook by `alert-manager`.
+
+> **Note**: Alert sending is best-effort — if `alert-manager` is unreachable, the agent continues to function normally. The alert URL is pre-configured in Docker Compose to `http://alert-manager:8090/api/alerts`.
 
 ## Configuration
 
@@ -49,6 +68,7 @@ The following environment variables can be configured in `.env`:
 - `AGENT_DISCORD_CHANNEL_ID`: Discord channel ID to listen on (**required**)
 - `AGENT_ANTHROPIC_API_KEY`: Anthropic API key (**required**)
 - `AGENT_ENABLED`: Enable/disable the agent manager (default: `false`)
+- `ALERT_MANAGER_URL`: URL for the alert-manager API (default: `http://alert-manager:8090/api/alerts`)
 
 ### Per-Tool Confirmation Toggles
 
