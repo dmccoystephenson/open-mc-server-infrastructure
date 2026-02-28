@@ -14,6 +14,58 @@ A Discord-based server management agent for the Minecraft server infrastructure.
 - **Configurable**: Environment-based configuration for all credentials and behavior toggles
 - **Containerized**: Runs in its own Docker container for isolation
 
+## AI Agent vs. Traditional Bot Commands
+
+This module uses an AI agent (via Anthropic's API) to interpret natural language rather than a traditional slash-command or prefix-command Discord bot. Both approaches are valid — the right choice depends on the use case.
+
+### Traditional Bot Commands
+
+A conventional Discord bot registers fixed commands (e.g., `/start`, `/stop`, `/restart`) and maps them directly to actions.
+
+**Pros**
+- **Predictable**: Commands map 1:1 to actions — no ambiguity in what will happen
+- **Fast**: No external API call to interpret intent; execution is immediate
+- **Cheap**: No per-request cost; runs entirely on local compute
+- **Offline-capable**: No dependency on a third-party AI service
+- **Simple to implement**: Straightforward command parsing with no prompt engineering
+
+**Cons**
+- **Rigid**: Users must memorize exact command syntax; typos or variations fail silently
+- **Hard to extend**: Adding new commands requires code changes and redeployment
+- **No context understanding**: Cannot handle follow-up questions, clarifications, or conversational flow
+- **Limited help**: Error messages are typically generic; no ability to guide the user toward what they meant
+
+### AI Agent Approach (this module)
+
+The agent receives free-form text, passes it to a language model with tool definitions, and the model decides which tool (if any) to invoke.
+
+**Pros**
+- **Flexible input**: Users can phrase requests naturally — "shut down the server", "turn it off", "can you restart?" all work
+- **Graceful rejection**: Out-of-scope requests get a polite decline rather than a cryptic error
+- **Context-aware**: The model can ask clarifying questions or explain what it's about to do before acting
+- **Easy to extend**: Adding a new tool means adding a tool definition — no new command parsing logic
+- **Self-documenting**: Users can ask "what can you do?" and get a natural language answer
+
+**Cons**
+- **Latency**: Each message requires a round-trip to the Anthropic API (typically 1–3 seconds)
+- **Cost**: Each interaction consumes API tokens — usage-based pricing applies
+- **External dependency**: Requires network access to `api.anthropic.com`; if the API is down, the agent cannot process messages
+- **Non-deterministic**: The model may occasionally misinterpret intent or produce unexpected tool calls (mitigated by the confirmation flow)
+- **Complexity**: Requires prompt engineering, tool schema design, and handling of edge cases in model output
+
+### When to Use Which
+
+| Scenario | Recommended Approach |
+|----------|---------------------|
+| Small fixed set of actions, low latency required | Traditional bot commands |
+| Users are technical and know the exact commands | Traditional bot commands |
+| Users vary in technical skill, natural phrasing preferred | AI agent |
+| Frequently adding or changing available actions | AI agent |
+| Cost sensitivity or offline requirement | Traditional bot commands |
+| Conversational interaction or context needed | AI agent |
+
+This module uses the AI agent approach because the target audience includes non-technical server members who may not know specific commands, and the confirmation flow mitigates the risk of non-deterministic tool selection.
+
 ## Architecture
 
 ```
