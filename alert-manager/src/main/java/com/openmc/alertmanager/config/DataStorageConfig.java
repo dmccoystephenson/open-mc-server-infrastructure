@@ -27,7 +27,6 @@ public class DataStorageConfig {
      * @return the full path
      */
     public String getFilePath(String filename) {
-        String base = baseDirectory.endsWith("/") ? baseDirectory : baseDirectory + "/";
-        return base + filename;
+        return java.nio.file.Paths.get(baseDirectory, filename).toString();
     }
 }
