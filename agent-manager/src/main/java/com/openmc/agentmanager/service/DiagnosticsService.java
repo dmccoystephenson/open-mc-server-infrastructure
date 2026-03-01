@@ -66,7 +66,7 @@ public class DiagnosticsService {
 
         // 2. Recent alerts from alert-manager
         try {
-            int alertLimit = limit != null ? limit : 10;
+            int alertLimit = (limit == null) ? 10 : Math.min(100, Math.max(1, limit));
             String alertsUrl = alertManagerAlertsUrl + "?limit=" + alertLimit;
             ResponseEntity<String> alertsResponse = restTemplate.getForEntity(alertsUrl, String.class);
             if (alertsResponse.getBody() != null) {

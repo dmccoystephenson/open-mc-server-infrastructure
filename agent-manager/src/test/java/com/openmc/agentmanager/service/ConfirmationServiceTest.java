@@ -95,7 +95,7 @@ class ConfirmationServiceTest {
     @DisplayName("Should store and consume pending confirmation")
     void shouldStoreAndConsumePendingConfirmation() {
         ConfirmationService.PendingConfirmation pending = new ConfirmationService.PendingConfirmation(
-                "tool-1", "start_server", "start the server", null, "channel-1", "user-1", "testuser", Instant.now());
+                "tool-1", "start_server", "start the server", null, "channel-1", "user-1", "testuser", null, Instant.now());
 
         confirmationService.addPendingConfirmation("msg-1", pending);
         assertTrue(confirmationService.hasPendingConfirmation("msg-1"));
@@ -124,7 +124,7 @@ class ConfirmationServiceTest {
         // Create a confirmation with a timestamp in the past (beyond TTL)
         ConfirmationService.PendingConfirmation expired = new ConfirmationService.PendingConfirmation(
                 "tool-1", "start_server", "start the server", null, "channel-1", "user-1", "testuser",
-                Instant.now().minusSeconds(600));
+                null, Instant.now().minusSeconds(600));
 
         confirmationService.addPendingConfirmation("expired-msg", expired);
         assertTrue(confirmationService.hasPendingConfirmation("expired-msg"));
@@ -139,7 +139,7 @@ class ConfirmationServiceTest {
     void shouldNotCleanUpNonExpiredConfirmations() {
         ConfirmationService.PendingConfirmation recent = new ConfirmationService.PendingConfirmation(
                 "tool-1", "start_server", "start the server", null, "channel-1", "user-1", "testuser",
-                Instant.now());
+                null, Instant.now());
 
         confirmationService.addPendingConfirmation("recent-msg", recent);
 
@@ -153,7 +153,7 @@ class ConfirmationServiceTest {
     void shouldConsumeOnlyForRequestingUser() {
         ConfirmationService.PendingConfirmation pending = new ConfirmationService.PendingConfirmation(
                 "tool-1", "start_server", "start the server", null, "channel-1", "user-1", "testuser",
-                Instant.now());
+                null, Instant.now());
 
         confirmationService.addPendingConfirmation("msg-2", pending);
 
@@ -173,7 +173,7 @@ class ConfirmationServiceTest {
     void shouldReturnNullForNullUserInConsumeIfRequestingUser() {
         ConfirmationService.PendingConfirmation pending = new ConfirmationService.PendingConfirmation(
                 "tool-1", "start_server", "start the server", null, "channel-1", "user-1", "testuser",
-                Instant.now());
+                null, Instant.now());
 
         confirmationService.addPendingConfirmation("msg-3", pending);
 
@@ -186,10 +186,10 @@ class ConfirmationServiceTest {
     void shouldCleanUpOnlyExpiredAmongMixed() {
         ConfirmationService.PendingConfirmation expired = new ConfirmationService.PendingConfirmation(
                 "tool-1", "start_server", "start", null, "channel-1", "user-1", "testuser",
-                Instant.now().minusSeconds(600));
+                null, Instant.now().minusSeconds(600));
         ConfirmationService.PendingConfirmation recent = new ConfirmationService.PendingConfirmation(
                 "tool-2", "stop_server", "stop", null, "channel-1", "user-2", "testuser2",
-                Instant.now());
+                null, Instant.now());
 
         confirmationService.addPendingConfirmation("expired-msg", expired);
         confirmationService.addPendingConfirmation("recent-msg", recent);
@@ -205,7 +205,7 @@ class ConfirmationServiceTest {
     void shouldPreserveAllFieldsInPendingConfirmation() {
         Instant now = Instant.now();
         ConfirmationService.PendingConfirmation pending = new ConfirmationService.PendingConfirmation(
-                "tool-use-123", "restart_server", "restart please", null, "channel-42", "user-99", "player1", now);
+                "tool-use-123", "restart_server", "restart please", null, "channel-42", "user-99", "player1", null, now);
 
         confirmationService.addPendingConfirmation("msg-fields", pending);
         ConfirmationService.PendingConfirmation consumed = confirmationService.consumePendingConfirmation("msg-fields");
@@ -224,9 +224,9 @@ class ConfirmationServiceTest {
     @DisplayName("Should allow overwriting a pending confirmation for the same message ID")
     void shouldOverwritePendingConfirmationForSameMessageId() {
         ConfirmationService.PendingConfirmation first = new ConfirmationService.PendingConfirmation(
-                "tool-1", "start_server", "start", null, "channel-1", "user-1", "testuser", Instant.now());
+                "tool-1", "start_server", "start", null, "channel-1", "user-1", "testuser", null, Instant.now());
         ConfirmationService.PendingConfirmation second = new ConfirmationService.PendingConfirmation(
-                "tool-2", "stop_server", "stop", null, "channel-1", "user-2", "testuser2", Instant.now());
+                "tool-2", "stop_server", "stop", null, "channel-1", "user-2", "testuser2", null, Instant.now());
 
         confirmationService.addPendingConfirmation("msg-overwrite", first);
         confirmationService.addPendingConfirmation("msg-overwrite", second);

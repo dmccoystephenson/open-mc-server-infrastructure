@@ -34,7 +34,8 @@ public class AgentService {
     public record AgentResponse(String textResponse, boolean requiresConfirmation,
                                 String toolName, String toolUseId,
                                 java.util.List<AnthropicResponse.ContentBlock> assistantContent,
-                                String userMessage) {
+                                String userMessage,
+                                java.util.Map<String, Object> toolInput) {
     }
 
     /**
@@ -52,7 +53,7 @@ public class AgentService {
         if (response == null) {
             log.warn("Anthropic API returned null response for message: {}", userMessage);
             return new AgentResponse("I'm sorry, I wasn't able to process your request. Please try again.",
-                    false, null, null, null, userMessage);
+                    false, null, null, null, userMessage, null);
         }
 
         log.debug("Anthropic API response stop_reason: {}, content blocks: {}", response.getStopReason(),
@@ -67,7 +68,7 @@ public class AgentService {
             log.debug("No tool call in response. Text response length: {} chars", text.length());
             return new AgentResponse(
                     text.isEmpty() ? "I can help you start, stop, or restart the Minecraft server. What would you like to do?" : text,
-                    false, null, null, null, userMessage);
+                    false, null, null, null, userMessage, null);
         }
 
         // Step 3: Tool call found — check if the tool is recognized
@@ -79,7 +80,7 @@ public class AgentService {
             log.warn("Unrecognized tool returned by Anthropic: {}", toolName);
             return new AgentResponse(
                     "I'm sorry, I don't have the ability to perform that action. I can only start, stop, or restart the Minecraft server.",
-                    false, null, null, null, userMessage);
+                    false, null, null, null, userMessage, null);
         }
 
         // Step 4: Check if confirmation is required
@@ -87,12 +88,12 @@ public class AgentService {
             log.info("Tool {} requires confirmation, prompting user", toolName);
             return new AgentResponse(
                     formatConfirmationMessage(toolName),
-                    true, toolName, toolUseId, response.getContent(), userMessage);
+                    true, toolName, toolUseId, response.getContent(), userMessage, toolUseBlock.getInput());
         }
 
         // Step 5: No confirmation needed — execute immediately
         log.info("Tool {} does not require confirmation, executing immediately", toolName);
-        return executeToolAndRespond(userMessage, response.getContent(), toolUseId, toolName, discordUsername);
+        return executeToolAndRespond(userMessage, response.getContent(), toolUseId, toolName, discordUsername, toolUseBlock.getInput());
     }
 
     /**
@@ -102,14 +103,16 @@ public class AgentService {
      * @param toolUseId the tool use ID
      * @param toolName the tool name
      * @param discordUsername the Discord username who triggered the action
+     * @param toolInput the tool input parameters from the Anthropic response (may be null)
      * @return the final agent response
      */
     public AgentResponse executeToolAndRespond(String userMessage,
                                                 java.util.List<AnthropicResponse.ContentBlock> assistantContent,
-                                                String toolUseId, String toolName, String discordUsername) {
+                                                String toolUseId, String toolName, String discordUsername,
+                                                java.util.Map<String, Object> toolInput) {
         log.info("Executing tool: {} (ID: {})", toolName, toolUseId);
         // Execute the tool
-        ToolResult toolResult = toolExecutionService.executeTool(toolUseId, toolName);
+        ToolResult toolResult = toolExecutionService.executeTool(toolUseId, toolName, toolInput);
         log.info("Tool {} execution result: success={}, message={}", toolName, toolResult.isSuccess(), toolResult.getMessage());
 
         // Send alert for tool execution
@@ -123,7 +126,7 @@ public class AgentService {
             String text = anthropicService.extractTextContent(followUpResponse);
             if (!text.isEmpty()) {
                 log.debug("Received follow-up response from Anthropic ({} chars)", text.length());
-                return new AgentResponse(text, false, toolName, toolUseId, null, userMessage);
+                return new AgentResponse(text, false, toolName, toolUseId, null, userMessage, null);
             }
             log.warn("Anthropic follow-up response was empty, falling back to default message");
         } catch (Exception e) {
@@ -134,7 +137,7 @@ public class AgentService {
         String fallbackMessage = toolResult.isSuccess()
                 ? "✅ " + formatToolSuccessMessage(toolName)
                 : "❌ " + toolResult.getMessage();
-        return new AgentResponse(fallbackMessage, false, toolName, toolUseId, null, userMessage);
+        return new AgentResponse(fallbackMessage, false, toolName, toolUseId, null, userMessage, null);
     }
 
     private String formatConfirmationMessage(String toolName) {

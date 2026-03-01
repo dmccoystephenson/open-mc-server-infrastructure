@@ -5,7 +5,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
@@ -28,13 +27,11 @@ class DiagnosticsServiceTest {
     @Mock
     private RestTemplate restTemplate;
 
-    @InjectMocks
     private DiagnosticsService diagnosticsService;
 
     @BeforeEach
     void setUp() {
-        // Use real ObjectMapper for JSON processing
-        ReflectionTestUtils.setField(diagnosticsService, "objectMapper", new ObjectMapper());
+        diagnosticsService = new DiagnosticsService(minecraftWrapperService, restTemplate, new ObjectMapper());
         ReflectionTestUtils.setField(diagnosticsService, "alertManagerAlertsUrl", "http://test:8090/api/alerts");
         ReflectionTestUtils.setField(diagnosticsService, "backupManagerUrl", "http://test:8091");
     }

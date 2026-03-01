@@ -153,6 +153,7 @@ public class DiscordBotService extends ListenerAdapter {
                                         channelId,
                                         userId,
                                         username,
+                                        response.toolInput(),
                                         Instant.now()
                                 )
                         );
@@ -218,7 +219,8 @@ public class DiscordBotService extends ListenerAdapter {
                 log.debug("Executing confirmed tool {} on executor thread", pending.toolName());
                 AgentService.AgentResponse response = agentService.executeToolAndRespond(
                         pending.userMessage(), pending.assistantContent(),
-                        pending.toolUseId(), pending.toolName(), pending.discordUsername());
+                        pending.toolUseId(), pending.toolName(), pending.discordUsername(),
+                        pending.toolInput());
                 channel.sendMessage(response.textResponse()).queue(
                         success -> log.debug("Tool execution response sent for {}", pending.toolName()),
                         failure -> log.error("Failed to send tool execution response to Discord", failure)

@@ -110,7 +110,7 @@ class AgentServiceTest {
         when(anthropicService.findToolUseBlock(response)).thenReturn(toolBlock);
         when(toolExecutionService.isRecognizedTool("start_server")).thenReturn(true);
         when(confirmationService.requiresConfirmation("start_server")).thenReturn(false);
-        when(toolExecutionService.executeTool("tool-1", "start_server")).thenReturn(toolResult);
+        when(toolExecutionService.executeTool("tool-1", "start_server", null)).thenReturn(toolResult);
         when(anthropicService.sendToolResult(eq("start the server"), anyList(), eq(toolResult)))
                 .thenReturn(followUpResponse);
         when(anthropicService.extractTextContent(followUpResponse)).thenReturn("The server has been started.");
@@ -119,7 +119,7 @@ class AgentServiceTest {
 
         assertFalse(result.requiresConfirmation());
         assertEquals("The server has been started.", result.textResponse());
-        verify(toolExecutionService).executeTool("tool-1", "start_server");
+        verify(toolExecutionService).executeTool("tool-1", "start_server", null);
         verify(alertService).sendToolExecutionAlert("testuser", "start_server", "start the server", true);
     }
 
@@ -158,7 +158,7 @@ class AgentServiceTest {
         when(anthropicService.findToolUseBlock(response)).thenReturn(toolBlock);
         when(toolExecutionService.isRecognizedTool("stop_server")).thenReturn(true);
         when(confirmationService.requiresConfirmation("stop_server")).thenReturn(false);
-        when(toolExecutionService.executeTool("tool-1", "stop_server")).thenReturn(toolResult);
+        when(toolExecutionService.executeTool("tool-1", "stop_server", null)).thenReturn(toolResult);
         when(anthropicService.sendToolResult(eq("stop the server"), anyList(), eq(toolResult)))
                 .thenThrow(new RuntimeException("API error"));
 
@@ -190,7 +190,7 @@ class AgentServiceTest {
 
         assertFalse(result.requiresConfirmation());
         assertTrue(result.textResponse().contains("don't have the ability"));
-        verify(toolExecutionService, never()).executeTool(anyString(), anyString());
+        verify(toolExecutionService, never()).executeTool(anyString(), anyString(), any());
     }
 
     @Test
@@ -217,7 +217,7 @@ class AgentServiceTest {
         when(anthropicService.findToolUseBlock(response)).thenReturn(toolBlock);
         when(toolExecutionService.isRecognizedTool("restart_server")).thenReturn(true);
         when(confirmationService.requiresConfirmation("restart_server")).thenReturn(false);
-        when(toolExecutionService.executeTool("tool-1", "restart_server")).thenReturn(toolResult);
+        when(toolExecutionService.executeTool("tool-1", "restart_server", null)).thenReturn(toolResult);
         when(anthropicService.sendToolResult(eq("restart the server"), anyList(), eq(toolResult)))
                 .thenThrow(new RuntimeException("API error"));
 
@@ -313,13 +313,13 @@ class AgentServiceTest {
                         .build()))
                 .build();
 
-        when(toolExecutionService.executeTool("tool-1", "start_server")).thenReturn(toolResult);
+        when(toolExecutionService.executeTool("tool-1", "start_server", null)).thenReturn(toolResult);
         when(anthropicService.sendToolResult(eq("start the server"), anyList(), eq(toolResult)))
                 .thenReturn(followUpResponse);
         when(anthropicService.extractTextContent(followUpResponse)).thenReturn("Server is now running!");
 
         AgentService.AgentResponse result = agentService.executeToolAndRespond(
-                "start the server", List.of(), "tool-1", "start_server", "player1");
+                "start the server", List.of(), "tool-1", "start_server", "player1", null);
 
         assertFalse(result.requiresConfirmation());
         assertEquals("Server is now running!", result.textResponse());

@@ -17,6 +17,7 @@ import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -107,7 +108,7 @@ public class BackupService {
             return doCreateBackup();
         } catch (BackupException e) {
             latestBackupStatus = new LatestBackupStatus(false,
-                    LocalDateTime.now().toString(), null, e.getMessage());
+                    Instant.now().toString(), null, e.getMessage());
             throw e;
         }
     }
@@ -224,7 +225,7 @@ public class BackupService {
         sendAlert("Backup Completed", successMsg, "INFO", alertsBackupSuccess);
         
         latestBackupStatus = new LatestBackupStatus(true,
-                LocalDateTime.now().toString(), backupDir.toString(), successMsg);
+                Instant.now().toString(), backupDir.toString(), successMsg);
         return backupDir.toString();
     }
 

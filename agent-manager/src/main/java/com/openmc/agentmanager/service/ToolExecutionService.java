@@ -52,8 +52,23 @@ public class ToolExecutionService {
                 case "get_server_status" -> minecraftWrapperService.getServerStatus();
                 case "trigger_backup" -> backupManagerService.triggerBackup();
                 case "get_server_diagnostics" -> {
-                    Integer limit = toolInput != null && toolInput.get("limit") != null
-                            ? ((Number) toolInput.get("limit")).intValue() : null;
+                    Integer limit = null;
+                    if (toolInput != null) {
+                        Object rawLimit = toolInput.get("limit");
+                        if (rawLimit instanceof Number number) {
+                            limit = number.intValue();
+                        } else if (rawLimit instanceof String str) {
+                            try {
+                                limit = Integer.parseInt(str.trim());
+                            } catch (NumberFormatException ex) {
+                                throw new RuntimeException(
+                                        "Invalid 'limit' value for get_server_diagnostics: expected an integer but got '" + rawLimit + "'");
+                            }
+                        } else if (rawLimit != null) {
+                            throw new RuntimeException(
+                                    "Invalid 'limit' value for get_server_diagnostics: expected an integer but got type " + rawLimit.getClass().getSimpleName());
+                        }
+                    }
                     yield diagnosticsService.getServerDiagnostics(limit);
                 }
                 default -> throw new IllegalArgumentException("Unknown tool: " + toolName);
