@@ -1,6 +1,7 @@
 package com.openmc.agentmanager.service;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -21,7 +22,7 @@ public class BackupManagerService {
     @Value("${backup.manager.url:http://backup-manager:8091}")
     private String backupManagerUrl;
 
-    public BackupManagerService(RestTemplate restTemplate) {
+    public BackupManagerService(@Qualifier("backupRestTemplate") RestTemplate restTemplate) {
         this.restTemplate = restTemplate;
     }
 
