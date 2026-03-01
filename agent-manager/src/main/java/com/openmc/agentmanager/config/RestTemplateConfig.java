@@ -21,7 +21,7 @@ public class RestTemplateConfig {
     @Value("${http.client.read-timeout-seconds:30}")
     private int readTimeoutSeconds;
 
-    @Value("${backup.manager.read-timeout-seconds:300}")
+    @Value("${backup.manager.read-timeout-seconds:600}")
     private int backupReadTimeoutSeconds;
 
     /**
