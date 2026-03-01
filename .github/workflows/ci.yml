@@ -100,6 +100,21 @@ jobs:
         ./gradlew test
         echo "✓ All tests passed"
         
+    - name: Build agent-manager module
+      run: |
+        echo "🤖 Building agent-manager module..."
+        cd agent-manager
+        ./gradlew build
+        echo "✓ Agent manager built successfully"
+        ls -lh build/libs/
+        
+    - name: Run agent-manager tests
+      run: |
+        echo "🧪 Running agent-manager tests..."
+        cd agent-manager
+        ./gradlew test
+        echo "✓ All tests passed"
+        
     - name: Validate documentation
       run: |
         echo "📚 Validating documentation..."

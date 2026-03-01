@@ -214,6 +214,20 @@ The alert manager API is accessible on the configured port (default: 8090) for t
 
 See [alert-manager/README.md](alert-manager/README.md) for detailed configuration and usage examples.
 
+### Agent Manager Configuration
+
+- `AGENT_CONTAINER_NAME`: Agent manager container name (default: `open-mc-agent-manager`)
+- `AGENT_PORT`: Agent manager API port (default: `8093`)
+- `AGENT_DISCORD_BOT_TOKEN`: Discord bot token (required for agent manager)
+- `AGENT_DISCORD_CHANNEL_ID`: Discord channel ID to listen on (required for agent manager)
+- `AGENT_ANTHROPIC_API_KEY`: Anthropic API key (required for agent manager)
+- `AGENT_ENABLED`: Enable/disable the agent manager (default: `false`)
+- `AGENT_START_SERVER_REQUIRES_CONFIRMATION`: Require confirmation to start server (default: `true`)
+- `AGENT_STOP_SERVER_REQUIRES_CONFIRMATION`: Require confirmation to stop server (default: `true`)
+- `AGENT_RESTART_SERVER_REQUIRES_CONFIRMATION`: Require confirmation to restart server (default: `true`)
+
+See [agent-manager/README.md](agent-manager/README.md) for detailed configuration, Discord bot setup, and usage examples.
+
 **Running Parallel Development Servers**: To run multiple servers simultaneously (e.g., for testing different configurations), create separate `.env` files with different values for these settings and use `docker compose --env-file <env-file>` to start each server.
 
 Example for a second server: Create a separate `.env` file with different values for `CONTAINER_NAME`, `HOST_PORT`, `HOST_RCON_PORT`, `HOST_BLUEMAP_PORT`, `VOLUME_NAME`, `WEB_CONTAINER_NAME`, `NGINX_CONTAINER_NAME`, `BACKUP_CONTAINER_NAME`, `ALERT_CONTAINER_NAME`, `ALERT_PORT`, `WEB_HTTP_PORT`, and `WEB_HTTPS_PORT`, then start with `docker compose --env-file .env.dev2 up -d --build`.
@@ -415,6 +429,18 @@ Spring Boot service providing testable, REST-accessible wrapper functionality fo
 Spring Boot web dashboard for server management and monitoring.
 - **Port**: 8080 (behind nginx proxy on 8443)
 - **Location**: `web-app/`
+
+#### Agent Manager
+Discord-based server management agent powered by the Anthropic API. Users send natural language messages in a Discord channel to start, stop, or restart the Minecraft server.
+- **Port**: 8093
+- **Location**: `agent-manager/`
+- **Documentation**: [agent-manager/README.md](agent-manager/README.md)
+- **Features**:
+  - Natural language Discord commands via Anthropic tool-use API
+  - Start, stop, and restart server tools
+  - Per-tool confirmation flow via Discord reactions
+  - Requesting-user validation on confirmations
+  - Disabled by default (`AGENT_ENABLED=false`)
 
 ### CI/CD Pipeline
 
