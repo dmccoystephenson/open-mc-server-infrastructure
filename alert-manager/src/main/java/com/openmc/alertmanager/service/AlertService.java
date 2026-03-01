@@ -36,7 +36,8 @@ public class AlertService {
      * @return list of recent alert records
      */
     public List<AlertRecord> getRecentAlerts(int limit) {
-        return alertRepository.getRecent(Math.min(limit, AlertRepository.MAX_STORED_ALERTS));
+        int safeLimit = Math.max(0, Math.min(limit, AlertRepository.MAX_STORED_ALERTS));
+        return alertRepository.getRecent(safeLimit);
     }
 
     /**

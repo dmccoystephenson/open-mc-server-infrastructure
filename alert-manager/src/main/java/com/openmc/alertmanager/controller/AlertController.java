@@ -51,8 +51,9 @@ public class AlertController {
     @GetMapping
     public ResponseEntity<List<AlertRecord>> getRecentAlerts(
             @RequestParam(value = "limit", defaultValue = "10") int limit) {
-        log.info("Fetching recent alerts with limit: {}", limit);
-        List<AlertRecord> alerts = alertService.getRecentAlerts(limit);
+        int safeLimit = Math.max(1, Math.min(limit, 100));
+        log.info("Fetching recent alerts with requested limit: {}, using effective limit: {}", limit, safeLimit);
+        List<AlertRecord> alerts = alertService.getRecentAlerts(safeLimit);
         return ResponseEntity.ok(alerts);
     }
 

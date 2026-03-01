@@ -23,12 +23,21 @@ public class LogSanitizerService {
             Pattern.compile("\\b(?:\\d{1,3}\\.){3}\\d{1,3}\\b");
 
     /**
-     * Matches common IPv6 address formats, including compressed notation.
-     * Requires at least 3 colon-separated groups to avoid false-positive matches
-     * on Minecraft log timestamps ({@code HH:MM:SS} has only 2 such groups).
+     * Matches common IPv6 address formats, including compressed notation using {@code ::}.
+     * This pattern is intentionally permissive and may redact some non-IP hex/colon
+     * sequences; privacy is preferred over perfect validation.
      */
     private static final Pattern IPV6_PATTERN =
-            Pattern.compile("(?:[0-9a-fA-F]{1,4}:){3,7}[0-9a-fA-F]{0,4}");
+            Pattern.compile(
+                    "\\b(?:(?:[0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}"
+                            + "|(?:[0-9a-fA-F]{1,4}:){1,7}:"
+                            + "|(?:[0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}"
+                            + "|(?:[0-9a-fA-F]{1,4}:){1,5}(?::[0-9a-fA-F]{1,4}){1,2}"
+                            + "|(?:[0-9a-fA-F]{1,4}:){1,4}(?::[0-9a-fA-F]{1,4}){1,3}"
+                            + "|(?:[0-9a-fA-F]{1,4}:){1,3}(?::[0-9a-fA-F]{1,4}){1,4}"
+                            + "|(?:[0-9a-fA-F]{1,4}:){1,2}(?::[0-9a-fA-F]{1,4}){1,5}"
+                            + "|[0-9a-fA-F]{1,4}:(?:(?::[0-9a-fA-F]{1,4}){1,6})"
+                            + "|:(?:(?::[0-9a-fA-F]{1,4}){1,7}|:))\\b");
 
     /**
      * Return a copy of {@code line} with all IP addresses replaced by

@@ -14,6 +14,8 @@ import java.nio.file.Path;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.ArrayDeque;
+import java.util.Deque;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -367,10 +369,8 @@ public class MinecraftServerService {
      * Read the last {@code maxLines} lines from the server's {@code logs/latest.log} file.
      * Returns an empty list if the log file does not exist or cannot be read.
      *
-     * <p>The entire log file is read into memory before slicing; this is acceptable for
-     * typical Minecraft server log sizes but may be expensive if the file grows very large
-     * (e.g. days without rotation).  The caller should keep {@code maxLines} small (≤ 100)
-     * to limit downstream payload size.
+     * <p>Uses a streaming bounded-deque to avoid loading the entire log file into memory,
+     * regardless of how large the file has grown.
      *
      * @param maxLines maximum number of lines to return (clamped to 1..logsDiagnosticMaxLines by the caller)
      * @return tail of the log file, oldest line first
@@ -381,10 +381,15 @@ public class MinecraftServerService {
             log.info("Server log file not found at {}", logFile);
             return List.of();
         }
-        try {
-            List<String> all = Files.readAllLines(logFile);
-            int from = Math.max(0, all.size() - maxLines);
-            return new ArrayList<>(all.subList(from, all.size()));
+        Deque<String> tail = new ArrayDeque<>(maxLines);
+        try (var lines = Files.lines(logFile)) {
+            lines.forEach(line -> {
+                tail.addLast(line);
+                if (tail.size() > maxLines) {
+                    tail.pollFirst();
+                }
+            });
+            return new ArrayList<>(tail);
         } catch (IOException e) {
             log.error("Failed to read server log file {}: {}", logFile, e.getMessage());
             return List.of();
@@ -485,7 +490,7 @@ public class MinecraftServerService {
             return null;
         }
         // Collect the last 500 lines into a bounded deque to avoid loading the full file
-        java.util.Deque<String> tail = new java.util.ArrayDeque<>(500);
+        Deque<String> tail = new ArrayDeque<>(500);
         try (var lines = Files.lines(logFile)) {
             lines.forEach(line -> {
                 tail.addLast(line);

@@ -11,6 +11,9 @@ import org.springframework.stereotype.Component;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -46,10 +49,11 @@ public class AlertRepository {
 
     /**
      * Store an alert in memory and persist the updated list to disk.
+     * Synchronized to prevent interleaved mutations and partial JSON writes under concurrency.
      *
      * @param alert the alert to store
      */
-    public void store(Alert alert) {
+    public synchronized void store(Alert alert) {
         recentAlerts.addFirst(AlertRecord.builder()
                 .title(alert.getTitle())
                 .message(alert.getMessage())
@@ -120,8 +124,17 @@ public class AlertRepository {
     private void persistToFile() {
         try {
             List<AlertRecord> snapshot = new ArrayList<>(recentAlerts);
-            objectMapper.writerWithDefaultPrettyPrinter().writeValue(dataFile, snapshot);
-            log.debug("Persisted {} alert records to {}", snapshot.size(), dataFile.getAbsolutePath());
+            Path targetPath = dataFile.toPath();
+            Path parentDir = targetPath.getParent() != null ? targetPath.getParent() : Path.of(".");
+            Path tmpPath = Files.createTempFile(parentDir, "alert-history-", ".tmp");
+            try {
+                objectMapper.writerWithDefaultPrettyPrinter().writeValue(tmpPath.toFile(), snapshot);
+                Files.move(tmpPath, targetPath, StandardCopyOption.REPLACE_EXISTING);
+                log.debug("Persisted {} alert records to {}", snapshot.size(), dataFile.getAbsolutePath());
+            } catch (IOException e) {
+                Files.deleteIfExists(tmpPath);
+                throw e;
+            }
         } catch (IOException e) {
             log.error("Failed to persist alert history to {}: {}", dataFile.getAbsolutePath(), e.getMessage());
         }
