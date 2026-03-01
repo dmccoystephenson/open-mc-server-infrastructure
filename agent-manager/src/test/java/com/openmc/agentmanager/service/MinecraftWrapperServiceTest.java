@@ -73,6 +73,19 @@ class MinecraftWrapperServiceTest {
     }
 
     @Test
+    @DisplayName("Should call status endpoint successfully")
+    void shouldCallStatusEndpoint() {
+        ResponseEntity<String> mockResponse = new ResponseEntity<>("{\"running\":true}", HttpStatus.OK);
+        when(restTemplate.getForEntity(eq("http://test:8092/api/server/status"), eq(String.class)))
+                .thenReturn(mockResponse);
+
+        String result = minecraftWrapperService.getServerStatus();
+
+        assertEquals("{\"running\":true}", result);
+        verify(restTemplate).getForEntity(eq("http://test:8092/api/server/status"), eq(String.class));
+    }
+
+    @Test
     @DisplayName("Should throw exception on connection failure")
     void shouldThrowExceptionOnConnectionFailure() {
         when(restTemplate.exchange(anyString(), eq(HttpMethod.POST), any(HttpEntity.class), eq(String.class)))

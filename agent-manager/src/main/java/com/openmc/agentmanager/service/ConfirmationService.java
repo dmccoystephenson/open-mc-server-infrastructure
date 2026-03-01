@@ -29,6 +29,9 @@ public class ConfirmationService {
     @Value("${agent.restart-server.requires-confirmation:true}")
     private boolean restartServerRequiresConfirmation;
 
+    @Value("${agent.trigger-backup.requires-confirmation:true}")
+    private boolean triggerBackupRequiresConfirmation;
+
     /**
      * Pending confirmation data.
      */
@@ -49,6 +52,8 @@ public class ConfirmationService {
             case "start_server" -> startServerRequiresConfirmation;
             case "stop_server" -> stopServerRequiresConfirmation;
             case "restart_server" -> restartServerRequiresConfirmation;
+            case "get_server_status" -> false;
+            case "trigger_backup" -> triggerBackupRequiresConfirmation;
             default -> {
                 log.warn("Unknown toolName '{}' passed to requiresConfirmation; defaulting to no confirmation required", toolName);
                 yield false;

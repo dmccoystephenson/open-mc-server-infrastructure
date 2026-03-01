@@ -18,6 +18,9 @@ class ToolExecutionServiceTest {
     @Mock
     private MinecraftWrapperService minecraftWrapperService;
 
+    @Mock
+    private BackupManagerService backupManagerService;
+
     @InjectMocks
     private ToolExecutionService toolExecutionService;
 
@@ -62,9 +65,37 @@ class ToolExecutionServiceTest {
     }
 
     @Test
+    @DisplayName("Should execute get_server_status tool successfully")
+    void shouldExecuteGetServerStatusTool() {
+        when(minecraftWrapperService.getServerStatus()).thenReturn("{\"running\":true}");
+
+        ToolResult result = toolExecutionService.executeTool("tool-4", "get_server_status");
+
+        assertTrue(result.isSuccess());
+        assertEquals("{\"running\":true}", result.getMessage());
+        assertEquals("get_server_status", result.getToolName());
+        assertEquals("tool-4", result.getToolUseId());
+        verify(minecraftWrapperService).getServerStatus();
+    }
+
+    @Test
+    @DisplayName("Should execute trigger_backup tool successfully")
+    void shouldExecuteTriggerBackupTool() {
+        when(backupManagerService.triggerBackup()).thenReturn("{\"success\":true,\"message\":\"Backup created\"}");
+
+        ToolResult result = toolExecutionService.executeTool("tool-5", "trigger_backup");
+
+        assertTrue(result.isSuccess());
+        assertEquals("{\"success\":true,\"message\":\"Backup created\"}", result.getMessage());
+        assertEquals("trigger_backup", result.getToolName());
+        assertEquals("tool-5", result.getToolUseId());
+        verify(backupManagerService).triggerBackup();
+    }
+
+    @Test
     @DisplayName("Should return failure for unknown tool")
     void shouldReturnFailureForUnknownTool() {
-        ToolResult result = toolExecutionService.executeTool("tool-4", "unknown_tool");
+        ToolResult result = toolExecutionService.executeTool("tool-6", "unknown_tool");
 
         assertFalse(result.isSuccess());
         assertTrue(result.getMessage().contains("Unknown tool"));
@@ -77,7 +108,7 @@ class ToolExecutionServiceTest {
         when(minecraftWrapperService.startServer())
                 .thenThrow(new RuntimeException("Connection refused"));
 
-        ToolResult result = toolExecutionService.executeTool("tool-5", "start_server");
+        ToolResult result = toolExecutionService.executeTool("tool-7", "start_server");
 
         assertFalse(result.isSuccess());
         assertTrue(result.getMessage().contains("Connection refused"));
@@ -89,6 +120,8 @@ class ToolExecutionServiceTest {
         assertTrue(toolExecutionService.isRecognizedTool("start_server"));
         assertTrue(toolExecutionService.isRecognizedTool("stop_server"));
         assertTrue(toolExecutionService.isRecognizedTool("restart_server"));
+        assertTrue(toolExecutionService.isRecognizedTool("get_server_status"));
+        assertTrue(toolExecutionService.isRecognizedTool("trigger_backup"));
     }
 
     @Test

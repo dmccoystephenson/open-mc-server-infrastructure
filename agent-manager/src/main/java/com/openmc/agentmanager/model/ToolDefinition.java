@@ -69,9 +69,39 @@ public class ToolDefinition {
     }
 
     /**
+     * Creates the get_server_status tool definition.
+     */
+    public static ToolDefinition getServerStatus() {
+        return ToolDefinition.builder()
+                .name("get_server_status")
+                .description("Gets the current status of the Minecraft server, including whether it is running.")
+                .inputSchema(Map.of(
+                        "type", "object",
+                        "properties", Map.of(),
+                        "required", List.of()
+                ))
+                .build();
+    }
+
+    /**
+     * Creates the trigger_backup tool definition.
+     */
+    public static ToolDefinition triggerBackup() {
+        return ToolDefinition.builder()
+                .name("trigger_backup")
+                .description("Triggers a manual backup of the Minecraft server world data.")
+                .inputSchema(Map.of(
+                        "type", "object",
+                        "properties", Map.of(),
+                        "required", List.of()
+                ))
+                .build();
+    }
+
+    /**
      * Returns all available tool definitions.
      */
     public static List<ToolDefinition> allTools() {
-        return List.of(startServer(), stopServer(), restartServer());
+        return List.of(startServer(), stopServer(), restartServer(), getServerStatus(), triggerBackup());
     }
 }

@@ -12,9 +12,11 @@ import org.springframework.stereotype.Service;
 public class ToolExecutionService {
 
     private final MinecraftWrapperService minecraftWrapperService;
+    private final BackupManagerService backupManagerService;
 
-    public ToolExecutionService(MinecraftWrapperService minecraftWrapperService) {
+    public ToolExecutionService(MinecraftWrapperService minecraftWrapperService, BackupManagerService backupManagerService) {
         this.minecraftWrapperService = minecraftWrapperService;
+        this.backupManagerService = backupManagerService;
     }
 
     /**
@@ -30,6 +32,8 @@ public class ToolExecutionService {
                 case "start_server" -> minecraftWrapperService.startServer();
                 case "stop_server" -> minecraftWrapperService.stopServer();
                 case "restart_server" -> minecraftWrapperService.restartServer();
+                case "get_server_status" -> minecraftWrapperService.getServerStatus();
+                case "trigger_backup" -> backupManagerService.triggerBackup();
                 default -> throw new IllegalArgumentException("Unknown tool: " + toolName);
             };
             log.info("Tool {} executed successfully: {}", toolName, result);
@@ -65,7 +69,7 @@ public class ToolExecutionService {
      */
     public boolean isRecognizedTool(String toolName) {
         return toolName != null && switch (toolName) {
-            case "start_server", "stop_server", "restart_server" -> true;
+            case "start_server", "stop_server", "restart_server", "get_server_status", "trigger_backup" -> true;
             default -> false;
         };
     }

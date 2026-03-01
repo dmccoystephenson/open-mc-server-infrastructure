@@ -7,7 +7,8 @@ A Discord-based server management agent for the Minecraft server infrastructure.
 - **Natural Language Commands**: Send plain English messages to manage the Minecraft server
 - **Discord Bot Integration**: Bidirectional communication via a Discord bot (JDA)
 - **Anthropic API**: Uses Claude to interpret user intent and select appropriate tools
-- **Server Management Tools**: Start, stop, and restart the Minecraft server
+- **Server Management Tools**: Start, stop, restart, and check status of the Minecraft server
+- **Backup Management**: Trigger manual backups via the backup-manager API
 - **Confirmation Flow**: Optional per-tool confirmation via Discord reactions (✅)
 - **Graceful Shutdown**: Stop and restart leverage minecraft-wrapper's graceful shutdown with player countdown warnings
 - **Alert Integration**: Sends alerts to `alert-manager` when tool executions occur, including the Discord user, action, and original prompt
@@ -77,10 +78,15 @@ This module uses the AI agent approach because the target audience includes non-
                      │  - Tool Executor │     ┌───────────────┐
                      │  - Confirmation  │────→│  Minecraft    │
                      │  - Alert Client  │     │  Wrapper API  │
-                     └────────┬─────────┘     │  (port 8092)  │
-                              │               └───────────────┘
-                              │               ┌───────────────┐
-                              └──────────────→│  Alert Manager │
+                     └──┬─────────┬─────┘     │  (port 8092)  │
+                        │         │           └───────────────┘
+                        │         │           ┌───────────────┐
+                        │         └──────────→│  Backup       │
+                        │                     │  Manager API  │
+                        │                     │  (port 8091)  │
+                        │                     └───────────────┘
+                        │                     ┌───────────────┐
+                        └────────────────────→│  Alert Manager │
                                               │  (port 8090)  │
                                               └───────────────┘
 ```
@@ -97,7 +103,7 @@ This module uses the AI agent approach because the target audience includes non-
 
 ### Alerts
 
-When a tool execution occurs (start, stop, or restart), the agent-manager sends an alert to `alert-manager` via its REST API. Each alert includes:
+When a tool execution occurs (start, stop, restart, or backup trigger), the agent-manager sends an alert to `alert-manager` via its REST API. Each alert includes:
 
 - **Discord User**: The username of the player who triggered the action
 - **Action**: The tool that was executed (e.g., Start Server, Stop Server, Restart Server)
@@ -127,6 +133,9 @@ The following environment variables can be configured in `.env`:
 - `AGENT_START_SERVER_REQUIRES_CONFIRMATION`: Require confirmation to start (default: `true`)
 - `AGENT_STOP_SERVER_REQUIRES_CONFIRMATION`: Require confirmation to stop (default: `true`)
 - `AGENT_RESTART_SERVER_REQUIRES_CONFIRMATION`: Require confirmation to restart (default: `true`)
+- `AGENT_TRIGGER_BACKUP_REQUIRES_CONFIRMATION`: Require confirmation to trigger a backup (default: `true`)
+
+> **Note**: `get_server_status` is a read-only operation and never requires confirmation.
 
 ### Discord Bot Setup
 
@@ -153,15 +162,17 @@ To enable the agent manager:
 
 ## Tools
 
-The agent exposes three tools to the Anthropic API:
+The agent exposes the following tools to the Anthropic API:
 
-| Tool | Description | Wrapper Endpoint |
-|------|-------------|-----------------|
-| `start_server` | Starts the Minecraft server | `POST /api/server/start` |
-| `stop_server` | Gracefully stops the server with player warnings | `POST /api/server/stop` |
-| `restart_server` | Gracefully restarts the server | `POST /api/server/restart` |
+| Tool | Description | Endpoint |
+|------|-------------|----------|
+| `start_server` | Starts the Minecraft server | `POST /api/server/start` (minecraft-wrapper) |
+| `stop_server` | Gracefully stops the server with player warnings | `POST /api/server/stop` (minecraft-wrapper) |
+| `restart_server` | Gracefully restarts the server | `POST /api/server/restart` (minecraft-wrapper) |
+| `get_server_status` | Gets the current server status | `GET /api/server/status` (minecraft-wrapper) |
+| `trigger_backup` | Triggers a manual backup of world data | `POST /api/backups/trigger` (backup-manager) |
 
-All tools call the `minecraft-wrapper` REST API (port 8092), consistent with how other modules interact with it. The `stop_server` and `restart_server` tools leverage the graceful shutdown behavior already implemented in `minecraft-wrapper` — players receive countdown warnings at 30, 20, 10, and 5 seconds before the server stops.
+The `start_server`, `stop_server`, and `restart_server` tools call the `minecraft-wrapper` REST API (port 8092). The `get_server_status` tool also calls `minecraft-wrapper` and is read-only — it never requires confirmation. The `trigger_backup` tool calls the `backup-manager` REST API (port 8091), consistent with how `trigger-backup.sh` works at the infrastructure level. The `stop_server` and `restart_server` tools leverage the graceful shutdown behavior already implemented in `minecraft-wrapper` — players receive countdown warnings at 30, 20, 10, and 5 seconds before the server stops.
 
 ## Building
 
