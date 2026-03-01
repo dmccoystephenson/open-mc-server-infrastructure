@@ -43,6 +43,9 @@ public class DiagnosticsService {
     @Value("${diagnostics.logs.max-lines:50}")
     private int logsMaxLines;
 
+    @Value("${diagnostics.logs.anonymize:true}")
+    private boolean logsAnonymize;
+
     public DiagnosticsService(MinecraftWrapperService minecraftWrapperService,
                               RestTemplate restTemplate,
                               ObjectMapper objectMapper,
@@ -114,11 +117,13 @@ public class DiagnosticsService {
                 Map<?, ?> logsMap = objectMapper.readValue(logsJson, Map.class);
                 Object rawLines = logsMap.get("lines");
                 if (rawLines instanceof List<?> linesList) {
-                    List<String> sanitized = linesList.stream()
+                    List<String> processedLines = linesList.stream()
                             .filter(l -> l != null)
-                            .map(l -> logSanitizerService.sanitize(l.toString()))
+                            .map(l -> logsAnonymize
+                                    ? logSanitizerService.sanitize(l.toString())
+                                    : l.toString())
                             .collect(Collectors.toList());
-                    diagnostics.put("serverLogs", Map.of("lines", sanitized, "count", sanitized.size()));
+                    diagnostics.put("serverLogs", Map.of("lines", processedLines, "count", processedLines.size()));
                 } else {
                     diagnostics.put("serverLogs", Map.of("lines", List.of(), "count", 0));
                 }

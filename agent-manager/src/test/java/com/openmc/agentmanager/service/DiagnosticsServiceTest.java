@@ -152,6 +152,8 @@ class DiagnosticsServiceTest {
     void shouldIncludeSanitizedServerLogsWhenEnabled() throws Exception {
         ReflectionTestUtils.setField(diagnosticsService, "logsEnabled", true);
         ReflectionTestUtils.setField(diagnosticsService, "logsMaxLines", 50);
+        // logsAnonymize defaults to false in the test-constructed service; set it explicitly
+        ReflectionTestUtils.setField(diagnosticsService, "logsAnonymize", true);
 
         when(minecraftWrapperService.getServerStatus()).thenReturn("{\"running\":true}");
         when(restTemplate.getForEntity(eq("http://test:8090/api/alerts?limit=10"), eq(String.class)))
@@ -166,6 +168,28 @@ class DiagnosticsServiceTest {
         assertTrue(result.contains("serverLogs"));
         assertFalse(result.contains("192.168.1.1"), "IP address should be redacted");
         assertTrue(result.contains("IP_REDACTED"));
+    }
+
+    @Test
+    @DisplayName("Should not redact IPs in serverLogs when anonymization is disabled")
+    void shouldNotRedactIpsWhenAnonymizationDisabled() throws Exception {
+        ReflectionTestUtils.setField(diagnosticsService, "logsEnabled", true);
+        ReflectionTestUtils.setField(diagnosticsService, "logsMaxLines", 50);
+        ReflectionTestUtils.setField(diagnosticsService, "logsAnonymize", false);
+
+        when(minecraftWrapperService.getServerStatus()).thenReturn("{\"running\":true}");
+        when(restTemplate.getForEntity(eq("http://test:8090/api/alerts?limit=10"), eq(String.class)))
+                .thenReturn(new ResponseEntity<>("[]", HttpStatus.OK));
+        when(restTemplate.getForEntity(eq("http://test:8091/api/backups/latest"), eq(String.class)))
+                .thenReturn(new ResponseEntity<>("{\"available\":false}", HttpStatus.OK));
+        when(minecraftWrapperService.getServerLogs(50))
+                .thenReturn("{\"lines\":[\"[INFO]: Steve[/192.168.1.1:12345] logged in\"],\"count\":1}");
+
+        String result = diagnosticsService.getServerDiagnostics(null);
+
+        assertTrue(result.contains("serverLogs"));
+        assertTrue(result.contains("192.168.1.1"), "IP address should NOT be redacted when anonymization is off");
+        assertFalse(result.contains("IP_REDACTED"));
     }
 
     @Test
