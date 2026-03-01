@@ -133,6 +133,8 @@ services:
       timeout: 5s
       retries: 5
       start_period: 30s
+    volumes:
+      - alert-manager-data:/app/data
     environment:
       - DISCORD_WEBHOOK_URL=${DISCORD_WEBHOOK_URL:-}
       - DISCORD_ENABLED=${DISCORD_ENABLED:-false}
@@ -175,4 +177,7 @@ volumes:
     external: false
   webapp-data:
     name: ${WEBAPP_VOLUME_NAME:-webapp-data}
+    external: false
+  alert-manager-data:
+    name: ${ALERT_MANAGER_VOLUME_NAME:-alert-manager-data}
     external: false
