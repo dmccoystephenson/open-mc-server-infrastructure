@@ -11,6 +11,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * Service that gathers diagnostic context from multiple infrastructure sources
@@ -28,6 +29,7 @@ public class DiagnosticsService {
     private final MinecraftWrapperService minecraftWrapperService;
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
+    private final LogSanitizerService logSanitizerService;
 
     @Value("${alert.manager.url:http://alert-manager:8090/api/alerts}")
     private String alertManagerAlertsUrl;
@@ -35,12 +37,20 @@ public class DiagnosticsService {
     @Value("${backup.manager.url:http://backup-manager:8091}")
     private String backupManagerUrl;
 
+    @Value("${diagnostics.logs.enabled:false}")
+    private boolean logsEnabled;
+
+    @Value("${diagnostics.logs.max-lines:50}")
+    private int logsMaxLines;
+
     public DiagnosticsService(MinecraftWrapperService minecraftWrapperService,
                               RestTemplate restTemplate,
-                              ObjectMapper objectMapper) {
+                              ObjectMapper objectMapper,
+                              LogSanitizerService logSanitizerService) {
         this.minecraftWrapperService = minecraftWrapperService;
         this.restTemplate = restTemplate;
         this.objectMapper = objectMapper;
+        this.logSanitizerService = logSanitizerService;
     }
 
     /**
@@ -95,6 +105,28 @@ public class DiagnosticsService {
             log.warn("Failed to fetch latest backup status for diagnostics: {}", e.getMessage());
             diagnostics.put("latestBackup", null);
             unavailableSources.add("backup-manager");
+        }
+
+        // 4. Server logs from minecraft-wrapper (optional, requires diagnostics.logs.enabled=true)
+        if (logsEnabled) {
+            try {
+                String logsJson = minecraftWrapperService.getServerLogs(logsMaxLines);
+                Map<?, ?> logsMap = objectMapper.readValue(logsJson, Map.class);
+                Object rawLines = logsMap.get("lines");
+                if (rawLines instanceof List<?> linesList) {
+                    List<String> sanitized = linesList.stream()
+                            .filter(l -> l != null)
+                            .map(l -> logSanitizerService.sanitize(l.toString()))
+                            .collect(Collectors.toList());
+                    diagnostics.put("serverLogs", Map.of("lines", sanitized, "count", sanitized.size()));
+                } else {
+                    diagnostics.put("serverLogs", Map.of("lines", List.of(), "count", 0));
+                }
+            } catch (Exception e) {
+                log.warn("Failed to fetch server logs for diagnostics: {}", e.getMessage());
+                diagnostics.put("serverLogs", null);
+                unavailableSources.add("server-logs");
+            }
         }
 
         if (!unavailableSources.isEmpty()) {

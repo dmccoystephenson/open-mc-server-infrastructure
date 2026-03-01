@@ -105,8 +105,8 @@ public class ToolDefinition {
         return ToolDefinition.builder()
                 .name("get_server_diagnostics")
                 .description("Gathers diagnostic context from multiple sources (server status, recent alerts, " +
-                        "latest backup) and returns a structured JSON summary. Use this instead of " +
-                        "get_server_status when the user asks an open-ended health question such as " +
+                        "latest backup, and optionally recent server logs) and returns a structured JSON summary. " +
+                        "Use this instead of get_server_status when the user asks an open-ended health question such as " +
                         "'is the server okay?', 'why is it lagging?', or 'what happened while I was offline?'. " +
                         "Always read-only — never requires confirmation.")
                 .inputSchema(Map.of(

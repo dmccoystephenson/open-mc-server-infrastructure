@@ -71,6 +71,26 @@ public class MinecraftWrapperService {
         }
     }
 
+    /**
+     * Get the last {@code lines} lines of the Minecraft server log.
+     * Requires {@code logs.diagnostic.enabled=true} on the wrapper side.
+     *
+     * @param lines number of log lines to retrieve
+     * @return JSON string from the wrapper ({@code {"lines":[...],"count":N}})
+     */
+    public String getServerLogs(int lines) {
+        log.info("Calling minecraft-wrapper for server logs ({} lines)", lines);
+        String url = wrapperUrl + "/api/server/logs?lines=" + lines;
+        try {
+            ResponseEntity<String> response = restTemplate.getForEntity(url, String.class);
+            String body = response.getBody();
+            return body != null ? body : "{\"lines\":[],\"count\":0}";
+        } catch (Exception e) {
+            log.error("Failed to get server logs via minecraft-wrapper at {}: {}", url, e.getMessage(), e);
+            throw new RuntimeException("Failed to get server logs: " + e.getMessage(), e);
+        }
+    }
+
     private String callWrapper(String path, String action) {
         String url = wrapperUrl + path;
         try {

@@ -93,4 +93,39 @@ class MinecraftWrapperServiceTest {
 
         assertThrows(RuntimeException.class, () -> minecraftWrapperService.startServer());
     }
+
+    @Test
+    @DisplayName("Should call server logs endpoint successfully")
+    void shouldCallServerLogsEndpoint() {
+        String logJson = "{\"lines\":[\"line1\",\"line2\"],\"count\":2}";
+        ResponseEntity<String> mockResponse = new ResponseEntity<>(logJson, HttpStatus.OK);
+        when(restTemplate.getForEntity(eq("http://test:8092/api/server/logs?lines=50"), eq(String.class)))
+                .thenReturn(mockResponse);
+
+        String result = minecraftWrapperService.getServerLogs(50);
+
+        assertEquals(logJson, result);
+        verify(restTemplate).getForEntity(eq("http://test:8092/api/server/logs?lines=50"), eq(String.class));
+    }
+
+    @Test
+    @DisplayName("Should return empty log JSON when server logs endpoint returns null body")
+    void shouldReturnEmptyLogJsonWhenNullBody() {
+        ResponseEntity<String> mockResponse = new ResponseEntity<>(null, HttpStatus.OK);
+        when(restTemplate.getForEntity(eq("http://test:8092/api/server/logs?lines=10"), eq(String.class)))
+                .thenReturn(mockResponse);
+
+        String result = minecraftWrapperService.getServerLogs(10);
+
+        assertEquals("{\"lines\":[],\"count\":0}", result);
+    }
+
+    @Test
+    @DisplayName("Should throw exception when server logs endpoint fails")
+    void shouldThrowExceptionWhenServerLogsEndpointFails() {
+        when(restTemplate.getForEntity(anyString(), eq(String.class)))
+                .thenThrow(new RuntimeException("403 Forbidden"));
+
+        assertThrows(RuntimeException.class, () -> minecraftWrapperService.getServerLogs(50));
+    }
 }

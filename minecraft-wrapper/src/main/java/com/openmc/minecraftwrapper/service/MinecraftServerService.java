@@ -359,4 +359,32 @@ public class MinecraftServerService {
                 .serverDirectory(serverDirectory)
                 .build();
     }
+
+    /**
+     * Read the last {@code maxLines} lines from the server's {@code logs/latest.log} file.
+     * Returns an empty list if the log file does not exist or cannot be read.
+     *
+     * <p>The entire log file is read into memory before slicing; this is acceptable for
+     * typical Minecraft server log sizes but may be expensive if the file grows very large
+     * (e.g. days without rotation).  The caller should keep {@code maxLines} small (≤ 100)
+     * to limit downstream payload size.
+     *
+     * @param maxLines maximum number of lines to return (clamped to 1..logsDiagnosticMaxLines by the caller)
+     * @return tail of the log file, oldest line first
+     */
+    public List<String> getRecentLogLines(int maxLines) {
+        Path logFile = Path.of(serverDirectory, "logs", "latest.log");
+        if (!Files.exists(logFile)) {
+            log.info("Server log file not found at {}", logFile);
+            return List.of();
+        }
+        try {
+            List<String> all = Files.readAllLines(logFile);
+            int from = Math.max(0, all.size() - maxLines);
+            return new ArrayList<>(all.subList(from, all.size()));
+        } catch (IOException e) {
+            log.error("Failed to read server log file {}: {}", logFile, e.getMessage());
+            return List.of();
+        }
+    }
 }

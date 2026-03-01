@@ -3,11 +3,14 @@ package com.openmc.minecraftwrapper.controller;
 import com.openmc.minecraftwrapper.model.ServerStatus;
 import com.openmc.minecraftwrapper.service.MinecraftServerService;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
 @Slf4j
@@ -16,6 +19,12 @@ import java.util.concurrent.CompletableFuture;
 public class ServerController {
 
     private final MinecraftServerService minecraftServerService;
+
+    @Value("${logs.diagnostic.enabled:false}")
+    private boolean logsDiagnosticEnabled;
+
+    @Value("${logs.diagnostic.max-lines:100}")
+    private int logsDiagnosticMaxLines;
 
     public ServerController(MinecraftServerService minecraftServerService) {
         this.minecraftServerService = minecraftServerService;
@@ -158,5 +167,22 @@ public class ServerController {
         // Return immediately with 202 Accepted
         return ResponseEntity.status(HttpStatus.ACCEPTED)
                 .body("Shutdown initiated - server will shut down gracefully in 30+ seconds");
+    }
+
+    /**
+     * Return the last {@code lines} lines of the server log ({@code logs/latest.log}).
+     * Disabled by default; set {@code logs.diagnostic.enabled=true} to enable.
+     * GET /api/server/logs?lines=N
+     */
+    @GetMapping("/logs")
+    public ResponseEntity<?> getLogs(@RequestParam(defaultValue = "100") int lines) {
+        if (!logsDiagnosticEnabled) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body("Server log access is disabled. Set logs.diagnostic.enabled=true to enable.");
+        }
+        int clampedLines = Math.min(Math.max(1, lines), logsDiagnosticMaxLines);
+        List<String> logLines = minecraftServerService.getRecentLogLines(clampedLines);
+        log.info("Returning {} server log lines for diagnostics", logLines.size());
+        return ResponseEntity.ok(Map.of("lines", logLines, "count", logLines.size()));
     }
 }

@@ -13,6 +13,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.client.RestTemplate;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
@@ -31,7 +32,7 @@ class DiagnosticsServiceTest {
 
     @BeforeEach
     void setUp() {
-        diagnosticsService = new DiagnosticsService(minecraftWrapperService, restTemplate, new ObjectMapper());
+        diagnosticsService = new DiagnosticsService(minecraftWrapperService, restTemplate, new ObjectMapper(), new LogSanitizerService());
         ReflectionTestUtils.setField(diagnosticsService, "alertManagerAlertsUrl", "http://test:8090/api/alerts");
         ReflectionTestUtils.setField(diagnosticsService, "backupManagerUrl", "http://test:8091");
     }
@@ -125,5 +126,62 @@ class DiagnosticsServiceTest {
         diagnosticsService.getServerDiagnostics(5);
 
         verify(restTemplate).getForEntity(eq("http://test:8090/api/alerts?limit=5"), eq(String.class));
+    }
+
+    @Test
+    @DisplayName("Should not include serverLogs when logs are disabled (default)")
+    void shouldNotIncludeServerLogsWhenDisabled() throws Exception {
+        // logsEnabled defaults to false — no log fetch should occur
+        when(minecraftWrapperService.getServerStatus()).thenReturn("{\"running\":true}");
+        when(restTemplate.getForEntity(eq("http://test:8090/api/alerts?limit=10"), eq(String.class)))
+                .thenReturn(new ResponseEntity<>("[]", HttpStatus.OK));
+        when(restTemplate.getForEntity(eq("http://test:8091/api/backups/latest"), eq(String.class)))
+                .thenReturn(new ResponseEntity<>("{\"available\":false}", HttpStatus.OK));
+
+        String result = diagnosticsService.getServerDiagnostics(null);
+
+        assertFalse(result.contains("serverLogs"));
+        verify(minecraftWrapperService, never()).getServerLogs(anyInt());
+    }
+
+    @Test
+    @DisplayName("Should include sanitized serverLogs when logs are enabled")
+    void shouldIncludeSanitizedServerLogsWhenEnabled() throws Exception {
+        ReflectionTestUtils.setField(diagnosticsService, "logsEnabled", true);
+        ReflectionTestUtils.setField(diagnosticsService, "logsMaxLines", 50);
+
+        when(minecraftWrapperService.getServerStatus()).thenReturn("{\"running\":true}");
+        when(restTemplate.getForEntity(eq("http://test:8090/api/alerts?limit=10"), eq(String.class)))
+                .thenReturn(new ResponseEntity<>("[]", HttpStatus.OK));
+        when(restTemplate.getForEntity(eq("http://test:8091/api/backups/latest"), eq(String.class)))
+                .thenReturn(new ResponseEntity<>("{\"available\":false}", HttpStatus.OK));
+        when(minecraftWrapperService.getServerLogs(50))
+                .thenReturn("{\"lines\":[\"[INFO]: Steve[/192.168.1.1:12345] logged in\"],\"count\":1}");
+
+        String result = diagnosticsService.getServerDiagnostics(null);
+
+        assertTrue(result.contains("serverLogs"));
+        assertFalse(result.contains("192.168.1.1"), "IP address should be redacted");
+        assertTrue(result.contains("IP_REDACTED"));
+    }
+
+    @Test
+    @DisplayName("Should add server-logs to unavailableSources when log fetch fails")
+    void shouldAddServerLogsToUnavailableSourcesWhenFetchFails() throws Exception {
+        ReflectionTestUtils.setField(diagnosticsService, "logsEnabled", true);
+        ReflectionTestUtils.setField(diagnosticsService, "logsMaxLines", 50);
+
+        when(minecraftWrapperService.getServerStatus()).thenReturn("{\"running\":true}");
+        when(restTemplate.getForEntity(eq("http://test:8090/api/alerts?limit=10"), eq(String.class)))
+                .thenReturn(new ResponseEntity<>("[]", HttpStatus.OK));
+        when(restTemplate.getForEntity(eq("http://test:8091/api/backups/latest"), eq(String.class)))
+                .thenReturn(new ResponseEntity<>("{\"available\":false}", HttpStatus.OK));
+        when(minecraftWrapperService.getServerLogs(50))
+                .thenThrow(new RuntimeException("403 Forbidden"));
+
+        String result = diagnosticsService.getServerDiagnostics(null);
+
+        assertTrue(result.contains("unavailableSources"));
+        assertTrue(result.contains("server-logs"));
     }
 }
