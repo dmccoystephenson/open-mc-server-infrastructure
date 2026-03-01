@@ -1,5 +1,6 @@
 package com.openmc.minecraftwrapper.service;
 
+import com.openmc.minecraftwrapper.model.ServerMetrics;
 import com.openmc.minecraftwrapper.model.ServerStatus;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -10,6 +11,8 @@ import jakarta.annotation.PreDestroy;
 import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -386,5 +389,122 @@ public class MinecraftServerService {
             log.error("Failed to read server log file {}: {}", logFile, e.getMessage());
             return List.of();
         }
+    }
+
+    /**
+     * Return a performance metrics snapshot for the Minecraft server and its JVM.
+     *
+     * <ul>
+     *   <li><b>Wrapper JVM heap</b> — always available via {@link Runtime}.</li>
+     *   <li><b>Server process memory</b> — read from {@code /proc/{pid}/status}
+     *       on Linux; {@code null} on other platforms or when the server is not
+     *       running.</li>
+     *   <li><b>Server uptime</b> — derived from {@link ProcessHandle.Info#startInstant()}.</li>
+     *   <li><b>TPS</b> — extracted from the most recent
+     *       {@code TPS from last 1m, 5m, 15m: …} line in {@code logs/latest.log}
+     *       (Paper / Spigot servers only).  {@code null} otherwise.</li>
+     * </ul>
+     *
+     * @return metrics snapshot; individual fields may be {@code null} when unavailable
+     */
+    public ServerMetrics getServerMetrics() {
+        ServerMetrics.ServerMetricsBuilder builder = ServerMetrics.builder();
+
+        // ── Wrapper JVM heap ─────────────────────────────────────────────────
+        Runtime runtime = Runtime.getRuntime();
+        long usedBytes = runtime.totalMemory() - runtime.freeMemory();
+        long maxBytes = runtime.maxMemory();
+        builder.wrapperHeapUsedMb(usedBytes / (1024 * 1024));
+        builder.wrapperHeapMaxMb(maxBytes / (1024 * 1024));
+        builder.wrapperHeapUsedPercent(
+                Math.round((double) usedBytes / maxBytes * 1000.0) / 10.0);
+
+        // ── Server process metrics ────────────────────────────────────────────
+        if (serverProcess != null && serverProcess.isAlive()) {
+            long pid = serverProcess.pid();
+
+            // Uptime from ProcessHandle.Info
+            ProcessHandle.Info info = serverProcess.info();
+            info.startInstant().ifPresent(start ->
+                    builder.serverUptimeSeconds(Duration.between(start, Instant.now()).getSeconds()));
+
+            // Resident memory from /proc/{pid}/status (Linux only)
+            builder.serverMemoryMb(readProcessRssMb(pid));
+
+            // TPS from log file
+            String tps = parseTpsFromLogs();
+            builder.tps(tps);
+            if (tps == null) {
+                builder.tpsNote("No TPS data found in logs. TPS logging requires a Paper or Spigot server.");
+            }
+        } else {
+            builder.tpsNote("Server is not running.");
+        }
+
+        return builder.build();
+    }
+
+    /**
+     * Read the Resident Set Size (RSS) of process {@code pid} from
+     * {@code /proc/{pid}/status} (Linux only).
+     *
+     * @param pid OS process ID
+     * @return RSS in MiB, or {@code null} if unavailable
+     */
+    private Long readProcessRssMb(long pid) {
+        Path statusFile = Path.of("/proc", String.valueOf(pid), "status");
+        if (!Files.exists(statusFile)) {
+            return null;
+        }
+        try (var lines = Files.lines(statusFile)) {
+            return lines
+                    .filter(l -> l.startsWith("VmRSS:"))
+                    .findFirst()
+                    .map(line -> {
+                        // Format: "VmRSS:     12345 kB"
+                        String[] parts = line.trim().split("\\s+");
+                        return parts.length >= 2 ? Long.parseLong(parts[1]) / 1024 : null;
+                    })
+                    .orElse(null);
+        } catch (Exception e) {
+            log.debug("Could not read process RSS for pid {}: {}", pid, e.getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Scan the last 500 lines of {@code logs/latest.log} for a Paper/Spigot TPS line.
+     *
+     * <p>Uses a streaming approach to avoid loading the entire log file into memory.
+     *
+     * @return the TPS segment starting from "TPS from last …", or {@code null} if not found
+     */
+    private String parseTpsFromLogs() {
+        Path logFile = Path.of(serverDirectory, "logs", "latest.log");
+        if (!Files.exists(logFile)) {
+            return null;
+        }
+        // Collect the last 500 lines into a bounded deque to avoid loading the full file
+        java.util.Deque<String> tail = new java.util.ArrayDeque<>(500);
+        try (var lines = Files.lines(logFile)) {
+            lines.forEach(line -> {
+                tail.addLast(line);
+                if (tail.size() > 500) {
+                    tail.pollFirst();
+                }
+            });
+        } catch (IOException e) {
+            log.debug("Could not read server log for TPS: {}", e.getMessage());
+            return null;
+        }
+        // Scan backwards through the tail for the most recent TPS entry
+        String[] tailArr = tail.toArray(new String[0]);
+        for (int i = tailArr.length - 1; i >= 0; i--) {
+            int idx = tailArr[i].indexOf("TPS from last");
+            if (idx >= 0) {
+                return tailArr[i].substring(idx);
+            }
+        }
+        return null;
     }
 }

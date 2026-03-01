@@ -129,6 +129,17 @@ public class DiagnosticsService {
             }
         }
 
+        // 5. Server performance metrics (heap, TPS, process memory, uptime) from minecraft-wrapper
+        try {
+            String metricsJson = minecraftWrapperService.getServerMetrics();
+            Object metricsObj = objectMapper.readValue(metricsJson, Object.class);
+            diagnostics.put("serverMetrics", metricsObj);
+        } catch (Exception e) {
+            log.warn("Failed to fetch server metrics for diagnostics: {}", e.getMessage());
+            diagnostics.put("serverMetrics", null);
+            unavailableSources.add("server-metrics");
+        }
+
         if (!unavailableSources.isEmpty()) {
             diagnostics.put("unavailableSources", unavailableSources);
         }

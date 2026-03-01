@@ -35,6 +35,9 @@ class DiagnosticsServiceTest {
         diagnosticsService = new DiagnosticsService(minecraftWrapperService, restTemplate, new ObjectMapper(), new LogSanitizerService());
         ReflectionTestUtils.setField(diagnosticsService, "alertManagerAlertsUrl", "http://test:8090/api/alerts");
         ReflectionTestUtils.setField(diagnosticsService, "backupManagerUrl", "http://test:8091");
+        // default stub so existing tests don't fail on the new metrics call
+        lenient().when(minecraftWrapperService.getServerMetrics())
+                .thenReturn("{\"wrapperHeapUsedMb\":50,\"wrapperHeapMaxMb\":256,\"wrapperHeapUsedPercent\":19.5}");
     }
 
     @Test
@@ -183,5 +186,42 @@ class DiagnosticsServiceTest {
 
         assertTrue(result.contains("unavailableSources"));
         assertTrue(result.contains("server-logs"));
+    }
+
+    @Test
+    @DisplayName("Should include serverMetrics from minecraft-wrapper")
+    void shouldIncludeServerMetrics() throws Exception {
+        when(minecraftWrapperService.getServerStatus()).thenReturn("{\"running\":true}");
+        when(restTemplate.getForEntity(eq("http://test:8090/api/alerts?limit=10"), eq(String.class)))
+                .thenReturn(new ResponseEntity<>("[]", HttpStatus.OK));
+        when(restTemplate.getForEntity(eq("http://test:8091/api/backups/latest"), eq(String.class)))
+                .thenReturn(new ResponseEntity<>("{\"available\":false}", HttpStatus.OK));
+        when(minecraftWrapperService.getServerMetrics())
+                .thenReturn("{\"wrapperHeapUsedMb\":80,\"wrapperHeapMaxMb\":256,\"wrapperHeapUsedPercent\":31.2," +
+                        "\"tps\":\"TPS from last 1m, 5m, 15m: 19.99, 19.96, 19.94\"}");
+
+        String result = diagnosticsService.getServerDiagnostics(null);
+
+        assertTrue(result.contains("serverMetrics"));
+        assertTrue(result.contains("wrapperHeapUsedMb"));
+        assertTrue(result.contains("tps"));
+        assertFalse(result.contains("unavailableSources"));
+    }
+
+    @Test
+    @DisplayName("Should add server-metrics to unavailableSources when metrics fetch fails")
+    void shouldAddServerMetricsToUnavailableSourcesWhenFetchFails() throws Exception {
+        when(minecraftWrapperService.getServerStatus()).thenReturn("{\"running\":true}");
+        when(restTemplate.getForEntity(eq("http://test:8090/api/alerts?limit=10"), eq(String.class)))
+                .thenReturn(new ResponseEntity<>("[]", HttpStatus.OK));
+        when(restTemplate.getForEntity(eq("http://test:8091/api/backups/latest"), eq(String.class)))
+                .thenReturn(new ResponseEntity<>("{\"available\":false}", HttpStatus.OK));
+        when(minecraftWrapperService.getServerMetrics())
+                .thenThrow(new RuntimeException("Connection refused"));
+
+        String result = diagnosticsService.getServerDiagnostics(null);
+
+        assertTrue(result.contains("unavailableSources"));
+        assertTrue(result.contains("server-metrics"));
     }
 }

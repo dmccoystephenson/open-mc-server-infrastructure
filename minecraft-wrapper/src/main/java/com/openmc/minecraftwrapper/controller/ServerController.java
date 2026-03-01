@@ -1,5 +1,6 @@
 package com.openmc.minecraftwrapper.controller;
 
+import com.openmc.minecraftwrapper.model.ServerMetrics;
 import com.openmc.minecraftwrapper.model.ServerStatus;
 import com.openmc.minecraftwrapper.service.MinecraftServerService;
 import lombok.extern.slf4j.Slf4j;
@@ -184,5 +185,16 @@ public class ServerController {
         List<String> logLines = minecraftServerService.getRecentLogLines(clampedLines);
         log.info("Returning {} server log lines for diagnostics", logLines.size());
         return ResponseEntity.ok(Map.of("lines", logLines, "count", logLines.size()));
+    }
+
+    /**
+     * Return a performance metrics snapshot (heap, server process memory, uptime, TPS).
+     * GET /api/server/metrics
+     */
+    @GetMapping("/metrics")
+    public ResponseEntity<ServerMetrics> getMetrics() {
+        log.info("Received request for server metrics");
+        ServerMetrics metrics = minecraftServerService.getServerMetrics();
+        return ResponseEntity.ok(metrics);
     }
 }

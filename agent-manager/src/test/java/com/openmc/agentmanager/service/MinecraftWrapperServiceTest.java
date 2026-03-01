@@ -128,4 +128,39 @@ class MinecraftWrapperServiceTest {
 
         assertThrows(RuntimeException.class, () -> minecraftWrapperService.getServerLogs(50));
     }
+
+    @Test
+    @DisplayName("Should call server metrics endpoint successfully")
+    void shouldCallServerMetricsEndpoint() {
+        String metricsJson = "{\"wrapperHeapUsedMb\":80,\"wrapperHeapMaxMb\":256}";
+        ResponseEntity<String> mockResponse = new ResponseEntity<>(metricsJson, HttpStatus.OK);
+        when(restTemplate.getForEntity(eq("http://test:8092/api/server/metrics"), eq(String.class)))
+                .thenReturn(mockResponse);
+
+        String result = minecraftWrapperService.getServerMetrics();
+
+        assertEquals(metricsJson, result);
+        verify(restTemplate).getForEntity(eq("http://test:8092/api/server/metrics"), eq(String.class));
+    }
+
+    @Test
+    @DisplayName("Should return empty JSON when server metrics endpoint returns null body")
+    void shouldReturnEmptyJsonWhenMetricsNullBody() {
+        ResponseEntity<String> mockResponse = new ResponseEntity<>(null, HttpStatus.OK);
+        when(restTemplate.getForEntity(eq("http://test:8092/api/server/metrics"), eq(String.class)))
+                .thenReturn(mockResponse);
+
+        String result = minecraftWrapperService.getServerMetrics();
+
+        assertEquals("{}", result);
+    }
+
+    @Test
+    @DisplayName("Should throw exception when server metrics endpoint fails")
+    void shouldThrowExceptionWhenServerMetricsEndpointFails() {
+        when(restTemplate.getForEntity(anyString(), eq(String.class)))
+                .thenThrow(new RuntimeException("Connection refused"));
+
+        assertThrows(RuntimeException.class, () -> minecraftWrapperService.getServerMetrics());
+    }
 }

@@ -91,6 +91,24 @@ public class MinecraftWrapperService {
         }
     }
 
+    /**
+     * Get server performance metrics (heap, process memory, uptime, TPS).
+     *
+     * @return JSON string from the wrapper containing {@link com.openmc.minecraftwrapper.model.ServerMetrics} fields
+     */
+    public String getServerMetrics() {
+        log.info("Calling minecraft-wrapper for server metrics");
+        String url = wrapperUrl + "/api/server/metrics";
+        try {
+            ResponseEntity<String> response = restTemplate.getForEntity(url, String.class);
+            String body = response.getBody();
+            return body != null ? body : "{}";
+        } catch (Exception e) {
+            log.error("Failed to get server metrics via minecraft-wrapper at {}: {}", url, e.getMessage(), e);
+            throw new RuntimeException("Failed to get server metrics: " + e.getMessage(), e);
+        }
+    }
+
     private String callWrapper(String path, String action) {
         String url = wrapperUrl + path;
         try {
