@@ -54,6 +54,7 @@ public class ConfirmationService {
             case "restart_server" -> restartServerRequiresConfirmation;
             case "get_server_status" -> false;
             case "trigger_backup" -> triggerBackupRequiresConfirmation;
+            case "get_server_diagnostics" -> false;
             default -> {
                 log.warn("Unknown toolName '{}' passed to requiresConfirmation; defaulting to no confirmation required", toolName);
                 yield false;

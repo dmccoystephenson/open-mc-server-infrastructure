@@ -33,6 +33,18 @@ public class BackupService {
     private static final DateTimeFormatter BACKUP_DIR_FORMAT = DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss");
     private static final Pattern ERROR_PATTERN = Pattern.compile(".*(error|warning|cannot|failed).*", Pattern.CASE_INSENSITIVE);
 
+    /**
+     * Status of the most recent backup attempt.
+     *
+     * @param success     whether the backup completed successfully
+     * @param timestamp   ISO-8601 timestamp of when the backup finished
+     * @param backupPath  path to the backup directory (null on failure)
+     * @param message     human-readable result message
+     */
+    public record LatestBackupStatus(boolean success, String timestamp, String backupPath, String message) {}
+
+    private volatile LatestBackupStatus latestBackupStatus = null;
+
     @Value("${backup.directory:/backups}")
     private String backupDirectory;
 
@@ -78,9 +90,29 @@ public class BackupService {
     }
 
     /**
+     * Return the status of the most recent backup attempt, or {@code null} if no backup
+     * has been performed since startup.
+     *
+     * @return latest backup status, or null
+     */
+    public LatestBackupStatus getLatestBackupStatus() {
+        return latestBackupStatus;
+    }
+
+    /**
      * Create a backup of the Minecraft server volume using Docker
      */
     public String createBackup() throws BackupException {
+        try {
+            return doCreateBackup();
+        } catch (BackupException e) {
+            latestBackupStatus = new LatestBackupStatus(false,
+                    LocalDateTime.now().toString(), null, e.getMessage());
+            throw e;
+        }
+    }
+
+    private String doCreateBackup() throws BackupException {
         log.info("Creating backup...");
         
         // Create backup directory with timestamp
@@ -191,6 +223,8 @@ public class BackupService {
                                          backupSizeStr, backupDir);
         sendAlert("Backup Completed", successMsg, "INFO", alertsBackupSuccess);
         
+        latestBackupStatus = new LatestBackupStatus(true,
+                LocalDateTime.now().toString(), backupDir.toString(), successMsg);
         return backupDir.toString();
     }
 

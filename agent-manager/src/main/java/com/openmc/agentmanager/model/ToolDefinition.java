@@ -99,9 +99,33 @@ public class ToolDefinition {
     }
 
     /**
+     * Creates the get_server_diagnostics tool definition.
+     */
+    public static ToolDefinition getServerDiagnostics() {
+        return ToolDefinition.builder()
+                .name("get_server_diagnostics")
+                .description("Gathers diagnostic context from multiple sources (server status, recent alerts, " +
+                        "latest backup) and returns a structured JSON summary. Use this instead of " +
+                        "get_server_status when the user asks an open-ended health question such as " +
+                        "'is the server okay?', 'why is it lagging?', or 'what happened while I was offline?'. " +
+                        "Always read-only — never requires confirmation.")
+                .inputSchema(Map.of(
+                        "type", "object",
+                        "properties", Map.of(
+                                "limit", Map.of(
+                                        "type", "integer",
+                                        "description", "Maximum number of recent alerts to include (default: 10, max: 100)."
+                                )
+                        ),
+                        "required", List.of()
+                ))
+                .build();
+    }
+
+    /**
      * Returns all available tool definitions.
      */
     public static List<ToolDefinition> allTools() {
-        return List.of(startServer(), stopServer(), restartServer(), getServerStatus(), triggerBackup());
+        return List.of(startServer(), stopServer(), restartServer(), getServerStatus(), triggerBackup(), getServerDiagnostics());
     }
 }

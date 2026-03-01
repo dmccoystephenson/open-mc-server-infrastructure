@@ -1,10 +1,13 @@
 package com.openmc.alertmanager.controller;
 
 import com.openmc.alertmanager.model.Alert;
+import com.openmc.alertmanager.model.AlertRecord;
 import com.openmc.alertmanager.service.AlertService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 /**
  * REST controller for receiving alerts from other modules
@@ -37,6 +40,20 @@ public class AlertController {
             log.error("Failed to send alert", e);
             return ResponseEntity.internalServerError().body("Failed to send alert");
         }
+    }
+
+    /**
+     * Endpoint for retrieving recent alerts.
+     *
+     * @param limit maximum number of alerts to return (default: 10, max: 100)
+     * @return list of recent alert records, newest first
+     */
+    @GetMapping
+    public ResponseEntity<List<AlertRecord>> getRecentAlerts(
+            @RequestParam(value = "limit", defaultValue = "10") int limit) {
+        log.info("Fetching recent alerts with limit: {}", limit);
+        List<AlertRecord> alerts = alertService.getRecentAlerts(limit);
+        return ResponseEntity.ok(alerts);
     }
 
     /**

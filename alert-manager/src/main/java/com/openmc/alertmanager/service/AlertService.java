@@ -2,6 +2,8 @@ package com.openmc.alertmanager.service;
 
 import com.openmc.alertmanager.model.Alert;
 import com.openmc.alertmanager.model.AlertDestination;
+import com.openmc.alertmanager.model.AlertRecord;
+import com.openmc.alertmanager.repository.AlertRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
@@ -17,11 +19,24 @@ public class AlertService {
 
     private final DiscordAlertService discordAlertService;
     private final MinecraftMessageService minecraftMessageService;
+    private final AlertRepository alertRepository;
 
-    public AlertService(DiscordAlertService discordAlertService, 
-                       MinecraftMessageService minecraftMessageService) {
+    public AlertService(DiscordAlertService discordAlertService,
+                       MinecraftMessageService minecraftMessageService,
+                       AlertRepository alertRepository) {
         this.discordAlertService = discordAlertService;
         this.minecraftMessageService = minecraftMessageService;
+        this.alertRepository = alertRepository;
+    }
+
+    /**
+     * Return the most recent alerts, newest first.
+     *
+     * @param limit maximum number of records to return (capped at 100)
+     * @return list of recent alert records
+     */
+    public List<AlertRecord> getRecentAlerts(int limit) {
+        return alertRepository.getRecent(Math.min(limit, AlertRepository.MAX_STORED_ALERTS));
     }
 
     /**
@@ -31,7 +46,10 @@ public class AlertService {
      */
     public void sendAlert(Alert alert) {
         log.info("Processing alert: {} from source: {}", alert.getTitle(), alert.getSource());
-        
+
+        // Store in history for later retrieval
+        alertRepository.store(alert);
+
         // Determine destinations - if not specified, send to all
         List<AlertDestination> destinations = alert.getDestinations();
         if (destinations == null || destinations.isEmpty()) {

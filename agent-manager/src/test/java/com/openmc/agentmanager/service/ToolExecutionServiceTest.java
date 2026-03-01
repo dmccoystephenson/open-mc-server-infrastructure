@@ -8,6 +8,8 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.Map;
+
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
@@ -20,6 +22,9 @@ class ToolExecutionServiceTest {
 
     @Mock
     private BackupManagerService backupManagerService;
+
+    @Mock
+    private DiagnosticsService diagnosticsService;
 
     @InjectMocks
     private ToolExecutionService toolExecutionService;
@@ -130,5 +135,38 @@ class ToolExecutionServiceTest {
         assertFalse(toolExecutionService.isRecognizedTool("unknown_tool"));
         assertFalse(toolExecutionService.isRecognizedTool(""));
         assertFalse(toolExecutionService.isRecognizedTool(null));
+    }
+
+    @Test
+    @DisplayName("Should execute get_server_diagnostics tool successfully")
+    void shouldExecuteGetServerDiagnosticsTool() {
+        String diagnosticsJson = "{\"serverStatus\":{\"running\":true},\"recentAlerts\":[],\"latestBackup\":{\"available\":false}}";
+        when(diagnosticsService.getServerDiagnostics(null)).thenReturn(diagnosticsJson);
+
+        ToolResult result = toolExecutionService.executeTool("tool-6", "get_server_diagnostics");
+
+        assertTrue(result.isSuccess());
+        assertEquals(diagnosticsJson, result.getMessage());
+        assertEquals("get_server_diagnostics", result.getToolName());
+        verify(diagnosticsService).getServerDiagnostics(null);
+    }
+
+    @Test
+    @DisplayName("Should pass limit input to diagnostics service")
+    void shouldPassLimitInputToDiagnosticsService() {
+        String diagnosticsJson = "{\"serverStatus\":{\"running\":true},\"recentAlerts\":[]}";
+        when(diagnosticsService.getServerDiagnostics(5)).thenReturn(diagnosticsJson);
+
+        ToolResult result = toolExecutionService.executeTool("tool-7", "get_server_diagnostics",
+                Map.of("limit", 5));
+
+        assertTrue(result.isSuccess());
+        verify(diagnosticsService).getServerDiagnostics(5);
+    }
+
+    @Test
+    @DisplayName("Should recognize get_server_diagnostics as valid tool")
+    void shouldRecognizeGetServerDiagnosticsAsValidTool() {
+        assertTrue(toolExecutionService.isRecognizedTool("get_server_diagnostics"));
     }
 }
