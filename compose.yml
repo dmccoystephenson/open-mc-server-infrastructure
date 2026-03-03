@@ -170,6 +170,8 @@ services:
       - AGENT_TRIGGER_BACKUP_REQUIRES_CONFIRMATION=${AGENT_TRIGGER_BACKUP_REQUIRES_CONFIRMATION:-true}
       - ALERT_MANAGER_URL=${ALERT_MANAGER_URL:-http://alert-manager:8090/api/alerts}
       - BACKUP_MANAGER_URL=${BACKUP_MANAGER_URL:-http://backup-manager:8091}
+      - DIAGNOSTICS_WEBAPP_ENABLED=${DIAGNOSTICS_WEBAPP_ENABLED:-false}
+      - WEBAPP_URL=${WEBAPP_URL:-http://webapp:8080}
 
 volumes:
   mcserver:
