@@ -20,6 +20,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 @Slf4j
 @Service
@@ -48,6 +49,11 @@ public class MinecraftServerService {
     private Thread fifoKeeperThread;
     private final AtomicBoolean shutdownInProgress = new AtomicBoolean(false);
     private final AtomicBoolean manualStop = new AtomicBoolean(false);
+
+    private record TpsCache(String tps, Instant fetchedAt) {}
+    private final AtomicReference<TpsCache> tpsCacheRef =
+            new AtomicReference<>(new TpsCache(null, Instant.EPOCH));
+    private static final Duration TPS_CACHE_TTL = Duration.ofSeconds(30);
 
     public MinecraftServerService(AlertService alertService, ShutdownService shutdownService) {
         this.alertService = alertService;
@@ -500,6 +506,11 @@ public class MinecraftServerService {
      * @return the TPS segment starting from "TPS from last …", or {@code null} if not found
      */
     private String parseTpsFromLogs() {
+        // Return cached value if it is still fresh (atomic read — both fields are in one record)
+        TpsCache cached = tpsCacheRef.get();
+        if (cached.tps() != null && Duration.between(cached.fetchedAt(), Instant.now()).compareTo(TPS_CACHE_TTL) < 0) {
+            return cached.tps();
+        }
         Path logFile = Path.of(serverDirectory, "logs", "latest.log");
         if (!Files.exists(logFile)) {
             return null;
@@ -522,7 +533,9 @@ public class MinecraftServerService {
         for (int i = tailArr.length - 1; i >= 0; i--) {
             int idx = tailArr[i].indexOf("TPS from last");
             if (idx >= 0) {
-                return tailArr[i].substring(idx);
+                String result = tailArr[i].substring(idx);
+                tpsCacheRef.set(new TpsCache(result, Instant.now()));
+                return result;
             }
         }
         return null;

@@ -50,6 +50,15 @@ class LogSanitizerServiceTest {
     }
 
     @Test
+    @DisplayName("Should redact loopback IPv6 address (::1 notation)")
+    void shouldRedactLoopbackIpv6Address() {
+        String line = "[Server thread/INFO]: Player[/::1:54321] connected";
+        String result = sanitizer.sanitize(line);
+        assertFalse(result.contains("::1"), "::1 loopback IPv6 should be redacted");
+        assertTrue(result.contains("[IP_REDACTED]"));
+    }
+
+    @Test
     @DisplayName("Should leave clean log lines unchanged")
     void shouldLeaveCleanLinesUnchanged() {
         String line = "[13:50:33] [Server thread/INFO]: Server started on port 25565";
