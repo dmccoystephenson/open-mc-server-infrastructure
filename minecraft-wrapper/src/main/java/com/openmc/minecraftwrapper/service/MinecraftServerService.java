@@ -399,7 +399,7 @@ public class MinecraftServerService {
     public List<String> getRecentLogLines(int maxLines) {
         Path logFile = Path.of(serverDirectory, "logs", "latest.log");
         if (!Files.exists(logFile)) {
-            log.info("Server log file not found at {}", logFile);
+            log.debug("Server log file not found at {}", logFile);
             return List.of();
         }
         Deque<String> tail = new ArrayDeque<>(maxLines);
@@ -508,11 +508,12 @@ public class MinecraftServerService {
     private String parseTpsFromLogs() {
         // Return cached value if it is still fresh (atomic read — both fields are in one record)
         TpsCache cached = tpsCacheRef.get();
-        if (cached.tps() != null && Duration.between(cached.fetchedAt(), Instant.now()).compareTo(TPS_CACHE_TTL) < 0) {
+        if (Duration.between(cached.fetchedAt(), Instant.now()).compareTo(TPS_CACHE_TTL) < 0) {
             return cached.tps();
         }
         Path logFile = Path.of(serverDirectory, "logs", "latest.log");
         if (!Files.exists(logFile)) {
+            tpsCacheRef.set(new TpsCache(null, Instant.now()));
             return null;
         }
         // Collect the last 500 lines into a bounded deque to avoid loading the full file
@@ -538,6 +539,8 @@ public class MinecraftServerService {
                 return result;
             }
         }
+        // No TPS line found — cache the null result to avoid re-scanning within the TTL window
+        tpsCacheRef.set(new TpsCache(null, Instant.now()));
         return null;
     }
 }
