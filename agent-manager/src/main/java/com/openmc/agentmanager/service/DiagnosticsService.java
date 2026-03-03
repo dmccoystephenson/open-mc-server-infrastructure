@@ -79,6 +79,23 @@ public class DiagnosticsService {
     }
 
     /**
+     * Fetches the ranked player leaderboard from the webapp's Activity Tracker.
+     * Each entry includes player name, hours played, and total login count.
+     *
+     * @return JSON string containing the leaderboard array
+     */
+    public String getActivityTrackerLeaderboard() {
+        try {
+            ResponseEntity<String> response = restTemplate.getForEntity(webappUrl + "/api/activity-tracker/leaderboard", String.class);
+            String body = response.getBody();
+            return body != null ? body : "[]";
+        } catch (Exception e) {
+            log.error("Failed to fetch activity tracker leaderboard from webapp: {}", e.getMessage(), e);
+            throw new RuntimeException("Failed to fetch activity tracker leaderboard: " + e.getMessage(), e);
+        }
+    }
+
+    /**
      * Collect diagnostic context from all infrastructure sources.
      *
      * @param limit maximum number of recent alerts to include (null defaults to 10)

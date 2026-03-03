@@ -122,9 +122,26 @@ public class ToolDefinition {
     public static ToolDefinition getActivityTrackerStats() {
         return ToolDefinition.builder()
                 .name("get_activity_tracker_stats")
-                .description("Fetches player activity statistics from the webapp, including total and unique login " +
-                        "counts and the player leaderboard. Use this when the user asks about player activity, " +
-                        "who has played the most, or requests a leaderboard.")
+                .description("Fetches aggregate player activity statistics from the webapp: total and unique " +
+                        "login counts. Use this when the user asks about overall player activity figures.")
+                .inputSchema(Map.of(
+                        "type", "object",
+                        "properties", Map.of(),
+                        "required", List.of()
+                ))
+                .build();
+    }
+
+    /**
+     * Creates the get_activity_tracker_leaderboard tool definition.
+     */
+    public static ToolDefinition getActivityTrackerLeaderboard() {
+        return ToolDefinition.builder()
+                .name("get_activity_tracker_leaderboard")
+                .description("Fetches the ranked player leaderboard from the webapp's Activity Tracker. " +
+                        "Returns a list of players sorted by play time, each with player name, hours played, " +
+                        "and total login count. Use this when the user asks who has played the most, " +
+                        "requests a leaderboard, or wants to know top players by activity.")
                 .inputSchema(Map.of(
                         "type", "object",
                         "properties", Map.of(),
@@ -163,6 +180,6 @@ public class ToolDefinition {
      */
     public static List<ToolDefinition> allTools() {
         return List.of(startServer(), stopServer(), restartServer(), getServerStatus(), triggerBackup(),
-                getServerMetrics(), getActivityTrackerStats(), getServerDiagnostics());
+                getServerMetrics(), getActivityTrackerStats(), getActivityTrackerLeaderboard(), getServerDiagnostics());
     }
 }

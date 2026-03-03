@@ -166,6 +166,20 @@ class ToolExecutionServiceTest {
     }
 
     @Test
+    @DisplayName("Should execute get_activity_tracker_leaderboard tool successfully")
+    void shouldExecuteGetActivityTrackerLeaderboardTool() {
+        String leaderboardJson = "[{\"playerName\":\"Steve\",\"hoursPlayed\":42.5,\"totalLogins\":30}]";
+        when(diagnosticsService.getActivityTrackerLeaderboard()).thenReturn(leaderboardJson);
+
+        ToolResult result = toolExecutionService.executeTool("tool-10", "get_activity_tracker_leaderboard");
+
+        assertTrue(result.isSuccess());
+        assertEquals(leaderboardJson, result.getMessage());
+        assertEquals("get_activity_tracker_leaderboard", result.getToolName());
+        verify(diagnosticsService).getActivityTrackerLeaderboard();
+    }
+
+    @Test
     @DisplayName("Should recognize get_server_metrics as valid tool")
     void shouldRecognizeGetServerMetricsAsValidTool() {
         assertTrue(toolExecutionService.isRecognizedTool("get_server_metrics"));
@@ -175,6 +189,12 @@ class ToolExecutionServiceTest {
     @DisplayName("Should recognize get_activity_tracker_stats as valid tool")
     void shouldRecognizeGetActivityTrackerStatsAsValidTool() {
         assertTrue(toolExecutionService.isRecognizedTool("get_activity_tracker_stats"));
+    }
+
+    @Test
+    @DisplayName("Should recognize get_activity_tracker_leaderboard as valid tool")
+    void shouldRecognizeGetActivityTrackerLeaderboardAsValidTool() {
+        assertTrue(toolExecutionService.isRecognizedTool("get_activity_tracker_leaderboard"));
     }
 
     @Test

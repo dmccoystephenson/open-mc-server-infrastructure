@@ -53,6 +53,7 @@ public class ToolExecutionService {
                 case "trigger_backup" -> backupManagerService.triggerBackup();
                 case "get_server_metrics" -> minecraftWrapperService.getServerMetrics();
                 case "get_activity_tracker_stats" -> diagnosticsService.getActivityTrackerStats();
+                case "get_activity_tracker_leaderboard" -> diagnosticsService.getActivityTrackerLeaderboard();
                 case "get_server_diagnostics" -> {
                     Integer limit = null;
                     if (toolInput != null) {
@@ -110,7 +111,7 @@ public class ToolExecutionService {
         return toolName != null && switch (toolName) {
             case "start_server", "stop_server", "restart_server", "get_server_status",
                     "trigger_backup", "get_server_metrics", "get_activity_tracker_stats",
-                    "get_server_diagnostics" -> true;
+                    "get_activity_tracker_leaderboard", "get_server_diagnostics" -> true;
             default -> false;
         };
     }
