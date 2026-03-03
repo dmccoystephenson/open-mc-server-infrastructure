@@ -17,6 +17,7 @@ import java.util.ArrayList;
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -357,11 +358,25 @@ public class MinecraftServerService {
     }
 
     public ServerStatus getStatus() {
+        boolean running = serverProcess != null && serverProcess.isAlive();
+        Long uptimeSeconds = null;
+        String startedAt = null;
+        if (running) {
+            ProcessHandle.Info info = serverProcess.info();
+            Optional<Instant> startOpt = info.startInstant();
+            if (startOpt.isPresent()) {
+                Instant start = startOpt.get();
+                uptimeSeconds = Duration.between(start, Instant.now()).getSeconds();
+                startedAt = start.toString();
+            }
+        }
         return ServerStatus.builder()
-                .running(serverProcess != null && serverProcess.isAlive())
-                .pid(serverProcess != null && serverProcess.isAlive() ? serverProcess.pid() : null)
+                .running(running)
+                .pid(running ? serverProcess.pid() : null)
                 .serverJar(serverJar)
                 .serverDirectory(serverDirectory)
+                .uptimeSeconds(uptimeSeconds)
+                .startedAt(startedAt)
                 .build();
     }
 
