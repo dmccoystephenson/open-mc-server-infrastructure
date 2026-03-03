@@ -67,7 +67,7 @@ public class AgentService {
             String text = anthropicService.extractTextContent(response);
             log.debug("No tool call in response. Text response length: {} chars", text.length());
             return new AgentResponse(
-                    text.isEmpty() ? "I can help you manage the Minecraft server. I can start, stop, or restart the server, check its status, trigger backups, and run diagnostics. What would you like to do?" : text,
+                    text.isEmpty() ? "I can help you manage the Minecraft server. I can start, stop, or restart the server, check its status, view performance metrics, check player activity stats, trigger backups, and run diagnostics. What would you like to do?" : text,
                     false, null, null, null, userMessage, null);
         }
 
@@ -79,7 +79,7 @@ public class AgentService {
         if (!toolExecutionService.isRecognizedTool(toolName)) {
             log.warn("Unrecognized tool returned by Anthropic: {}", toolName);
             return new AgentResponse(
-                    "I'm sorry, I don't have the ability to perform that action. I can start, stop, or restart the server, check its status, trigger backups, and run diagnostics.",
+                    "I'm sorry, I don't have the ability to perform that action. I can start, stop, or restart the server, check its status, view performance metrics, check player activity stats, trigger backups, and run diagnostics.",
                     false, null, null, null, userMessage, null);
         }
 

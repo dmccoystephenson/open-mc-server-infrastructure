@@ -138,6 +138,46 @@ class ToolExecutionServiceTest {
     }
 
     @Test
+    @DisplayName("Should execute get_server_metrics tool successfully")
+    void shouldExecuteGetServerMetricsTool() {
+        String metricsJson = "{\"wrapperHeapUsedMb\":256,\"wrapperHeapMaxMb\":512,\"wrapperHeapUsedPercent\":50.0}";
+        when(minecraftWrapperService.getServerMetrics()).thenReturn(metricsJson);
+
+        ToolResult result = toolExecutionService.executeTool("tool-8", "get_server_metrics");
+
+        assertTrue(result.isSuccess());
+        assertEquals(metricsJson, result.getMessage());
+        assertEquals("get_server_metrics", result.getToolName());
+        verify(minecraftWrapperService).getServerMetrics();
+    }
+
+    @Test
+    @DisplayName("Should execute get_activity_tracker_stats tool successfully")
+    void shouldExecuteGetActivityTrackerStatsTool() {
+        String statsJson = "{\"uniqueLogins\":42,\"totalLogins\":120}";
+        when(diagnosticsService.getActivityTrackerStats()).thenReturn(statsJson);
+
+        ToolResult result = toolExecutionService.executeTool("tool-9", "get_activity_tracker_stats");
+
+        assertTrue(result.isSuccess());
+        assertEquals(statsJson, result.getMessage());
+        assertEquals("get_activity_tracker_stats", result.getToolName());
+        verify(diagnosticsService).getActivityTrackerStats();
+    }
+
+    @Test
+    @DisplayName("Should recognize get_server_metrics as valid tool")
+    void shouldRecognizeGetServerMetricsAsValidTool() {
+        assertTrue(toolExecutionService.isRecognizedTool("get_server_metrics"));
+    }
+
+    @Test
+    @DisplayName("Should recognize get_activity_tracker_stats as valid tool")
+    void shouldRecognizeGetActivityTrackerStatsAsValidTool() {
+        assertTrue(toolExecutionService.isRecognizedTool("get_activity_tracker_stats"));
+    }
+
+    @Test
     @DisplayName("Should execute get_server_diagnostics tool successfully")
     void shouldExecuteGetServerDiagnosticsTool() {
         String diagnosticsJson = "{\"serverStatus\":{\"running\":true},\"recentAlerts\":[],\"latestBackup\":{\"available\":false}}";

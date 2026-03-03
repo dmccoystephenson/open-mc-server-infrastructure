@@ -99,6 +99,41 @@ public class ToolDefinition {
     }
 
     /**
+     * Creates the get_server_metrics tool definition.
+     */
+    public static ToolDefinition getServerMetrics() {
+        return ToolDefinition.builder()
+                .name("get_server_metrics")
+                .description("Gets live server performance metrics from the Minecraft wrapper: JVM heap usage " +
+                        "(used/max MB and percentage), TPS from the last 1m/5m/15m (Paper/Spigot only), " +
+                        "server process RSS memory, and server uptime in seconds. " +
+                        "Use this when the user asks specifically about lag, TPS, or memory usage.")
+                .inputSchema(Map.of(
+                        "type", "object",
+                        "properties", Map.of(),
+                        "required", List.of()
+                ))
+                .build();
+    }
+
+    /**
+     * Creates the get_activity_tracker_stats tool definition.
+     */
+    public static ToolDefinition getActivityTrackerStats() {
+        return ToolDefinition.builder()
+                .name("get_activity_tracker_stats")
+                .description("Fetches player activity statistics from the webapp, including total and unique login " +
+                        "counts and the player leaderboard. Use this when the user asks about player activity, " +
+                        "who has played the most, or requests a leaderboard.")
+                .inputSchema(Map.of(
+                        "type", "object",
+                        "properties", Map.of(),
+                        "required", List.of()
+                ))
+                .build();
+    }
+
+    /**
      * Creates the get_server_diagnostics tool definition.
      */
     public static ToolDefinition getServerDiagnostics() {
@@ -127,6 +162,7 @@ public class ToolDefinition {
      * Returns all available tool definitions.
      */
     public static List<ToolDefinition> allTools() {
-        return List.of(startServer(), stopServer(), restartServer(), getServerStatus(), triggerBackup(), getServerDiagnostics());
+        return List.of(startServer(), stopServer(), restartServer(), getServerStatus(), triggerBackup(),
+                getServerMetrics(), getActivityTrackerStats(), getServerDiagnostics());
     }
 }

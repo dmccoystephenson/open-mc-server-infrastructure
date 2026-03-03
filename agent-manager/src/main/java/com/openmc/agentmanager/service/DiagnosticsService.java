@@ -63,6 +63,22 @@ public class DiagnosticsService {
     }
 
     /**
+     * Fetches activity tracker statistics from the webapp.
+     *
+     * @return JSON string containing activity tracker stats
+     */
+    public String getActivityTrackerStats() {
+        try {
+            ResponseEntity<String> response = restTemplate.getForEntity(webappUrl + "/api/activity-tracker/stats", String.class);
+            String body = response.getBody();
+            return body != null ? body : "{}";
+        } catch (Exception e) {
+            log.error("Failed to fetch activity tracker stats from webapp: {}", e.getMessage(), e);
+            throw new RuntimeException("Failed to fetch activity tracker stats: " + e.getMessage(), e);
+        }
+    }
+
+    /**
      * Collect diagnostic context from all infrastructure sources.
      *
      * @param limit maximum number of recent alerts to include (null defaults to 10)
