@@ -11,6 +11,7 @@ import org.springframework.stereotype.Component;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
@@ -129,7 +130,11 @@ public class AlertRepository {
             Path tmpPath = Files.createTempFile(parentDir, "alert-history-", ".tmp");
             try {
                 objectMapper.writerWithDefaultPrettyPrinter().writeValue(tmpPath.toFile(), snapshot);
-                Files.move(tmpPath, targetPath, StandardCopyOption.REPLACE_EXISTING);
+                try {
+                    Files.move(tmpPath, targetPath, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
+                } catch (AtomicMoveNotSupportedException e) {
+                    Files.move(tmpPath, targetPath, StandardCopyOption.REPLACE_EXISTING);
+                }
                 log.debug("Persisted {} alert records to {}", snapshot.size(), dataFile.getAbsolutePath());
             } catch (IOException e) {
                 Files.deleteIfExists(tmpPath);
