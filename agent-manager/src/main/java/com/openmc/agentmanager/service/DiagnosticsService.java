@@ -46,6 +46,12 @@ public class DiagnosticsService {
     @Value("${diagnostics.logs.anonymize:true}")
     private boolean logsAnonymize;
 
+    @Value("${diagnostics.webapp.enabled:false}")
+    private boolean webappEnabled;
+
+    @Value("${webapp.url:http://webapp:8080}")
+    private String webappUrl;
+
     public DiagnosticsService(MinecraftWrapperService minecraftWrapperService,
                               RestTemplate restTemplate,
                               ObjectMapper objectMapper,
@@ -143,6 +149,34 @@ public class DiagnosticsService {
             log.warn("Failed to fetch server metrics for diagnostics: {}", e.getMessage());
             diagnostics.put("serverMetrics", null);
             unavailableSources.add("server-metrics");
+        }
+
+        // 6. Webapp data (player list + activity tracker stats) — optional, requires diagnostics.webapp.enabled=true
+        if (webappEnabled) {
+            Map<String, Object> webappData = new LinkedHashMap<>();
+            try {
+                ResponseEntity<String> statusResponse = restTemplate.getForEntity(webappUrl + "/api/status", String.class);
+                if (statusResponse.getBody() != null) {
+                    webappData.put("serverStatus", objectMapper.readValue(statusResponse.getBody(), Object.class));
+                }
+            } catch (Exception e) {
+                log.warn("Failed to fetch webapp server status for diagnostics: {}", e.getMessage());
+                webappData.put("serverStatus", null);
+            }
+            try {
+                ResponseEntity<String> statsResponse = restTemplate.getForEntity(webappUrl + "/api/activity-tracker/stats", String.class);
+                if (statsResponse.getBody() != null) {
+                    webappData.put("activityTrackerStats", objectMapper.readValue(statsResponse.getBody(), Object.class));
+                }
+            } catch (Exception e) {
+                log.warn("Failed to fetch webapp activity-tracker stats for diagnostics: {}", e.getMessage());
+                webappData.put("activityTrackerStats", null);
+            }
+            if (webappData.get("serverStatus") == null && webappData.get("activityTrackerStats") == null) {
+                unavailableSources.add("webapp");
+            } else {
+                diagnostics.put("webappData", webappData);
+            }
         }
 
         if (!unavailableSources.isEmpty()) {

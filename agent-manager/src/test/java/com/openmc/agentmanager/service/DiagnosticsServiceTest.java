@@ -248,4 +248,86 @@ class DiagnosticsServiceTest {
         assertTrue(result.contains("unavailableSources"));
         assertTrue(result.contains("server-metrics"));
     }
+
+    @Test
+    @DisplayName("Should not include webappData when webapp is disabled (default)")
+    void shouldNotIncludeWebappDataWhenDisabled() throws Exception {
+        when(minecraftWrapperService.getServerStatus()).thenReturn("{\"running\":true}");
+        when(restTemplate.getForEntity(eq("http://test:8090/api/alerts?limit=10"), eq(String.class)))
+                .thenReturn(new ResponseEntity<>("[]", HttpStatus.OK));
+        when(restTemplate.getForEntity(eq("http://test:8091/api/backups/latest"), eq(String.class)))
+                .thenReturn(new ResponseEntity<>("{\"available\":false}", HttpStatus.OK));
+
+        String result = diagnosticsService.getServerDiagnostics(null);
+
+        assertFalse(result.contains("webappData"));
+    }
+
+    @Test
+    @DisplayName("Should include webappData when webapp is enabled")
+    void shouldIncludeWebappDataWhenEnabled() throws Exception {
+        ReflectionTestUtils.setField(diagnosticsService, "webappEnabled", true);
+        ReflectionTestUtils.setField(diagnosticsService, "webappUrl", "http://test-webapp:8080");
+
+        when(minecraftWrapperService.getServerStatus()).thenReturn("{\"running\":true}");
+        when(restTemplate.getForEntity(eq("http://test:8090/api/alerts?limit=10"), eq(String.class)))
+                .thenReturn(new ResponseEntity<>("[]", HttpStatus.OK));
+        when(restTemplate.getForEntity(eq("http://test:8091/api/backups/latest"), eq(String.class)))
+                .thenReturn(new ResponseEntity<>("{\"available\":false}", HttpStatus.OK));
+        when(restTemplate.getForEntity(eq("http://test-webapp:8080/api/status"), eq(String.class)))
+                .thenReturn(new ResponseEntity<>("{\"online\":true,\"maxPlayers\":20}", HttpStatus.OK));
+        when(restTemplate.getForEntity(eq("http://test-webapp:8080/api/activity-tracker/stats"), eq(String.class)))
+                .thenReturn(new ResponseEntity<>("{\"uniqueLogins\":5,\"totalLogins\":12}", HttpStatus.OK));
+
+        String result = diagnosticsService.getServerDiagnostics(null);
+
+        assertTrue(result.contains("webappData"));
+        assertTrue(result.contains("uniqueLogins"));
+        assertFalse(result.contains("unavailableSources"));
+    }
+
+    @Test
+    @DisplayName("Should add webapp to unavailableSources when both webapp calls fail")
+    void shouldAddWebappToUnavailableSourcesWhenBothCallsFail() throws Exception {
+        ReflectionTestUtils.setField(diagnosticsService, "webappEnabled", true);
+        ReflectionTestUtils.setField(diagnosticsService, "webappUrl", "http://test-webapp:8080");
+
+        when(minecraftWrapperService.getServerStatus()).thenReturn("{\"running\":true}");
+        when(restTemplate.getForEntity(eq("http://test:8090/api/alerts?limit=10"), eq(String.class)))
+                .thenReturn(new ResponseEntity<>("[]", HttpStatus.OK));
+        when(restTemplate.getForEntity(eq("http://test:8091/api/backups/latest"), eq(String.class)))
+                .thenReturn(new ResponseEntity<>("{\"available\":false}", HttpStatus.OK));
+        when(restTemplate.getForEntity(eq("http://test-webapp:8080/api/status"), eq(String.class)))
+                .thenThrow(new RuntimeException("Connection refused"));
+        when(restTemplate.getForEntity(eq("http://test-webapp:8080/api/activity-tracker/stats"), eq(String.class)))
+                .thenThrow(new RuntimeException("Connection refused"));
+
+        String result = diagnosticsService.getServerDiagnostics(null);
+
+        assertTrue(result.contains("unavailableSources"));
+        assertTrue(result.contains("webapp"));
+        assertFalse(result.contains("webappData"));
+    }
+
+    @Test
+    @DisplayName("Should include webappData with partial data when only one webapp endpoint fails")
+    void shouldIncludeWebappDataWhenOnlyOneEndpointFails() throws Exception {
+        ReflectionTestUtils.setField(diagnosticsService, "webappEnabled", true);
+        ReflectionTestUtils.setField(diagnosticsService, "webappUrl", "http://test-webapp:8080");
+
+        when(minecraftWrapperService.getServerStatus()).thenReturn("{\"running\":true}");
+        when(restTemplate.getForEntity(eq("http://test:8090/api/alerts?limit=10"), eq(String.class)))
+                .thenReturn(new ResponseEntity<>("[]", HttpStatus.OK));
+        when(restTemplate.getForEntity(eq("http://test:8091/api/backups/latest"), eq(String.class)))
+                .thenReturn(new ResponseEntity<>("{\"available\":false}", HttpStatus.OK));
+        when(restTemplate.getForEntity(eq("http://test-webapp:8080/api/status"), eq(String.class)))
+                .thenReturn(new ResponseEntity<>("{\"online\":true,\"maxPlayers\":20}", HttpStatus.OK));
+        when(restTemplate.getForEntity(eq("http://test-webapp:8080/api/activity-tracker/stats"), eq(String.class)))
+                .thenThrow(new RuntimeException("Activity Tracker not enabled"));
+
+        String result = diagnosticsService.getServerDiagnostics(null);
+
+        assertTrue(result.contains("webappData"));
+        assertFalse(result.contains("\"webapp\""), "webapp should not be in unavailableSources when status succeeded");
+    }
 }
