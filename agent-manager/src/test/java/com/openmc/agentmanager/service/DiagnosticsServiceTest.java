@@ -151,8 +151,7 @@ class DiagnosticsServiceTest {
     @DisplayName("Should include sanitized serverLogs when logs are enabled")
     void shouldIncludeSanitizedServerLogsWhenEnabled() throws Exception {
         ReflectionTestUtils.setField(diagnosticsService, "logsEnabled", true);
-        ReflectionTestUtils.setField(diagnosticsService, "logsMaxLines", 50);
-        // logsAnonymize defaults to false in the test-constructed service; set it explicitly
+        ReflectionTestUtils.setField(diagnosticsService, "logsMaxLines", 500);
         ReflectionTestUtils.setField(diagnosticsService, "logsAnonymize", true);
 
         when(minecraftWrapperService.getServerStatus()).thenReturn("{\"running\":true}");
@@ -160,7 +159,7 @@ class DiagnosticsServiceTest {
                 .thenReturn(new ResponseEntity<>("[]", HttpStatus.OK));
         when(restTemplate.getForEntity(eq("http://test:8091/api/backups/latest"), eq(String.class)))
                 .thenReturn(new ResponseEntity<>("{\"available\":false}", HttpStatus.OK));
-        when(minecraftWrapperService.getServerLogs(50))
+        when(minecraftWrapperService.getServerLogs(500))
                 .thenReturn("{\"lines\":[\"[INFO]: Steve[/192.168.1.1:12345] logged in\"],\"count\":1}");
 
         String result = diagnosticsService.getServerDiagnostics(null);
@@ -174,7 +173,7 @@ class DiagnosticsServiceTest {
     @DisplayName("Should not redact IPs in serverLogs when anonymization is disabled")
     void shouldNotRedactIpsWhenAnonymizationDisabled() throws Exception {
         ReflectionTestUtils.setField(diagnosticsService, "logsEnabled", true);
-        ReflectionTestUtils.setField(diagnosticsService, "logsMaxLines", 50);
+        ReflectionTestUtils.setField(diagnosticsService, "logsMaxLines", 500);
         ReflectionTestUtils.setField(diagnosticsService, "logsAnonymize", false);
 
         when(minecraftWrapperService.getServerStatus()).thenReturn("{\"running\":true}");
@@ -182,7 +181,7 @@ class DiagnosticsServiceTest {
                 .thenReturn(new ResponseEntity<>("[]", HttpStatus.OK));
         when(restTemplate.getForEntity(eq("http://test:8091/api/backups/latest"), eq(String.class)))
                 .thenReturn(new ResponseEntity<>("{\"available\":false}", HttpStatus.OK));
-        when(minecraftWrapperService.getServerLogs(50))
+        when(minecraftWrapperService.getServerLogs(500))
                 .thenReturn("{\"lines\":[\"[INFO]: Steve[/192.168.1.1:12345] logged in\"],\"count\":1}");
 
         String result = diagnosticsService.getServerDiagnostics(null);
@@ -196,14 +195,14 @@ class DiagnosticsServiceTest {
     @DisplayName("Should add server-logs to unavailableSources when log fetch fails")
     void shouldAddServerLogsToUnavailableSourcesWhenFetchFails() throws Exception {
         ReflectionTestUtils.setField(diagnosticsService, "logsEnabled", true);
-        ReflectionTestUtils.setField(diagnosticsService, "logsMaxLines", 50);
+        ReflectionTestUtils.setField(diagnosticsService, "logsMaxLines", 500);
 
         when(minecraftWrapperService.getServerStatus()).thenReturn("{\"running\":true}");
         when(restTemplate.getForEntity(eq("http://test:8090/api/alerts?limit=10"), eq(String.class)))
                 .thenReturn(new ResponseEntity<>("[]", HttpStatus.OK));
         when(restTemplate.getForEntity(eq("http://test:8091/api/backups/latest"), eq(String.class)))
                 .thenReturn(new ResponseEntity<>("{\"available\":false}", HttpStatus.OK));
-        when(minecraftWrapperService.getServerLogs(50))
+        when(minecraftWrapperService.getServerLogs(500))
                 .thenThrow(new RuntimeException("403 Forbidden"));
 
         String result = diagnosticsService.getServerDiagnostics(null);

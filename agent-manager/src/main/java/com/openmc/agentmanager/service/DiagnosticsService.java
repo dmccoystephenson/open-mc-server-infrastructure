@@ -40,7 +40,7 @@ public class DiagnosticsService {
     @Value("${diagnostics.logs.enabled:false}")
     private boolean logsEnabled;
 
-    @Value("${diagnostics.logs.max-lines:50}")
+    @Value("${diagnostics.logs.max-lines:500}")
     private int logsMaxLines;
 
     @Value("${diagnostics.logs.anonymize:true}")
