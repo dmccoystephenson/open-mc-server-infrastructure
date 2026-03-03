@@ -37,7 +37,8 @@ public class ConfirmationService {
      */
     public record PendingConfirmation(String toolUseId, String toolName, String userMessage,
                                       java.util.List<com.openmc.agentmanager.model.AnthropicResponse.ContentBlock> assistantContent,
-                                      String channelId, String requestingUserId, String discordUsername, Instant createdAt) {
+                                      String channelId, String requestingUserId, String discordUsername,
+                                      java.util.Map<String, Object> toolInput, Instant createdAt) {
     }
 
     private final Map<String, PendingConfirmation> pendingConfirmations = new ConcurrentHashMap<>();
@@ -54,6 +55,10 @@ public class ConfirmationService {
             case "restart_server" -> restartServerRequiresConfirmation;
             case "get_server_status" -> false;
             case "trigger_backup" -> triggerBackupRequiresConfirmation;
+            case "get_server_diagnostics" -> false;
+            case "get_server_metrics" -> false;
+            case "get_activity_tracker_stats" -> false;
+            case "get_activity_tracker_leaderboard" -> false;
             default -> {
                 log.warn("Unknown toolName '{}' passed to requiresConfirmation; defaulting to no confirmation required", toolName);
                 yield false;

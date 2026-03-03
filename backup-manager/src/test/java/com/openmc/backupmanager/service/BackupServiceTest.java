@@ -17,9 +17,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.doNothing;
 
 @SpringBootTest
 @TestPropertySource(properties = {
@@ -135,5 +132,67 @@ class BackupServiceTest {
         assertDoesNotThrow(() -> 
             ReflectionTestUtils.invokeMethod(backupService, "sendAlert", 
                 "Test", "Message", "INFO", false));
+    }
+
+    @Test
+    @DisplayName("getLatestBackupStatus returns null when backup directory does not exist")
+    void shouldReturnNullWhenBackupDirectoryMissing() throws IOException {
+        Path nonExistent = tempDir.resolve("no-such-dir");
+        ReflectionTestUtils.setField(backupService, "backupDirectory", nonExistent.toString());
+
+        assertNull(backupService.getLatestBackupStatus());
+    }
+
+    @Test
+    @DisplayName("getLatestBackupStatus returns null when no backup folders exist")
+    void shouldReturnNullWhenNoBackupFolders() {
+        // tempDir exists but contains no backup-* subdirectories
+        assertNull(backupService.getLatestBackupStatus());
+    }
+
+    @Test
+    @DisplayName("getLatestBackupStatus returns successful status when backup file is present")
+    void shouldReturnSuccessStatusWhenBackupFilePresent() throws IOException {
+        Path backupDir = tempDir.resolve("backup-20240101-020000");
+        Files.createDirectories(backupDir);
+        Files.writeString(backupDir.resolve("mcserver-backup.tar.gz"), "fake-archive");
+
+        BackupService.LatestBackupStatus status = backupService.getLatestBackupStatus();
+
+        assertNotNull(status);
+        assertTrue(status.success());
+        assertEquals(backupDir.toString(), status.backupPath());
+        assertNotNull(status.timestamp());
+    }
+
+    @Test
+    @DisplayName("getLatestBackupStatus returns failed status when backup file is missing")
+    void shouldReturnFailedStatusWhenBackupFileMissing() throws IOException {
+        Path backupDir = tempDir.resolve("backup-20240101-030000");
+        Files.createDirectories(backupDir);
+        // No mcserver-backup.tar.gz
+
+        BackupService.LatestBackupStatus status = backupService.getLatestBackupStatus();
+
+        assertNotNull(status);
+        assertFalse(status.success());
+        assertNull(status.backupPath());
+    }
+
+    @Test
+    @DisplayName("getLatestBackupStatus picks the newest backup folder")
+    void shouldPickNewestBackupFolder() throws IOException {
+        Path older = tempDir.resolve("backup-20240101-020000");
+        Path newer = tempDir.resolve("backup-20240102-020000");
+        Files.createDirectories(older);
+        Files.createDirectories(newer);
+        Files.writeString(older.resolve("mcserver-backup.tar.gz"), "old-archive");
+        Files.writeString(newer.resolve("mcserver-backup.tar.gz"), "new-archive");
+
+        BackupService.LatestBackupStatus status = backupService.getLatestBackupStatus();
+
+        assertNotNull(status);
+        assertTrue(status.success());
+        assertEquals(newer.toString(), status.backupPath());
     }
 }

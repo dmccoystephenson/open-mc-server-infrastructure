@@ -8,6 +8,8 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.Map;
+
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
@@ -20,6 +22,9 @@ class ToolExecutionServiceTest {
 
     @Mock
     private BackupManagerService backupManagerService;
+
+    @Mock
+    private DiagnosticsService diagnosticsService;
 
     @InjectMocks
     private ToolExecutionService toolExecutionService;
@@ -130,5 +135,98 @@ class ToolExecutionServiceTest {
         assertFalse(toolExecutionService.isRecognizedTool("unknown_tool"));
         assertFalse(toolExecutionService.isRecognizedTool(""));
         assertFalse(toolExecutionService.isRecognizedTool(null));
+    }
+
+    @Test
+    @DisplayName("Should execute get_server_metrics tool successfully")
+    void shouldExecuteGetServerMetricsTool() {
+        String metricsJson = "{\"wrapperHeapUsedMb\":256,\"wrapperHeapMaxMb\":512,\"wrapperHeapUsedPercent\":50.0}";
+        when(minecraftWrapperService.getServerMetrics()).thenReturn(metricsJson);
+
+        ToolResult result = toolExecutionService.executeTool("tool-8", "get_server_metrics");
+
+        assertTrue(result.isSuccess());
+        assertEquals(metricsJson, result.getMessage());
+        assertEquals("get_server_metrics", result.getToolName());
+        verify(minecraftWrapperService).getServerMetrics();
+    }
+
+    @Test
+    @DisplayName("Should execute get_activity_tracker_stats tool successfully")
+    void shouldExecuteGetActivityTrackerStatsTool() {
+        String statsJson = "{\"uniqueLogins\":42,\"totalLogins\":120}";
+        when(diagnosticsService.getActivityTrackerStats()).thenReturn(statsJson);
+
+        ToolResult result = toolExecutionService.executeTool("tool-9", "get_activity_tracker_stats");
+
+        assertTrue(result.isSuccess());
+        assertEquals(statsJson, result.getMessage());
+        assertEquals("get_activity_tracker_stats", result.getToolName());
+        verify(diagnosticsService).getActivityTrackerStats();
+    }
+
+    @Test
+    @DisplayName("Should execute get_activity_tracker_leaderboard tool successfully")
+    void shouldExecuteGetActivityTrackerLeaderboardTool() {
+        String leaderboardJson = "[{\"playerName\":\"Steve\",\"hoursPlayed\":42.5,\"totalLogins\":30}]";
+        when(diagnosticsService.getActivityTrackerLeaderboard()).thenReturn(leaderboardJson);
+
+        ToolResult result = toolExecutionService.executeTool("tool-10", "get_activity_tracker_leaderboard");
+
+        assertTrue(result.isSuccess());
+        assertEquals(leaderboardJson, result.getMessage());
+        assertEquals("get_activity_tracker_leaderboard", result.getToolName());
+        verify(diagnosticsService).getActivityTrackerLeaderboard();
+    }
+
+    @Test
+    @DisplayName("Should recognize get_server_metrics as valid tool")
+    void shouldRecognizeGetServerMetricsAsValidTool() {
+        assertTrue(toolExecutionService.isRecognizedTool("get_server_metrics"));
+    }
+
+    @Test
+    @DisplayName("Should recognize get_activity_tracker_stats as valid tool")
+    void shouldRecognizeGetActivityTrackerStatsAsValidTool() {
+        assertTrue(toolExecutionService.isRecognizedTool("get_activity_tracker_stats"));
+    }
+
+    @Test
+    @DisplayName("Should recognize get_activity_tracker_leaderboard as valid tool")
+    void shouldRecognizeGetActivityTrackerLeaderboardAsValidTool() {
+        assertTrue(toolExecutionService.isRecognizedTool("get_activity_tracker_leaderboard"));
+    }
+
+    @Test
+    @DisplayName("Should execute get_server_diagnostics tool successfully")
+    void shouldExecuteGetServerDiagnosticsTool() {
+        String diagnosticsJson = "{\"serverStatus\":{\"running\":true},\"recentAlerts\":[],\"latestBackup\":{\"available\":false}}";
+        when(diagnosticsService.getServerDiagnostics(null)).thenReturn(diagnosticsJson);
+
+        ToolResult result = toolExecutionService.executeTool("tool-6", "get_server_diagnostics");
+
+        assertTrue(result.isSuccess());
+        assertEquals(diagnosticsJson, result.getMessage());
+        assertEquals("get_server_diagnostics", result.getToolName());
+        verify(diagnosticsService).getServerDiagnostics(null);
+    }
+
+    @Test
+    @DisplayName("Should pass limit input to diagnostics service")
+    void shouldPassLimitInputToDiagnosticsService() {
+        String diagnosticsJson = "{\"serverStatus\":{\"running\":true},\"recentAlerts\":[]}";
+        when(diagnosticsService.getServerDiagnostics(5)).thenReturn(diagnosticsJson);
+
+        ToolResult result = toolExecutionService.executeTool("tool-7", "get_server_diagnostics",
+                Map.of("limit", 5));
+
+        assertTrue(result.isSuccess());
+        verify(diagnosticsService).getServerDiagnostics(5);
+    }
+
+    @Test
+    @DisplayName("Should recognize get_server_diagnostics as valid tool")
+    void shouldRecognizeGetServerDiagnosticsAsValidTool() {
+        assertTrue(toolExecutionService.isRecognizedTool("get_server_diagnostics"));
     }
 }

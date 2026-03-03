@@ -99,9 +99,87 @@ public class ToolDefinition {
     }
 
     /**
+     * Creates the get_server_metrics tool definition.
+     */
+    public static ToolDefinition getServerMetrics() {
+        return ToolDefinition.builder()
+                .name("get_server_metrics")
+                .description("Gets live server performance metrics from the Minecraft wrapper: JVM heap usage " +
+                        "(used/max MB and percentage), TPS from the last 1m/5m/15m (Paper/Spigot only), " +
+                        "server process RSS memory, and server uptime in seconds. " +
+                        "Use this when the user asks specifically about lag, TPS, or memory usage.")
+                .inputSchema(Map.of(
+                        "type", "object",
+                        "properties", Map.of(),
+                        "required", List.of()
+                ))
+                .build();
+    }
+
+    /**
+     * Creates the get_activity_tracker_stats tool definition.
+     */
+    public static ToolDefinition getActivityTrackerStats() {
+        return ToolDefinition.builder()
+                .name("get_activity_tracker_stats")
+                .description("Fetches aggregate player activity statistics from the webapp: total and unique " +
+                        "login counts. Use this when the user asks about overall player activity figures.")
+                .inputSchema(Map.of(
+                        "type", "object",
+                        "properties", Map.of(),
+                        "required", List.of()
+                ))
+                .build();
+    }
+
+    /**
+     * Creates the get_activity_tracker_leaderboard tool definition.
+     */
+    public static ToolDefinition getActivityTrackerLeaderboard() {
+        return ToolDefinition.builder()
+                .name("get_activity_tracker_leaderboard")
+                .description("Fetches the ranked player leaderboard from the webapp's Activity Tracker. " +
+                        "Returns a list of players sorted by play time, each with player name, hours played, " +
+                        "and total login count. Use this when the user asks who has played the most, " +
+                        "requests a leaderboard, or wants to know top players by activity.")
+                .inputSchema(Map.of(
+                        "type", "object",
+                        "properties", Map.of(),
+                        "required", List.of()
+                ))
+                .build();
+    }
+
+    /**
+     * Creates the get_server_diagnostics tool definition.
+     */
+    public static ToolDefinition getServerDiagnostics() {
+        return ToolDefinition.builder()
+                .name("get_server_diagnostics")
+                .description("Gathers diagnostic context from multiple sources (server status, recent alerts, " +
+                        "latest backup, server performance metrics including JVM heap usage and TPS, " +
+                        "and optionally recent server logs) and returns a structured JSON summary. " +
+                        "Use this instead of get_server_status when the user asks an open-ended health question such as " +
+                        "'is the server okay?', 'why is it lagging?', or 'what happened while I was offline?'. " +
+                        "Always read-only — never requires confirmation.")
+                .inputSchema(Map.of(
+                        "type", "object",
+                        "properties", Map.of(
+                                "limit", Map.of(
+                                        "type", "integer",
+                                        "description", "Maximum number of recent alerts to include (default: 10, max: 100)."
+                                )
+                        ),
+                        "required", List.of()
+                ))
+                .build();
+    }
+
+    /**
      * Returns all available tool definitions.
      */
     public static List<ToolDefinition> allTools() {
-        return List.of(startServer(), stopServer(), restartServer(), getServerStatus(), triggerBackup());
+        return List.of(startServer(), stopServer(), restartServer(), getServerStatus(), triggerBackup(),
+                getServerMetrics(), getActivityTrackerStats(), getActivityTrackerLeaderboard(), getServerDiagnostics());
     }
 }

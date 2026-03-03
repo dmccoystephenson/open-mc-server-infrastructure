@@ -228,6 +228,22 @@ See [alert-manager/README.md](alert-manager/README.md) for detailed configuratio
 
 See [agent-manager/README.md](agent-manager/README.md) for detailed configuration, Discord bot setup, and usage examples.
 
+#### AI Diagnostic Feature
+
+The agent uses the `get_server_diagnostics` tool to answer open-ended health questions by
+gathering context from multiple sources in a single pass — server status, recent alerts, the
+latest backup result, live server performance metrics (e.g. JVM heap usage and TPS), and,
+when enabled, recent **sanitized** log snippets controlled via the `diagnostics.logs.*`
+configuration toggles — then synthesising a natural language summary.
+
+**Example interaction:**
+
+> **User:** What happened while I was offline? Is everything okay?
+
+> **Agent:** The server has been running for 6 hours with 3 players online. There was a crash alert at 2:14 AM, after which the server restarted automatically. The last backup completed successfully at 2:00 AM, just before the crash. Current performance metrics (TPS and heap usage) look healthy. If sanitized diagnostic logs are enabled via `diagnostics.logs.*`, I can also summarise any recent errors around 2:14 AM; otherwise, you may want to review the server logs directly to understand the crash cause.
+
+This differs from a simple `/status` command because the agent **reasons** over the combined data rather than just returning a single API response. If any upstream source is unavailable the agent acknowledges the gap explicitly (e.g. "I wasn't able to reach the backup manager, but based on server status and recent alerts…"). Operators can control whether recent logs are included in diagnostics (and how they are anonymised) using the `diagnostics.logs.*` privacy toggles.
+
 **Running Parallel Development Servers**: To run multiple servers simultaneously (e.g., for testing different configurations), create separate `.env` files with different values for these settings and use `docker compose --env-file <env-file>` to start each server.
 
 Example for a second server: Create a separate `.env` file with different values for `CONTAINER_NAME`, `HOST_PORT`, `HOST_RCON_PORT`, `HOST_BLUEMAP_PORT`, `VOLUME_NAME`, `WEB_CONTAINER_NAME`, `NGINX_CONTAINER_NAME`, `BACKUP_CONTAINER_NAME`, `ALERT_CONTAINER_NAME`, `ALERT_PORT`, `WEB_HTTP_PORT`, and `WEB_HTTPS_PORT`, then start with `docker compose --env-file .env.dev2 up -d --build`.
