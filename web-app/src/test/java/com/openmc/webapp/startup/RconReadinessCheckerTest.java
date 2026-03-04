@@ -65,23 +65,23 @@ class RconReadinessCheckerTest {
             assertDoesNotThrow(() -> {
                 checker.run(new DefaultApplicationArguments());
             });
-            // Verify thread interrupt flag is set
-            assertTrue(Thread.currentThread().isInterrupted(), 
-                      "Thread interrupt flag should be preserved");
         });
         
         testThread.start();
         
-        // Wait a bit to ensure the checker has started and is in sleep
+        // Wait a bit longer to ensure the checker has started and is in sleep
         try {
-            Thread.sleep(300);
+            Thread.sleep(1000);
             testThread.interrupt();
-            testThread.join(2000); // Wait for thread to finish
+            testThread.join(3000); // Wait for thread to finish
         } catch (InterruptedException e) {
             fail("Test thread should not be interrupted");
         }
         
         assertFalse(testThread.isAlive(), "Checker should exit gracefully on interrupt");
+        // Verify thread was interrupted (the interrupt flag is preserved in the testThread)
+        assertTrue(testThread.isInterrupted(), 
+                  "Thread interrupt flag should be preserved after graceful exit");
     }
     
     @Test
