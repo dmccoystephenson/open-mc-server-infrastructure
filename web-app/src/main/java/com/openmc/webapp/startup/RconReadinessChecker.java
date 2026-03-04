@@ -28,22 +28,25 @@ public class RconReadinessChecker implements ApplicationRunner {
     private final int initialDelayMs;
     private final int maxDelayMs;
     private final double backoffMultiplier;
+    private final int connectTimeoutMs;
     
     public RconReadinessChecker(
             ServerConfig serverConfig,
             @Value("${minecraft.server.readiness.max-retries:30}") int maxRetries,
             @Value("${minecraft.server.readiness.initial-delay-ms:1000}") int initialDelayMs,
             @Value("${minecraft.server.readiness.max-delay-ms:10000}") int maxDelayMs,
-            @Value("${minecraft.server.readiness.backoff-multiplier:1.5}") double backoffMultiplier) {
+            @Value("${minecraft.server.readiness.backoff-multiplier:1.5}") double backoffMultiplier,
+            @Value("${minecraft.server.readiness.connect-timeout-ms:3000}") int connectTimeoutMs) {
         this.serverConfig = serverConfig;
         this.maxRetries = maxRetries;
         this.initialDelayMs = initialDelayMs;
         this.maxDelayMs = maxDelayMs;
         this.backoffMultiplier = backoffMultiplier;
+        this.connectTimeoutMs = connectTimeoutMs;
     }
     
     @Override
-    public void run(ApplicationArguments args) throws Exception {
+    public void run(ApplicationArguments args) {
         logger.info("Waiting for Minecraft server RCON to become available at {}:{}...", 
                     serverConfig.getHost(), serverConfig.getRconPort());
         
@@ -58,7 +61,8 @@ public class RconReadinessChecker implements ApplicationRunner {
                 try (RconClient rcon = new RconClient(
                         serverConfig.getHost(), 
                         serverConfig.getRconPort(), 
-                        serverConfig.getRconPassword())) {
+                        serverConfig.getRconPassword(),
+                        connectTimeoutMs)) {
                     // Use a lightweight command that doesn't expose player data
                     String response = rcon.sendCommand("seed");
                     
@@ -66,9 +70,11 @@ public class RconReadinessChecker implements ApplicationRunner {
                     logger.info("Minecraft server RCON is ready! (attempt {}/{})", attempt, maxRetries);
                     return;
                 }
-            } catch (IOException e) {
-                logger.debug("RCON connection attempt {}/{} failed: {}", 
-                            attempt, maxRetries, e.getMessage());
+            } catch (Exception e) {
+                // Catch all exceptions (IOException, IllegalArgumentException, RuntimeException, etc.)
+                // to prevent any failure from blocking webapp startup
+                logger.debug("RCON connection attempt {}/{} failed: {} - {}", 
+                            attempt, maxRetries, e.getClass().getSimpleName(), e.getMessage());
                 
                 if (attempt >= maxRetries) {
                     logger.error("Failed to connect to Minecraft server RCON after {} attempts. " +
@@ -81,7 +87,13 @@ public class RconReadinessChecker implements ApplicationRunner {
                 
                 // Wait before retrying with exponential backoff
                 logger.info("Waiting {}ms before retry {}/{}...", delayMs, attempt + 1, maxRetries);
-                Thread.sleep(delayMs);
+                try {
+                    Thread.sleep(delayMs);
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    logger.warn("RCON readiness check interrupted; continuing application startup.");
+                    return;
+                }
                 
                 // Increase delay with exponential backoff, capped at maxDelayMs
                 delayMs = Math.min((int)(delayMs * backoffMultiplier), maxDelayMs);

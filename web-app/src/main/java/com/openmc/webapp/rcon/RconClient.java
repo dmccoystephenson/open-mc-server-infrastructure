@@ -1,6 +1,7 @@
 package com.openmc.webapp.rcon;
 
 import java.io.*;
+import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -12,6 +13,7 @@ public class RconClient implements AutoCloseable {
     private static final int SERVERDATA_AUTH_RESPONSE = 2;
     private static final int SERVERDATA_EXECCOMMAND = 2;
     private static final int SERVERDATA_RESPONSE_VALUE = 0;
+    private static final int DEFAULT_CONNECT_TIMEOUT_MS = 5000;
     
     private final Socket socket;
     private final DataOutputStream out;
@@ -19,7 +21,12 @@ public class RconClient implements AutoCloseable {
     private int requestId = 0;
     
     public RconClient(String host, int port, String password) throws IOException {
-        socket = new Socket(host, port);
+        this(host, port, password, DEFAULT_CONNECT_TIMEOUT_MS);
+    }
+    
+    public RconClient(String host, int port, String password, int connectTimeoutMs) throws IOException {
+        socket = new Socket();
+        socket.connect(new InetSocketAddress(host, port), connectTimeoutMs);
         socket.setSoTimeout(5000);
         out = new DataOutputStream(socket.getOutputStream());
         in = new DataInputStream(socket.getInputStream());

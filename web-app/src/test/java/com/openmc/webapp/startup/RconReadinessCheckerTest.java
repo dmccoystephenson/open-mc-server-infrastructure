@@ -20,8 +20,8 @@ class RconReadinessCheckerTest {
         serverConfig.setHost("localhost");
         serverConfig.setRconPort(25575);
         serverConfig.setRconPassword("test");
-        // Use minimal retries for faster tests
-        readinessChecker = new RconReadinessChecker(serverConfig, 2, 100, 500, 1.5);
+        // Use minimal retries and fast timeouts for faster tests
+        readinessChecker = new RconReadinessChecker(serverConfig, 2, 100, 500, 1.5, 500);
     }
     
     @Test
@@ -29,6 +29,9 @@ class RconReadinessCheckerTest {
     void shouldNotThrowExceptionWhenRconUnavailable() {
         // This test verifies that the readiness checker doesn't prevent startup
         // even when RCON is unavailable - it should just log and continue
+        // Use a port that's likely to be closed/unused
+        serverConfig.setRconPort(54321);
+        
         assertDoesNotThrow(() -> {
             readinessChecker.run(new DefaultApplicationArguments());
         });
@@ -38,14 +41,61 @@ class RconReadinessCheckerTest {
     @DisplayName("Should handle invalid server configuration gracefully")
     void shouldHandleInvalidConfigurationGracefully() {
         ServerConfig invalidConfig = new ServerConfig();
-        invalidConfig.setHost("invalid-host-that-does-not-exist");
-        invalidConfig.setRconPort(25575); // Use valid port number
+        // Use localhost with a closed port for deterministic failure
+        invalidConfig.setHost("localhost");
+        invalidConfig.setRconPort(54322);
         invalidConfig.setRconPassword("test");
         
-        // Use minimal retries for faster tests
-        RconReadinessChecker checker = new RconReadinessChecker(invalidConfig, 2, 100, 500, 1.5);
+        // Use minimal retries and fast timeouts for faster tests
+        RconReadinessChecker checker = new RconReadinessChecker(invalidConfig, 2, 100, 500, 1.5, 500);
         
         // Should not throw exception even with invalid config
+        assertDoesNotThrow(() -> {
+            checker.run(new DefaultApplicationArguments());
+        });
+    }
+    
+    @Test
+    @DisplayName("Should handle interrupted exception gracefully")
+    void shouldHandleInterruptedExceptionGracefully() {
+        // Set a longer initial delay to ensure we can interrupt during sleep
+        RconReadinessChecker checker = new RconReadinessChecker(serverConfig, 5, 2000, 5000, 1.5, 500);
+        
+        Thread testThread = new Thread(() -> {
+            assertDoesNotThrow(() -> {
+                checker.run(new DefaultApplicationArguments());
+            });
+            // Verify thread interrupt flag is set
+            assertTrue(Thread.currentThread().isInterrupted(), 
+                      "Thread interrupt flag should be preserved");
+        });
+        
+        testThread.start();
+        
+        // Wait a bit to ensure the checker has started and is in sleep
+        try {
+            Thread.sleep(300);
+            testThread.interrupt();
+            testThread.join(2000); // Wait for thread to finish
+        } catch (InterruptedException e) {
+            fail("Test thread should not be interrupted");
+        }
+        
+        assertFalse(testThread.isAlive(), "Checker should exit gracefully on interrupt");
+    }
+    
+    @Test
+    @DisplayName("Should handle exceptions other than IOException")
+    void shouldHandleNonIOExceptions() {
+        ServerConfig badConfig = new ServerConfig();
+        // Use an invalid host format to potentially trigger other exceptions
+        badConfig.setHost("");
+        badConfig.setRconPort(25575);
+        badConfig.setRconPassword("test");
+        
+        RconReadinessChecker checker = new RconReadinessChecker(badConfig, 2, 100, 500, 1.5, 500);
+        
+        // Should not throw any exception, even non-IOException types
         assertDoesNotThrow(() -> {
             checker.run(new DefaultApplicationArguments());
         });
