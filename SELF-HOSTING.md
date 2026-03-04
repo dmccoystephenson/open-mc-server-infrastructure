@@ -171,7 +171,7 @@ sudo apt-get install certbot
 
 Obtain a certificate (requires domain name):
 
-> **Note**: The `--standalone` challenge requires port 80 to be publicly accessible on your domain. Temporarily forward port 80 from your router to your server, or use a DNS-01 challenge (`--preferred-challenges dns`) if port 80 is unavailable.
+> **Note**: The `--standalone` challenge binds to port 80 on your machine and requires port 80 to be publicly accessible. Before running certbot, temporarily allow port 80 in your firewall (e.g., `sudo ufw allow 80/tcp`) and forward external port 80 from your router to your server. After obtaining the certificate, you can remove the port 80 rule and forwarding. If you cannot expose port 80, use the DNS-01 challenge instead (`--preferred-challenges dns`).
 
 ```bash
 sudo certbot certonly --standalone -d yourdomain.com
@@ -208,12 +208,6 @@ services:
   mcserver:
     cap_drop:
       - ALL
-    cap_add:
-      - NET_BIND_SERVICE
-      - CHOWN
-      - SETUID
-      - SETGID
-      - FOWNER
     security_opt:
       - no-new-privileges:true
     cpus: '4'
@@ -222,11 +216,6 @@ services:
   webapp:
     cap_drop:
       - ALL
-    cap_add:
-      - NET_BIND_SERVICE
-      - CHOWN
-      - SETUID
-      - SETGID
     security_opt:
       - no-new-privileges:true
     cpus: '2'
@@ -236,7 +225,7 @@ services:
     cap_drop:
       - ALL
     cap_add:
-      - NET_BIND_SERVICE
+      - NET_BIND_SERVICE  # Required for nginx to bind to ports 80/443
       - CHOWN
       - SETUID
       - SETGID
@@ -357,8 +346,8 @@ sudo iptables -A INPUT -i lo -j ACCEPT
 sudo iptables -A INPUT -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
 
 # Allow SSH with rate limiting (change port 22 if using a custom SSH port)
-sudo iptables -A INPUT -p tcp --dport 22 -m conntrack --ctstate NEW -m recent --set
-sudo iptables -A INPUT -p tcp --dport 22 -m conntrack --ctstate NEW -m recent --update --seconds 60 --hitcount 5 -j DROP
+sudo iptables -A INPUT -p tcp --dport 22 -m conntrack --ctstate NEW -m recent --name SSH --set
+sudo iptables -A INPUT -p tcp --dport 22 -m conntrack --ctstate NEW -m recent --name SSH --update --seconds 60 --hitcount 5 -j DROP
 sudo iptables -A INPUT -p tcp --dport 22 -j ACCEPT
 
 # Allow Minecraft
@@ -397,12 +386,12 @@ Limit connection attempts to prevent SYN flood attacks:
 
 ```bash
 # Limit Minecraft connections (max 10 per minute from same IP)
-sudo iptables -A INPUT -p tcp --dport 25565 -m conntrack --ctstate NEW -m recent --set
-sudo iptables -A INPUT -p tcp --dport 25565 -m conntrack --ctstate NEW -m recent --update --seconds 60 --hitcount 10 -j DROP
+sudo iptables -A INPUT -p tcp --dport 25565 -m conntrack --ctstate NEW -m recent --name MC --set
+sudo iptables -A INPUT -p tcp --dport 25565 -m conntrack --ctstate NEW -m recent --name MC --update --seconds 60 --hitcount 10 -j DROP
 
 # Limit web dashboard connections
-sudo iptables -A INPUT -p tcp --dport 8443 -m conntrack --ctstate NEW -m recent --set
-sudo iptables -A INPUT -p tcp --dport 8443 -m conntrack --ctstate NEW -m recent --update --seconds 60 --hitcount 20 -j DROP
+sudo iptables -A INPUT -p tcp --dport 8443 -m conntrack --ctstate NEW -m recent --name WEB --set
+sudo iptables -A INPUT -p tcp --dport 8443 -m conntrack --ctstate NEW -m recent --name WEB --update --seconds 60 --hitcount 20 -j DROP
 
 # Save rules
 sudo netfilter-persistent save
@@ -880,10 +869,14 @@ services:
 # Install iptables
 apk add --no-cache iptables
 
-# Allow all rules first so existing connections aren't dropped
+# Set policies to ACCEPT first so existing connections aren't dropped during setup
 iptables -P INPUT ACCEPT
 iptables -P FORWARD ACCEPT
 iptables -P OUTPUT ACCEPT
+
+# Flush existing rules to ensure idempotent behaviour on container restart
+iptables -F
+iptables -X
 
 # Allow loopback
 iptables -A INPUT -i lo -j ACCEPT
@@ -892,18 +885,18 @@ iptables -A INPUT -i lo -j ACCEPT
 iptables -A INPUT -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
 
 # Allow SSH with rate limiting (adjust port if using a custom SSH port)
-iptables -A INPUT -p tcp --dport 22 -m conntrack --ctstate NEW -m recent --set
-iptables -A INPUT -p tcp --dport 22 -m conntrack --ctstate NEW -m recent --update --seconds 60 --hitcount 5 -j DROP
+iptables -A INPUT -p tcp --dport 22 -m conntrack --ctstate NEW -m recent --name SSH --set
+iptables -A INPUT -p tcp --dport 22 -m conntrack --ctstate NEW -m recent --name SSH --update --seconds 60 --hitcount 5 -j DROP
 iptables -A INPUT -p tcp --dport 22 -j ACCEPT
 
 # Rate limiting for Minecraft
-iptables -A INPUT -p tcp --dport 25565 -m conntrack --ctstate NEW -m recent --set
-iptables -A INPUT -p tcp --dport 25565 -m conntrack --ctstate NEW -m recent --update --seconds 60 --hitcount 10 -j DROP
+iptables -A INPUT -p tcp --dport 25565 -m conntrack --ctstate NEW -m recent --name MC --set
+iptables -A INPUT -p tcp --dport 25565 -m conntrack --ctstate NEW -m recent --name MC --update --seconds 60 --hitcount 10 -j DROP
 iptables -A INPUT -p tcp --dport 25565 -j ACCEPT
 
 # Rate limiting for web dashboard
-iptables -A INPUT -p tcp --dport 8443 -m conntrack --ctstate NEW -m recent --set
-iptables -A INPUT -p tcp --dport 8443 -m conntrack --ctstate NEW -m recent --update --seconds 60 --hitcount 20 -j DROP
+iptables -A INPUT -p tcp --dport 8443 -m conntrack --ctstate NEW -m recent --name WEB --set
+iptables -A INPUT -p tcp --dport 8443 -m conntrack --ctstate NEW -m recent --name WEB --update --seconds 60 --hitcount 20 -j DROP
 iptables -A INPUT -p tcp --dport 8443 -j ACCEPT
 
 # Allow HTTP redirect
