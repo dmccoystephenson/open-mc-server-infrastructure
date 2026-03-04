@@ -217,7 +217,7 @@ services:
     security_opt:
       - no-new-privileges:true
     cpus: '4'
-    mem_limit: 8g
+    mem_limit: 8G
 
   webapp:
     cap_drop:
@@ -230,7 +230,7 @@ services:
     security_opt:
       - no-new-privileges:true
     cpus: '2'
-    mem_limit: 2g
+    mem_limit: 2G
 
   nginx:
     cap_drop:
@@ -243,7 +243,7 @@ services:
     security_opt:
       - no-new-privileges:true
     cpus: '1'
-    mem_limit: 512m
+    mem_limit: 512M
 ```
 
 **Note**: These settings do not require Docker's privileged mode. They use standard Docker security hardening features. The `cpus` and `mem_limit` keys are the Compose-native way to set resource limits (supported in regular `docker compose up`, unlike `deploy.resources` which only applies in Swarm mode). Adjust the limits based on your server hardware.
