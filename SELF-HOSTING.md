@@ -70,7 +70,9 @@ network:
       dhcp4: no
       addresses:
         - 192.168.1.100/24
-      gateway4: 192.168.1.1
+      routes:
+        - to: default
+          via: 192.168.1.1
       nameservers:
         addresses: [8.8.8.8, 8.8.4.4]
 ```
@@ -187,40 +189,73 @@ Set up automatic renewal:
 sudo certbot renew --dry-run
 ```
 
-### 4. Use Enhanced Security Docker Compose Configuration
+### 4. Harden Docker Container Security
 
-This repository includes an optional security overlay that adds container-level security enhancements:
+For stronger container isolation, you can manually add security options to your `docker compose` command or a local `compose.override.yml`. Docker provides several hardening flags:
 
-```bash
-# Start with enhanced security
-docker compose -f compose.yml -f compose.security.yml up -d
+- **Drop unnecessary capabilities**: Prevents processes from gaining extra OS-level privileges.
+- **Prevent privilege escalation**: The `no-new-privileges` security option stops containerized processes from gaining new privileges via `setuid` or file capabilities.
+- **Set resource limits**: Prevents any one container from exhausting system resources (potential DoS vector).
+
+Example snippet you can add as a `compose.override.yml` in your project root:
+
+```yaml
+# compose.override.yml - applies automatically when running 'docker compose up'
+# Adjust CPU/memory limits to match your hardware
+services:
+  mcserver:
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+      - CHOWN
+      - SETUID
+      - SETGID
+      - FOWNER
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          cpus: '4'
+          memory: 8G
+
+  webapp:
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+      - CHOWN
+      - SETUID
+      - SETGID
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+
+  nginx:
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+      - CHOWN
+      - SETUID
+      - SETGID
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
 ```
 
-The `compose.security.yml` file provides:
-- **Capability restrictions**: Drops unnecessary Linux capabilities
-- **Resource limits**: Prevents resource exhaustion attacks
-- **Security options**: Enables `no-new-privileges` to prevent privilege escalation
+**Note**: These settings do not require Docker's privileged mode. They use standard Docker security hardening features. Adjust the CPU and memory limits based on your server hardware.
 
-These settings follow Docker security best practices and are recommended for production deployments.
-
-### 5. Use the Firewall Configuration Helper
-
-For easy firewall setup, use the included helper script:
-
-```bash
-# Run with sudo/root privileges
-sudo ./scripts/configure-firewall.sh
-```
-
-This interactive script will:
-- Detect your firewall system (UFW or iptables)
-- Configure rules for required ports
-- Add rate limiting to prevent abuse
-- Backup existing firewall rules
-
-See the [Firewall Configuration](#firewall-configuration) section for manual setup options.
-
-### 6. Regular Updates
+### 5. Regular Updates
 
 Keep your system and Docker images updated:
 
@@ -233,7 +268,7 @@ docker compose pull
 ./up.sh
 ```
 
-### 7. Backup Regularly
+### 6. Backup Regularly
 
 Use the automated backup script:
 
@@ -244,7 +279,7 @@ Use the automated backup script:
 
 Store backups in multiple locations (external drive, cloud storage, etc.).
 
-### 8. Limit RCON Access
+### 7. Limit RCON Access
 
 NEVER expose RCON (port 25575) to the public internet. If you need remote administration:
 
@@ -310,15 +345,16 @@ sudo ufw status verbose
 For more granular control, use iptables directly:
 
 ```bash
-# Save current rules
-sudo iptables-save > /tmp/iptables-backup.rules
+# Save current rules first as a safety backup
+sudo iptables-save > /var/backups/iptables-backup-$(date +%Y%m%d).rules
 
 # Flush existing rules
 sudo iptables -F
 
-# Set default policies
-sudo iptables -P INPUT DROP
-sudo iptables -P FORWARD DROP
+# Set default policies to ACCEPT while configuring rules
+# (prevents accidental lockout during setup)
+sudo iptables -P INPUT ACCEPT
+sudo iptables -P FORWARD ACCEPT
 sudo iptables -P OUTPUT ACCEPT
 
 # Allow loopback
@@ -327,7 +363,9 @@ sudo iptables -A INPUT -i lo -j ACCEPT
 # Allow established connections
 sudo iptables -A INPUT -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
 
-# Allow SSH (change port if needed)
+# Allow SSH with rate limiting (change port 22 if using a custom SSH port)
+sudo iptables -A INPUT -p tcp --dport 22 -m conntrack --ctstate NEW -m recent --set
+sudo iptables -A INPUT -p tcp --dport 22 -m conntrack --ctstate NEW -m recent --update --seconds 60 --hitcount 5 -j DROP
 sudo iptables -A INPUT -p tcp --dport 22 -j ACCEPT
 
 # Allow Minecraft
@@ -336,8 +374,12 @@ sudo iptables -A INPUT -p tcp --dport 25565 -j ACCEPT
 # Allow Web Dashboard HTTPS
 sudo iptables -A INPUT -p tcp --dport 8443 -j ACCEPT
 
-# Save rules
-sudo apt-get install iptables-persistent
+# Set default DROP policies only after all ACCEPT rules are in place
+sudo iptables -P INPUT DROP
+sudo iptables -P FORWARD DROP
+
+# Save rules to persist across reboots
+sudo apt-get install -y iptables-persistent
 sudo netfilter-persistent save
 ```
 
@@ -397,6 +439,8 @@ Create a jail: `/etc/fail2ban/jail.local`
 enabled = true
 port = 25565
 filter = minecraft
+# Adjust the logpath to match your VOLUME_NAME setting (default: mcserver)
+# Run 'docker volume inspect mcserver' to find the exact mount point
 logpath = /var/lib/docker/volumes/mcserver/_data/logs/latest.log
 maxretry = 5
 bantime = 3600
@@ -577,7 +621,7 @@ sudo journalctl -f
 
 ### 3. Automated Health Checks
 
-Create a health check script: `/home/runner/scripts/health-check.sh`
+Create a health check script at `$HOME/scripts/health-check.sh`:
 
 ```bash
 #!/bin/bash
@@ -605,7 +649,7 @@ Schedule with cron:
 
 ```bash
 crontab -e
-# Add: */15 * * * * /home/runner/scripts/health-check.sh
+# Add: */15 * * * * $HOME/scripts/health-check.sh
 ```
 
 ### 4. Regular Maintenance Tasks
@@ -805,7 +849,9 @@ pfSense is similar to OPNsense with a slightly different interface:
 
 ### Docker-Based Alternative: Containerized Firewall
 
-For a lighter approach, add a containerized firewall to your compose.yml:
+For a lighter approach, you can add a containerized firewall service to your `docker compose` configuration. Create a `firewall-rules.sh` script and a new service entry:
+
+**firewall service (add to your compose file):**
 
 ```yaml
 services:
@@ -820,7 +866,7 @@ services:
     command: /bin/sh /firewall-rules.sh
 ```
 
-Create `firewall-rules.sh`:
+**firewall-rules.sh:**
 
 ```bash
 #!/bin/sh
@@ -828,9 +874,9 @@ Create `firewall-rules.sh`:
 # Install iptables
 apk add --no-cache iptables
 
-# Set default policies
-iptables -P INPUT DROP
-iptables -P FORWARD DROP
+# Allow all rules first so existing connections aren't dropped
+iptables -P INPUT ACCEPT
+iptables -P FORWARD ACCEPT
 iptables -P OUTPUT ACCEPT
 
 # Allow loopback
@@ -838,6 +884,11 @@ iptables -A INPUT -i lo -j ACCEPT
 
 # Allow established connections
 iptables -A INPUT -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
+
+# Allow SSH with rate limiting (adjust port if using a custom SSH port)
+iptables -A INPUT -p tcp --dport 22 -m conntrack --ctstate NEW -m recent --set
+iptables -A INPUT -p tcp --dport 22 -m conntrack --ctstate NEW -m recent --update --seconds 60 --hitcount 5 -j DROP
+iptables -A INPUT -p tcp --dport 22 -j ACCEPT
 
 # Rate limiting for Minecraft
 iptables -A INPUT -p tcp --dport 25565 -m conntrack --ctstate NEW -m recent --set
@@ -852,11 +903,15 @@ iptables -A INPUT -p tcp --dport 8443 -j ACCEPT
 # Allow HTTP redirect
 iptables -A INPUT -p tcp --dport 8080 -j ACCEPT
 
+# Set default DROP policies only after all ACCEPT rules are in place
+iptables -P INPUT DROP
+iptables -P FORWARD DROP
+
 # Keep container running
 tail -f /dev/null
 ```
 
-**Note**: This approach requires running Docker in privileged mode and may have limitations compared to host-based or dedicated firewall solutions.
+**Note**: This approach requires Docker's privileged mode and may have limitations compared to host-based or dedicated firewall solutions. SSH access (port 22) is included to prevent accidental lockout. Adjust the SSH port if your server uses a non-default port.
 
 ## Conclusion
 
