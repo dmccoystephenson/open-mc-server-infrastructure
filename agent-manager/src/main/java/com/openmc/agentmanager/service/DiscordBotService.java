@@ -227,6 +227,31 @@ public class DiscordBotService extends ListenerAdapter {
         MessageChannel channel = event.getChannel().asGuildMessageChannel();
         channel.sendTyping().queue();
 
+        // Re-resolve the member's current role in case roles changed between request and confirmation.
+        Member reactingMember = event.getMember();
+        final List<com.openmc.agentmanager.model.ToolDefinition> effectivePermittedTools;
+        final String effectiveRoleName;
+        if (reactingMember != null) {
+            RoleFilterService.RoleTier currentTier = roleFilterService.resolveRoleTier(reactingMember);
+            effectivePermittedTools = roleFilterService.getPermittedTools(currentTier);
+            effectiveRoleName = roleFilterService.getRoleDisplayName(currentTier);
+            log.debug("Re-resolved role tier {} for confirming user {}", currentTier, pending.discordUsername());
+        } else {
+            log.debug("Member not available for re-resolution; using stored permissions for {}", pending.discordUsername());
+            effectivePermittedTools = pending.permittedTools();
+            effectiveRoleName = pending.roleName();
+        }
+
+        boolean toolStillPermitted = effectivePermittedTools.stream()
+                .anyMatch(t -> t.getName().equals(pending.toolName()));
+        if (!toolStillPermitted) {
+            log.warn("Tool {} is no longer permitted for user {} after role re-resolution; refusing execution",
+                    pending.toolName(), pending.discordUsername());
+            channel.sendMessage("❌ You no longer have permission to perform this action.").queue(
+                    null, failure -> log.error("Failed to send permission denied message to Discord", failure));
+            return;
+        }
+
         // Offload execution to a dedicated executor
         executor.submit(() -> {
             try {
@@ -234,7 +259,7 @@ public class DiscordBotService extends ListenerAdapter {
                 AgentService.AgentResponse response = agentService.executeToolAndRespond(
                         pending.userMessage(), pending.assistantContent(),
                         pending.toolUseId(), pending.toolName(), pending.discordUsername(),
-                        pending.toolInput(), pending.permittedTools(), pending.roleName());
+                        pending.toolInput(), effectivePermittedTools, effectiveRoleName);
                 channel.sendMessage(response.textResponse()).queue(
                         success -> log.debug("Tool execution response sent for {}", pending.toolName()),
                         failure -> log.error("Failed to send tool execution response to Discord", failure)

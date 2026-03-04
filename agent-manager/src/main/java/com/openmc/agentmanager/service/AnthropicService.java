@@ -22,24 +22,27 @@ import java.util.stream.Collectors;
 @Service
 public class AnthropicService {
 
-    private static final String TOOL_DESCRIPTION_START_SERVER =
-            "start_server: Starts the Minecraft server";
-    private static final String TOOL_DESCRIPTION_STOP_SERVER =
-            "stop_server: Gracefully stops the Minecraft server (players receive countdown warnings)";
-    private static final String TOOL_DESCRIPTION_RESTART_SERVER =
-            "restart_server: Gracefully restarts the Minecraft server (stop with warnings, then start)";
-    private static final String TOOL_DESCRIPTION_GET_SERVER_STATUS =
-            "get_server_status: Gets the current status of the Minecraft server (running state, PID, uptime, etc.)";
-    private static final String TOOL_DESCRIPTION_TRIGGER_BACKUP =
-            "trigger_backup: Triggers a manual backup of the Minecraft server world data";
-    private static final String TOOL_DESCRIPTION_GET_SERVER_METRICS =
-            "get_server_metrics: Gets live performance metrics from the Minecraft wrapper: JVM heap usage (used/max MB and percentage), TPS for the last 1m/5m/15m (Paper/Spigot only), server process memory, and server uptime. Use this when the user asks specifically about lag, TPS, or memory usage.";
-    private static final String TOOL_DESCRIPTION_GET_ACTIVITY_TRACKER_STATS =
-            "get_activity_tracker_stats: Fetches aggregate player activity statistics from the webapp: total and unique login counts. Use this when the user asks about overall player activity figures.";
-    private static final String TOOL_DESCRIPTION_GET_ACTIVITY_TRACKER_LEADERBOARD =
-            "get_activity_tracker_leaderboard: Fetches the ranked player leaderboard from the webapp's Activity Tracker — player name, hours played, and total login count per player, sorted by play time. Use this when the user asks who has played the most, requests a leaderboard, or wants to know the top players by activity.";
-    private static final String TOOL_DESCRIPTION_GET_SERVER_DIAGNOSTICS =
-            "get_server_diagnostics: Gathers context from multiple sources in a single pass — server status, recent alerts, latest backup result, server performance metrics, and (when enabled) recent server logs and webapp activity stats. Use this for open-ended health questions such as \"is the server okay?\", \"why is it lagging?\", or \"what happened while I was offline?\". Prefer the more focused tools above (get_server_metrics, get_activity_tracker_stats, get_activity_tracker_leaderboard) when the user's question maps clearly to a single data source. IMPORTANT: After receiving the JSON result, reply with ONLY the information relevant to what the user asked — do not dump all fields. If any source was unavailable, acknowledge the gap only if it is relevant to the user's question.";
+    // Usage guidance appended to each tool's base description in the system prompt.
+    // The base description comes from ToolDefinition.description so there is only one
+    // source of truth for the tool name and core description.
+    private static final String USAGE_GUIDANCE_START_SERVER =
+            "Usage guidance: Call this only when the Minecraft server is currently stopped and the user explicitly wants it brought online.";
+    private static final String USAGE_GUIDANCE_STOP_SERVER =
+            "Usage guidance: Use this to gracefully stop the server when the user requests a shutdown. Avoid stopping the server unexpectedly unless there is a clear operational reason.";
+    private static final String USAGE_GUIDANCE_RESTART_SERVER =
+            "Usage guidance: Prefer this when the user wants a restart or when a configuration change requires a full restart. It should perform an orderly stop (with warnings) before starting again.";
+    private static final String USAGE_GUIDANCE_GET_SERVER_STATUS =
+            "Usage guidance: Use this when the user asks whether the server is up, down, or for high-level runtime information such as PID or uptime.";
+    private static final String USAGE_GUIDANCE_TRIGGER_BACKUP =
+            "Usage guidance: Use this for on-demand backups when the user requests a backup or before performing risky operations that might affect world data.";
+    private static final String USAGE_GUIDANCE_GET_SERVER_METRICS =
+            "Usage guidance: Use this when the user asks about lag, TPS, memory usage, or performance characteristics. Prefer this over broad diagnostics when the question is specifically about performance metrics.";
+    private static final String USAGE_GUIDANCE_GET_ACTIVITY_TRACKER_STATS =
+            "Usage guidance: Use this when the user asks about overall player activity levels, such as total logins or unique players over time.";
+    private static final String USAGE_GUIDANCE_GET_ACTIVITY_TRACKER_LEADERBOARD =
+            "Usage guidance: Use this when the user wants a ranking or leaderboard of players by time played or login counts, or asks who has played the most.";
+    private static final String USAGE_GUIDANCE_GET_SERVER_DIAGNOSTICS =
+            "Usage guidance: Use this for open-ended health questions such as \"is the server okay?\", \"why is it lagging?\", or \"what happened while I was offline?\". Prefer the more focused tools (metrics, activity stats, leaderboard) when the user's question clearly maps to a single data source. After receiving the JSON result, summarize only the information relevant to the user's question; do not dump all fields. If any source was unavailable, mention that only when it affects the answer.";
 
     private final RestTemplate restTemplate;
 
@@ -67,7 +70,7 @@ public class AnthropicService {
             return "You are a Minecraft server management assistant. The requesting user does not have permission to use any tools. Politely inform them that they do not have access to server management actions.";
         }
         String toolList = permittedTools.stream()
-                .map(t -> "- " + toolDescription(t.getName()))
+                .map(t -> "- " + toolDescription(t))
                 .collect(Collectors.joining("\n"));
         return String.format("""
                 You are a Minecraft server management assistant helping a %s. Your sole purpose is to help users manage their Minecraft server. The following tools are available to them:
@@ -79,18 +82,24 @@ public class AnthropicService {
                 Be concise and helpful in your responses.""", roleName, toolList);
     }
 
-    private static String toolDescription(String toolName) {
+    private static String toolDescription(ToolDefinition tool) {
+        String base = tool.getName() + ": " + tool.getDescription();
+        String guidance = usageGuidance(tool.getName());
+        return guidance.isEmpty() ? base : base + " " + guidance;
+    }
+
+    private static String usageGuidance(String toolName) {
         return switch (toolName) {
-            case "start_server" -> TOOL_DESCRIPTION_START_SERVER;
-            case "stop_server" -> TOOL_DESCRIPTION_STOP_SERVER;
-            case "restart_server" -> TOOL_DESCRIPTION_RESTART_SERVER;
-            case "get_server_status" -> TOOL_DESCRIPTION_GET_SERVER_STATUS;
-            case "trigger_backup" -> TOOL_DESCRIPTION_TRIGGER_BACKUP;
-            case "get_server_metrics" -> TOOL_DESCRIPTION_GET_SERVER_METRICS;
-            case "get_activity_tracker_stats" -> TOOL_DESCRIPTION_GET_ACTIVITY_TRACKER_STATS;
-            case "get_activity_tracker_leaderboard" -> TOOL_DESCRIPTION_GET_ACTIVITY_TRACKER_LEADERBOARD;
-            case "get_server_diagnostics" -> TOOL_DESCRIPTION_GET_SERVER_DIAGNOSTICS;
-            default -> toolName;
+            case "start_server" -> USAGE_GUIDANCE_START_SERVER;
+            case "stop_server" -> USAGE_GUIDANCE_STOP_SERVER;
+            case "restart_server" -> USAGE_GUIDANCE_RESTART_SERVER;
+            case "get_server_status" -> USAGE_GUIDANCE_GET_SERVER_STATUS;
+            case "trigger_backup" -> USAGE_GUIDANCE_TRIGGER_BACKUP;
+            case "get_server_metrics" -> USAGE_GUIDANCE_GET_SERVER_METRICS;
+            case "get_activity_tracker_stats" -> USAGE_GUIDANCE_GET_ACTIVITY_TRACKER_STATS;
+            case "get_activity_tracker_leaderboard" -> USAGE_GUIDANCE_GET_ACTIVITY_TRACKER_LEADERBOARD;
+            case "get_server_diagnostics" -> USAGE_GUIDANCE_GET_SERVER_DIAGNOSTICS;
+            default -> "";
         };
     }
 

@@ -127,6 +127,17 @@ public class AgentService {
                                                 java.util.List<com.openmc.agentmanager.model.ToolDefinition> permittedTools,
                                                 String roleName) {
         log.info("Executing tool: {} (ID: {})", toolName, toolUseId);
+
+        // Defense-in-depth: verify the tool is in the permitted list before executing,
+        // in case the model returns an unexpected tool name or roles changed mid-flow.
+        boolean isPermitted = permittedTools.stream().anyMatch(t -> t.getName().equals(toolName));
+        if (!isPermitted) {
+            log.warn("Tool {} is not in the permitted tools list for role {}; refusing to execute", toolName, roleName);
+            return new AgentResponse(
+                    "I'm sorry, but you don't have permission to use that tool.",
+                    false, toolName, toolUseId, null, userMessage, null);
+        }
+
         // Execute the tool
         ToolResult toolResult = toolExecutionService.executeTool(toolUseId, toolName, toolInput);
         log.info("Tool {} execution result: success={}, message={}", toolName, toolResult.isSuccess(), toolResult.getMessage());

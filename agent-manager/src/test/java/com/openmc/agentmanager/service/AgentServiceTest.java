@@ -341,4 +341,21 @@ class AgentServiceTest {
         verify(anthropicService, never()).sendMessage(anyString(), anyList(), anyString());
         verify(alertService, never()).sendToolExecutionAlert(anyString(), anyString(), anyString(), anyBoolean(), anyString());
     }
+
+    @Test
+    @DisplayName("Should refuse executeToolAndRespond when tool is not in permitted list")
+    void shouldRefuseExecuteToolWhenNotPermitted() {
+        // Member only has read-only tools, but somehow start_server ended up as toolName
+        List<com.openmc.agentmanager.model.ToolDefinition> memberTools = List.of(
+                com.openmc.agentmanager.model.ToolDefinition.getServerStatus()
+        );
+
+        AgentService.AgentResponse result = agentService.executeToolAndRespond(
+                "start the server", List.of(), "tool-1", "start_server", "player1", null, memberTools, "Member");
+
+        assertFalse(result.requiresConfirmation());
+        assertEquals("I'm sorry, but you don't have permission to use that tool.", result.textResponse());
+        verify(toolExecutionService, never()).executeTool(anyString(), anyString(), any());
+        verify(alertService, never()).sendToolExecutionAlert(anyString(), anyString(), anyString(), anyBoolean(), anyString());
+    }
 }

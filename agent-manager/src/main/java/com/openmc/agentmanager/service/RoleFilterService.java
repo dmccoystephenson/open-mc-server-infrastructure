@@ -176,13 +176,14 @@ public class RoleFilterService {
         if (publicNames.isEmpty()) {
             return List.of();
         }
+        List<ToolDefinition> allTools = ToolDefinition.allTools();
         List<ToolDefinition> result = new ArrayList<>();
-        for (ToolDefinition t : ToolDefinition.allTools()) {
+        for (ToolDefinition t : allTools) {
             if (publicNames.contains(t.getName())) {
                 result.add(t);
             }
         }
-        Set<String> recognized = ToolDefinition.allTools().stream()
+        Set<String> recognized = allTools.stream()
                 .map(ToolDefinition::getName)
                 .collect(Collectors.toSet());
         for (String name : publicNames) {
