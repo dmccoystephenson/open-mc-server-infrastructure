@@ -56,7 +56,7 @@ The server includes a built-in web dashboard that provides:
 
 - **Server Status**: Real-time view of server status, player count, and MOTD
 - **Admin Console**: Send commands to the server using RCON
-- **External Links**: Quick access to Dynmap, BlueMap, Accord Chat, and other services
+- **External Links**: Quick access to Dynmap, BlueMap, Accordion Chat, and other services
 - **Activity Tracker Integration**: View player statistics and leaderboards (optional)
 - **Secure Access**: HTTPS encryption with reverse proxy to protect credentials
 
@@ -98,31 +98,31 @@ To enable Activity Tracker integration:
 
 The Activity Tracker data will automatically refresh with the server status updates. If the Activity Tracker API is not available, the sections will be hidden without affecting other dashboard functionality.
 
-### Accord Chat Integration
+### Accordion Chat Integration
 
-The infrastructure supports integration with [Accord Chat](https://github.com/dmccoystephenson/accord-prototype), a real-time web-based chat application. When configured, players and administrators can communicate through a modern web interface accessible from the dashboard.
+The infrastructure supports integration with [Accordion Chat](https://github.com/Stephenson-Software/accordion), a real-time web-based chat application. When configured, players and administrators can communicate through a modern web interface accessible from the dashboard.
 
-**Accord Chat runs as a separate application** to avoid duplication and ensure updates can be made to Accord independently of the infrastructure project.
+**Accordion Chat runs as a separate application** to avoid duplication and ensure updates can be made to Accordion independently of the infrastructure project.
 
-To enable Accord Chat integration:
+To enable Accordion Chat integration:
 
-1. **Initialize and run the Accord Chat submodule**:
+1. **Initialize and run the Accordion Chat submodule**:
    ```bash
-   # Initialize the accord-chat submodule
-   git submodule update --init accord-chat
-   cd accord-chat
-   # Follow the Accord setup instructions in its README
+   # Initialize the accordion-chat submodule
+   git submodule update --init accordion-chat
+   cd accordion-chat
+   # Follow the Accordion setup instructions in its README
    docker compose up -d
    ```
 
-2. **Configure the web dashboard** to link to your running Accord instance by setting the following in your `.env` file:
+2. **Configure the web dashboard** to link to your running Accordion instance by setting the following in your `.env` file:
    ```bash
-   ACCORD_CHAT_URL=http://localhost:3000
+   ACCORDION_CHAT_URL=http://localhost:3000
    ```
    
    For accessing from other machines on your network, use your server's IP address:
    ```bash
-   ACCORD_CHAT_URL=http://192.168.1.100:3000
+   ACCORDION_CHAT_URL=http://192.168.1.100:3000
    ```
 
 3. **Restart the infrastructure services** to apply the configuration:
@@ -130,9 +130,9 @@ To enable Accord Chat integration:
    ./up.sh
    ```
 
-Once configured, a "Chat" link will appear in the web dashboard's External Services section pointing to your Accord Chat instance.
+Once configured, a "Chat" link will appear in the web dashboard's External Services section pointing to your Accordion Chat instance.
 
-**Note**: For production use with persistent storage and other configuration options, refer to the [Accord Chat documentation](https://github.com/dmccoystephenson/accord-prototype).
+**Note**: For production use with persistent storage and other configuration options, refer to the [Accordion Chat documentation](https://github.com/Stephenson-Software/accordion).
 
 ## Configuration
 
@@ -173,7 +173,7 @@ These settings allow you to run multiple server instances in parallel without co
 - `ADMIN_PASSWORD`: Password for admin console authentication (default: `admin`)
 - `DYNMAP_URL`: URL to Dynmap web interface (optional)
 - `BLUEMAP_URL`: URL to BlueMap web interface (optional)
-- `ACCORD_CHAT_URL`: URL to Accord Chat web interface (optional, e.g., `http://localhost:3000`). Accord runs separately - see Accord Chat Integration section.
+- `ACCORDION_CHAT_URL`: URL to Accordion Chat web interface (optional, e.g., `http://localhost:3000`). Accordion runs separately - see Accordion Chat Integration section.
 - `ACTIVITY_TRACKER_URL`: URL to Activity Tracker plugin REST API (optional, e.g., `http://localhost:8080`)
 - `ACTIVITY_TRACKER_ENABLED`: Enable Activity Tracker integration (default: `false`)
 

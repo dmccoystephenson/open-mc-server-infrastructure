@@ -64,7 +64,7 @@ public class ServerController {
         model.addAttribute("dashboardDarkMode", serverConfig.isDashboardDarkMode());
         model.addAttribute("dynmapUrl", serverConfig.getDynmapUrl());
         model.addAttribute("bluemapUrl", serverConfig.getBluemapUrl());
-        model.addAttribute("accordChatUrl", serverConfig.getAccordChatUrl());
+        model.addAttribute("accordionChatUrl", serverConfig.getAccordionChatUrl());
     }
     
     @GetMapping("/")

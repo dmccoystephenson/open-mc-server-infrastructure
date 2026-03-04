@@ -1,3 +1,3 @@
-[submodule "accord-chat"]
-	path = accord-chat
-	url = https://github.com/dmccoystephenson/accord-prototype.git
+[submodule "accordion-chat"]
+	path = accordion-chat
+	url = https://github.com/Stephenson-Software/accordion.git
