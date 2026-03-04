@@ -201,4 +201,34 @@ class AnthropicServiceTest {
         assertEquals("start_server", toolBlock.getName());
         assertEquals("tool-1", toolBlock.getId());
     }
+
+    @Test
+    @DisplayName("buildSystemPrompt should include role name and tool list")
+    void buildSystemPromptShouldIncludeRoleAndTools() {
+        String prompt = AnthropicService.buildSystemPrompt("Admin", com.openmc.agentmanager.model.ToolDefinition.allTools());
+        assertTrue(prompt.contains("Admin"));
+        assertTrue(prompt.contains("start_server"));
+        assertTrue(prompt.contains("stop_server"));
+    }
+
+    @Test
+    @DisplayName("buildSystemPrompt should exclude tools not in permitted list")
+    void buildSystemPromptShouldExcludeUnpermittedTools() {
+        List<com.openmc.agentmanager.model.ToolDefinition> memberTools = List.of(
+                com.openmc.agentmanager.model.ToolDefinition.getServerStatus()
+        );
+        String prompt = AnthropicService.buildSystemPrompt("Member", memberTools);
+        assertTrue(prompt.contains("Member"));
+        assertTrue(prompt.contains("get_server_status"));
+        assertFalse(prompt.contains("start_server"));
+        assertFalse(prompt.contains("stop_server"));
+    }
+
+    @Test
+    @DisplayName("buildSystemPrompt with empty tools should produce refusal prompt")
+    void buildSystemPromptWithEmptyToolsShouldProduceRefusalPrompt() {
+        String prompt = AnthropicService.buildSystemPrompt("Unrecognized", List.of());
+        assertTrue(prompt.toLowerCase().contains("permission") || prompt.toLowerCase().contains("access"));
+        assertFalse(prompt.contains("start_server"));
+    }
 }

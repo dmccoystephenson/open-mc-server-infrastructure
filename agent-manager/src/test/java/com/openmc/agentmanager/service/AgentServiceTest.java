@@ -1,6 +1,7 @@
 package com.openmc.agentmanager.service;
 
 import com.openmc.agentmanager.model.AnthropicResponse;
+import com.openmc.agentmanager.model.ToolDefinition;
 import com.openmc.agentmanager.model.ToolResult;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -18,6 +19,9 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 @DisplayName("AgentService Tests")
 class AgentServiceTest {
+
+    private static final List<ToolDefinition> ALL_TOOLS = ToolDefinition.allTools();
+    private static final String ROLE_ADMIN = "Admin";
 
     @Mock
     private AnthropicService anthropicService;
@@ -44,11 +48,11 @@ class AgentServiceTest {
                         .build()))
                 .build();
 
-        when(anthropicService.sendMessage("hello")).thenReturn(response);
+        when(anthropicService.sendMessage(eq("hello"), anyList(), anyString())).thenReturn(response);
         when(anthropicService.findToolUseBlock(response)).thenReturn(null);
         when(anthropicService.extractTextContent(response)).thenReturn("I can help you manage the server.");
 
-        AgentService.AgentResponse result = agentService.processMessage("hello", "testuser");
+        AgentService.AgentResponse result = agentService.processMessage("hello", "testuser", ALL_TOOLS, ROLE_ADMIN);
 
         assertFalse(result.requiresConfirmation());
         assertEquals("I can help you manage the server.", result.textResponse());
@@ -67,12 +71,12 @@ class AgentServiceTest {
                 .content(List.of(toolBlock))
                 .build();
 
-        when(anthropicService.sendMessage("start the server")).thenReturn(response);
+        when(anthropicService.sendMessage(eq("start the server"), anyList(), anyString())).thenReturn(response);
         when(anthropicService.findToolUseBlock(response)).thenReturn(toolBlock);
         when(toolExecutionService.isRecognizedTool("start_server")).thenReturn(true);
         when(confirmationService.requiresConfirmation("start_server")).thenReturn(true);
 
-        AgentService.AgentResponse result = agentService.processMessage("start the server", "testuser");
+        AgentService.AgentResponse result = agentService.processMessage("start the server", "testuser", ALL_TOOLS, ROLE_ADMIN);
 
         assertTrue(result.requiresConfirmation());
         assertEquals("start_server", result.toolName());
@@ -106,29 +110,29 @@ class AgentServiceTest {
                         .build()))
                 .build();
 
-        when(anthropicService.sendMessage("start the server")).thenReturn(response);
+        when(anthropicService.sendMessage(eq("start the server"), anyList(), anyString())).thenReturn(response);
         when(anthropicService.findToolUseBlock(response)).thenReturn(toolBlock);
         when(toolExecutionService.isRecognizedTool("start_server")).thenReturn(true);
         when(confirmationService.requiresConfirmation("start_server")).thenReturn(false);
         when(toolExecutionService.executeTool("tool-1", "start_server", null)).thenReturn(toolResult);
-        when(anthropicService.sendToolResult(eq("start the server"), anyList(), eq(toolResult)))
+        when(anthropicService.sendToolResult(eq("start the server"), anyList(), eq(toolResult), anyList(), anyString()))
                 .thenReturn(followUpResponse);
         when(anthropicService.extractTextContent(followUpResponse)).thenReturn("The server has been started.");
 
-        AgentService.AgentResponse result = agentService.processMessage("start the server", "testuser");
+        AgentService.AgentResponse result = agentService.processMessage("start the server", "testuser", ALL_TOOLS, ROLE_ADMIN);
 
         assertFalse(result.requiresConfirmation());
         assertEquals("The server has been started.", result.textResponse());
         verify(toolExecutionService).executeTool("tool-1", "start_server", null);
-        verify(alertService).sendToolExecutionAlert("testuser", "start_server", "start the server", true);
+        verify(alertService).sendToolExecutionAlert("testuser", "start_server", "start the server", true, ROLE_ADMIN);
     }
 
     @Test
     @DisplayName("Should handle null response from Anthropic API")
     void shouldHandleNullResponseFromAnthropicApi() {
-        when(anthropicService.sendMessage("test")).thenReturn(null);
+        when(anthropicService.sendMessage(eq("test"), anyList(), anyString())).thenReturn(null);
 
-        AgentService.AgentResponse result = agentService.processMessage("test", "testuser");
+        AgentService.AgentResponse result = agentService.processMessage("test", "testuser", ALL_TOOLS, ROLE_ADMIN);
 
         assertFalse(result.requiresConfirmation());
         assertTrue(result.textResponse().contains("sorry"));
@@ -154,19 +158,19 @@ class AgentServiceTest {
                 .message("Server stop initiated")
                 .build();
 
-        when(anthropicService.sendMessage("stop the server")).thenReturn(response);
+        when(anthropicService.sendMessage(eq("stop the server"), anyList(), anyString())).thenReturn(response);
         when(anthropicService.findToolUseBlock(response)).thenReturn(toolBlock);
         when(toolExecutionService.isRecognizedTool("stop_server")).thenReturn(true);
         when(confirmationService.requiresConfirmation("stop_server")).thenReturn(false);
         when(toolExecutionService.executeTool("tool-1", "stop_server", null)).thenReturn(toolResult);
-        when(anthropicService.sendToolResult(eq("stop the server"), anyList(), eq(toolResult)))
+        when(anthropicService.sendToolResult(eq("stop the server"), anyList(), eq(toolResult), anyList(), anyString()))
                 .thenThrow(new RuntimeException("API error"));
 
-        AgentService.AgentResponse result = agentService.processMessage("stop the server", "testuser");
+        AgentService.AgentResponse result = agentService.processMessage("stop the server", "testuser", ALL_TOOLS, ROLE_ADMIN);
 
         assertFalse(result.requiresConfirmation());
         assertTrue(result.textResponse().contains("✅"));
-        verify(alertService).sendToolExecutionAlert("testuser", "stop_server", "stop the server", true);
+        verify(alertService).sendToolExecutionAlert("testuser", "stop_server", "stop the server", true, ROLE_ADMIN);
     }
 
     @Test
@@ -182,11 +186,11 @@ class AgentServiceTest {
                 .content(List.of(toolBlock))
                 .build();
 
-        when(anthropicService.sendMessage("delete the world")).thenReturn(response);
+        when(anthropicService.sendMessage(eq("delete the world"), anyList(), anyString())).thenReturn(response);
         when(anthropicService.findToolUseBlock(response)).thenReturn(toolBlock);
         when(toolExecutionService.isRecognizedTool("delete_world")).thenReturn(false);
 
-        AgentService.AgentResponse result = agentService.processMessage("delete the world", "testuser");
+        AgentService.AgentResponse result = agentService.processMessage("delete the world", "testuser", ALL_TOOLS, ROLE_ADMIN);
 
         assertFalse(result.requiresConfirmation());
         assertTrue(result.textResponse().contains("don't have the ability"));
@@ -213,19 +217,19 @@ class AgentServiceTest {
                 .message("Connection refused")
                 .build();
 
-        when(anthropicService.sendMessage("restart the server")).thenReturn(response);
+        when(anthropicService.sendMessage(eq("restart the server"), anyList(), anyString())).thenReturn(response);
         when(anthropicService.findToolUseBlock(response)).thenReturn(toolBlock);
         when(toolExecutionService.isRecognizedTool("restart_server")).thenReturn(true);
         when(confirmationService.requiresConfirmation("restart_server")).thenReturn(false);
         when(toolExecutionService.executeTool("tool-1", "restart_server", null)).thenReturn(toolResult);
-        when(anthropicService.sendToolResult(eq("restart the server"), anyList(), eq(toolResult)))
+        when(anthropicService.sendToolResult(eq("restart the server"), anyList(), eq(toolResult), anyList(), anyString()))
                 .thenThrow(new RuntimeException("API error"));
 
-        AgentService.AgentResponse result = agentService.processMessage("restart the server", "testuser");
+        AgentService.AgentResponse result = agentService.processMessage("restart the server", "testuser", ALL_TOOLS, ROLE_ADMIN);
 
         assertFalse(result.requiresConfirmation());
         assertTrue(result.textResponse().contains("❌"));
-        verify(alertService).sendToolExecutionAlert("testuser", "restart_server", "restart the server", false);
+        verify(alertService).sendToolExecutionAlert("testuser", "restart_server", "restart the server", false, ROLE_ADMIN);
     }
 
     @Test
@@ -238,11 +242,11 @@ class AgentServiceTest {
                         .build()))
                 .build();
 
-        when(anthropicService.sendMessage("hi")).thenReturn(response);
+        when(anthropicService.sendMessage(eq("hi"), anyList(), anyString())).thenReturn(response);
         when(anthropicService.findToolUseBlock(response)).thenReturn(null);
         when(anthropicService.extractTextContent(response)).thenReturn("");
 
-        AgentService.AgentResponse result = agentService.processMessage("hi", "testuser");
+        AgentService.AgentResponse result = agentService.processMessage("hi", "testuser", ALL_TOOLS, ROLE_ADMIN);
 
         assertFalse(result.requiresConfirmation());
         assertTrue(result.textResponse().contains("start, stop, or restart"));
@@ -261,12 +265,12 @@ class AgentServiceTest {
                 .content(List.of(toolBlock))
                 .build();
 
-        when(anthropicService.sendMessage("please stop")).thenReturn(response);
+        when(anthropicService.sendMessage(eq("please stop"), anyList(), anyString())).thenReturn(response);
         when(anthropicService.findToolUseBlock(response)).thenReturn(toolBlock);
         when(toolExecutionService.isRecognizedTool("stop_server")).thenReturn(true);
         when(confirmationService.requiresConfirmation("stop_server")).thenReturn(true);
 
-        AgentService.AgentResponse result = agentService.processMessage("please stop", "testuser");
+        AgentService.AgentResponse result = agentService.processMessage("please stop", "testuser", ALL_TOOLS, ROLE_ADMIN);
 
         assertTrue(result.requiresConfirmation());
         assertEquals("please stop", result.userMessage());
@@ -287,13 +291,13 @@ class AgentServiceTest {
                 .content(List.of(toolBlock))
                 .build();
 
-        when(anthropicService.sendMessage("do something")).thenReturn(response);
+        when(anthropicService.sendMessage(eq("do something"), anyList(), anyString())).thenReturn(response);
         when(anthropicService.findToolUseBlock(response)).thenReturn(toolBlock);
         when(toolExecutionService.isRecognizedTool("unknown_tool")).thenReturn(false);
 
-        agentService.processMessage("do something", "testuser");
+        agentService.processMessage("do something", "testuser", ALL_TOOLS, ROLE_ADMIN);
 
-        verify(alertService, never()).sendToolExecutionAlert(anyString(), anyString(), anyString(), anyBoolean());
+        verify(alertService, never()).sendToolExecutionAlert(anyString(), anyString(), anyString(), anyBoolean(), anyString());
     }
 
     @Test
@@ -314,15 +318,27 @@ class AgentServiceTest {
                 .build();
 
         when(toolExecutionService.executeTool("tool-1", "start_server", null)).thenReturn(toolResult);
-        when(anthropicService.sendToolResult(eq("start the server"), anyList(), eq(toolResult)))
+        when(anthropicService.sendToolResult(eq("start the server"), anyList(), eq(toolResult), anyList(), anyString()))
                 .thenReturn(followUpResponse);
         when(anthropicService.extractTextContent(followUpResponse)).thenReturn("Server is now running!");
 
         AgentService.AgentResponse result = agentService.executeToolAndRespond(
-                "start the server", List.of(), "tool-1", "start_server", "player1", null);
+                "start the server", List.of(), "tool-1", "start_server", "player1", null, ALL_TOOLS, ROLE_ADMIN);
 
         assertFalse(result.requiresConfirmation());
         assertEquals("Server is now running!", result.textResponse());
-        verify(alertService).sendToolExecutionAlert("player1", "start_server", "start the server", true);
+        verify(alertService).sendToolExecutionAlert("player1", "start_server", "start the server", true, ROLE_ADMIN);
+    }
+
+    @Test
+    @DisplayName("Should return polite refusal when user has no permitted tools")
+    void shouldReturnPoliteRefusalWhenUserHasNoPermittedTools() {
+        AgentService.AgentResponse result = agentService.processMessage(
+                "start the server", "unauthorized-user", List.of(), "Unrecognized");
+
+        assertFalse(result.requiresConfirmation());
+        assertTrue(result.textResponse().contains("permission"));
+        verify(anthropicService, never()).sendMessage(anyString(), anyList(), anyString());
+        verify(alertService, never()).sendToolExecutionAlert(anyString(), anyString(), anyString(), anyBoolean(), anyString());
     }
 }

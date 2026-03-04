@@ -137,6 +137,16 @@ The following environment variables can be configured in `.env`:
 
 > **Note**: `get_server_status` is a read-only operation and never requires confirmation.
 
+### Role-Based Access Control
+
+The following Discord role IDs control which tools each tier of user can access. Leave a variable blank to disable that tier (users matching only disabled tiers are treated as Unrecognized).
+
+- `AGENT_ADMIN_ROLE_ID`: Discord role ID for Admin — access to all tools (start, stop, restart, backup, status)
+- `AGENT_MODERATOR_ROLE_ID`: Discord role ID for Moderator — restart, backup, and all read-only/status tools
+- `AGENT_MEMBER_ROLE_ID`: Discord role ID for Member — read-only/status tools only
+
+To find a role's ID in Discord: enable Developer Mode (**User Settings → Advanced → Developer Mode**), then right-click the role in **Server Settings → Roles** and choose **Copy Role ID**.
+
 ### Discord Bot Setup
 
 To enable the agent manager:
@@ -145,7 +155,7 @@ To enable the agent manager:
 2. Create a bot for your application and copy the bot token
 3. Enable the following **Privileged Gateway Intents** under the **Bot** settings page:
    - **Message Content Intent** (required — the bot needs to read message text)
-   - **Server Members Intent** (optional)
+   - **Server Members Intent** (required — the bot needs to read member roles for RBAC)
 4. Invite the bot to your Discord server using the **OAuth2 → URL Generator**:
    - **Scopes**: `bot`
    - **Bot Permissions**: `Send Messages`, `Read Message History`, `Add Reactions`, `View Channels`
@@ -293,11 +303,18 @@ At DEBUG level, the agent-manager logs additional detail at each step:
 
 - Store the Discord bot token, Anthropic API key, and channel ID securely in environment variables, never in code
 - The agent is disabled by default (`AGENT_ENABLED=false`) — it must be explicitly enabled
-- The system prompt narrowly constrains the agent to server management actions only
+- **Role-based access control (RBAC)** gates which tools are offered to Claude based on the requesting user's Discord roles. The model is never aware of tools the user isn't permitted to use, eliminating the possibility of a restricted tool call being made:
+  - **Admin** (`AGENT_ADMIN_ROLE_ID`): All tools — start, stop, restart, backup, and all status/metrics tools
+  - **Moderator** (`AGENT_MODERATOR_ROLE_ID`): restart, backup, and all read-only/status tools
+  - **Member** (`AGENT_MEMBER_ROLE_ID`): Read-only/status tools only (get_server_status, get_server_metrics, get_activity_tracker_stats, get_activity_tracker_leaderboard, get_server_diagnostics)
+  - **Unrecognized** (no matching role): No tools — the agent politely declines without calling the Anthropic API
+- Role IDs are configured via environment variables; no recompilation is needed to adjust permissions
+- The system prompt is dynamically built for each request to reflect only the tools available to the requesting user's role tier
 - Confirmation is required by default for all destructive actions
 - Only the user who requested an action can confirm it via reaction
 - Pending confirmations expire after 5 minutes to prevent stale actions
 - The Discord bot only listens in the configured channel
+- The **Server Members Intent** is required (enable it in the Discord Developer Portal under your application → Bot → Privileged Gateway Intents) so that the bot can read member roles
 - The Actuator management endpoints (`/loggers`, `/health`) run on a separate port (8094) and are bound to `127.0.0.1` — only accessible from inside the container
 
 ## Troubleshooting

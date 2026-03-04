@@ -33,8 +33,9 @@ public class AlertService {
      * @param toolName the name of the tool that was executed
      * @param originalPrompt the original natural language prompt from the user
      * @param success whether the tool execution was successful
+     * @param roleName the display name of the requesting user's role tier
      */
-    public void sendToolExecutionAlert(String discordUsername, String toolName, String originalPrompt, boolean success) {
+    public void sendToolExecutionAlert(String discordUsername, String toolName, String originalPrompt, boolean success, String roleName) {
         if (alertManagerUrl == null || alertManagerUrl.isBlank()) {
             log.debug("Alert manager URL is not configured. Skipping tool execution alert.");
             return;
@@ -46,8 +47,9 @@ public class AlertService {
                 ? "Agent Action Executed: " + actionDescription
                 : "Agent Action Failed: " + actionDescription;
         String message = String.format(
-                "**Discord User**: %s\n**Action**: %s\n**Result**: %s\n**Original Prompt**: %s",
+                "**Discord User**: %s\n**Role**: %s\n**Action**: %s\n**Result**: %s\n**Original Prompt**: %s",
                 discordUsername,
+                roleName,
                 actionDescription,
                 success ? "Success" : "Failed",
                 originalPrompt

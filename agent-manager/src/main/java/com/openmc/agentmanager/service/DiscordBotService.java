@@ -5,6 +5,7 @@ import jakarta.annotation.PreDestroy;
 import lombok.extern.slf4j.Slf4j;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
+import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.entities.emoji.Emoji;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
@@ -15,6 +16,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -29,6 +31,7 @@ public class DiscordBotService extends ListenerAdapter {
 
     private final AgentService agentService;
     private final ConfirmationService confirmationService;
+    private final RoleFilterService roleFilterService;
     private final ExecutorService executor = Executors.newFixedThreadPool(4);
 
     @Value("${discord.bot.token:}")
@@ -45,9 +48,10 @@ public class DiscordBotService extends ListenerAdapter {
 
     private JDA jda;
 
-    public DiscordBotService(AgentService agentService, ConfirmationService confirmationService) {
+    public DiscordBotService(AgentService agentService, ConfirmationService confirmationService, RoleFilterService roleFilterService) {
         this.agentService = agentService;
         this.confirmationService = confirmationService;
+        this.roleFilterService = roleFilterService;
     }
 
     @PostConstruct
@@ -75,7 +79,8 @@ public class DiscordBotService extends ListenerAdapter {
         try {
             log.debug("Initializing JDA with gateway intents: GUILD_MESSAGES, MESSAGE_CONTENT, GUILD_MESSAGE_REACTIONS");
             jda = JDABuilder.createDefault(botToken)
-                    .enableIntents(GatewayIntent.GUILD_MESSAGES, GatewayIntent.MESSAGE_CONTENT, GatewayIntent.GUILD_MESSAGE_REACTIONS)
+                    .enableIntents(GatewayIntent.GUILD_MESSAGES, GatewayIntent.MESSAGE_CONTENT,
+                            GatewayIntent.GUILD_MESSAGE_REACTIONS, GatewayIntent.GUILD_MEMBERS)
                     .addEventListeners(this)
                     .build();
             log.info("Discord bot started successfully, listening on channel: {}", channelId);
@@ -125,6 +130,13 @@ public class DiscordBotService extends ListenerAdapter {
         String username = event.getAuthor().getName();
         log.info("Received Discord message from {} (ID: {}): {}", username, userId, userMessage);
 
+        // Resolve the member's role tier and permitted tool set
+        Member member = event.getMember();
+        RoleFilterService.RoleTier roleTier = roleFilterService.resolveRoleTier(member);
+        String roleName = roleFilterService.getRoleDisplayName(roleTier);
+        List<com.openmc.agentmanager.model.ToolDefinition> permittedTools = roleFilterService.getPermittedTools(roleTier);
+        log.info("Resolved role tier {} for user {} — {} tool(s) permitted", roleTier, username, permittedTools.size());
+
         MessageChannel channel = event.getChannel();
         channel.sendTyping().queue();
 
@@ -132,7 +144,7 @@ public class DiscordBotService extends ListenerAdapter {
         executor.submit(() -> {
             try {
                 log.debug("Processing message from {} on executor thread", username);
-                AgentService.AgentResponse response = agentService.processMessage(userMessage, username);
+                AgentService.AgentResponse response = agentService.processMessage(userMessage, username, permittedTools, roleName);
 
                 if (response.requiresConfirmation()) {
                     log.debug("Sending confirmation prompt for tool: {}", response.toolName());
@@ -142,7 +154,7 @@ public class DiscordBotService extends ListenerAdapter {
                                 success -> log.debug("Added ✅ reaction to confirmation message {}", sentMessage.getId()),
                                 failure -> log.error("Failed to add ✅ reaction to message {}", sentMessage.getId(), failure)
                         );
-                        // Store pending confirmation with requesting user ID and username
+                        // Store pending confirmation with requesting user ID, username, and role context
                         confirmationService.addPendingConfirmation(
                                 sentMessage.getId(),
                                 new ConfirmationService.PendingConfirmation(
@@ -154,7 +166,9 @@ public class DiscordBotService extends ListenerAdapter {
                                         userId,
                                         username,
                                         response.toolInput(),
-                                        Instant.now()
+                                        Instant.now(),
+                                        permittedTools,
+                                        roleName
                                 )
                         );
                     }, failure -> log.error("RestAction queue returned failure: {}", failure.getMessage(), failure));
@@ -220,7 +234,7 @@ public class DiscordBotService extends ListenerAdapter {
                 AgentService.AgentResponse response = agentService.executeToolAndRespond(
                         pending.userMessage(), pending.assistantContent(),
                         pending.toolUseId(), pending.toolName(), pending.discordUsername(),
-                        pending.toolInput());
+                        pending.toolInput(), pending.permittedTools(), pending.roleName());
                 channel.sendMessage(response.textResponse()).queue(
                         success -> log.debug("Tool execution response sent for {}", pending.toolName()),
                         failure -> log.error("Failed to send tool execution response to Discord", failure)

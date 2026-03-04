@@ -31,7 +31,7 @@ class AlertServiceTest {
     void shouldSendAlertOnSuccessfulToolExecution() {
         ReflectionTestUtils.setField(alertService, "alertManagerUrl", "http://alert-manager:8090/api/alerts");
 
-        alertService.sendToolExecutionAlert("dmccoystephenson", "start_server", "please start the server", true);
+        alertService.sendToolExecutionAlert("dmccoystephenson", "start_server", "please start the server", true, "Admin");
 
         @SuppressWarnings("unchecked")
         ArgumentCaptor<HttpEntity<Alert>> captor = ArgumentCaptor.forClass(HttpEntity.class);
@@ -43,6 +43,7 @@ class AlertServiceTest {
         assertEquals("INFO", alert.getLevel());
         assertEquals("agent-manager", alert.getSource());
         assertTrue(alert.getMessage().contains("dmccoystephenson"));
+        assertTrue(alert.getMessage().contains("Admin"));
         assertTrue(alert.getMessage().contains("Start Server"));
         assertTrue(alert.getMessage().contains("please start the server"));
         assertTrue(alert.getMessage().contains("Success"));
@@ -53,7 +54,7 @@ class AlertServiceTest {
     void shouldSendWarningAlertOnFailedToolExecution() {
         ReflectionTestUtils.setField(alertService, "alertManagerUrl", "http://alert-manager:8090/api/alerts");
 
-        alertService.sendToolExecutionAlert("testuser", "stop_server", "stop the server", false);
+        alertService.sendToolExecutionAlert("testuser", "stop_server", "stop the server", false, "Admin");
 
         @SuppressWarnings("unchecked")
         ArgumentCaptor<HttpEntity<Alert>> captor = ArgumentCaptor.forClass(HttpEntity.class);
@@ -72,7 +73,7 @@ class AlertServiceTest {
     void shouldSkipAlertWhenUrlNotConfigured() {
         ReflectionTestUtils.setField(alertService, "alertManagerUrl", "");
 
-        alertService.sendToolExecutionAlert("testuser", "start_server", "start server", true);
+        alertService.sendToolExecutionAlert("testuser", "start_server", "start server", true, "Admin");
 
         verify(restTemplate, never()).postForEntity(anyString(), any(), any());
     }
@@ -82,7 +83,7 @@ class AlertServiceTest {
     void shouldSkipAlertWhenUrlIsNull() {
         ReflectionTestUtils.setField(alertService, "alertManagerUrl", null);
 
-        alertService.sendToolExecutionAlert("testuser", "start_server", "start server", true);
+        alertService.sendToolExecutionAlert("testuser", "start_server", "start server", true, "Admin");
 
         verify(restTemplate, never()).postForEntity(anyString(), any(), any());
     }
@@ -95,7 +96,7 @@ class AlertServiceTest {
                 .thenThrow(new RuntimeException("Connection refused"));
 
         assertDoesNotThrow(() ->
-                alertService.sendToolExecutionAlert("testuser", "restart_server", "restart the server", true));
+                alertService.sendToolExecutionAlert("testuser", "restart_server", "restart the server", true, "Admin"));
     }
 
     @Test
@@ -103,7 +104,7 @@ class AlertServiceTest {
     void shouldIncludeDiscordDestination() {
         ReflectionTestUtils.setField(alertService, "alertManagerUrl", "http://alert-manager:8090/api/alerts");
 
-        alertService.sendToolExecutionAlert("testuser", "restart_server", "restart server", true);
+        alertService.sendToolExecutionAlert("testuser", "restart_server", "restart server", true, "Admin");
 
         @SuppressWarnings("unchecked")
         ArgumentCaptor<HttpEntity<Alert>> captor = ArgumentCaptor.forClass(HttpEntity.class);
@@ -119,7 +120,7 @@ class AlertServiceTest {
     void shouldFormatStopServerActionDescription() {
         ReflectionTestUtils.setField(alertService, "alertManagerUrl", "http://alert-manager:8090/api/alerts");
 
-        alertService.sendToolExecutionAlert("player1", "stop_server", "stop it", true);
+        alertService.sendToolExecutionAlert("player1", "stop_server", "stop it", true, "Admin");
 
         @SuppressWarnings("unchecked")
         ArgumentCaptor<HttpEntity<Alert>> captor = ArgumentCaptor.forClass(HttpEntity.class);
@@ -136,7 +137,7 @@ class AlertServiceTest {
     void shouldFormatRestartServerActionDescription() {
         ReflectionTestUtils.setField(alertService, "alertManagerUrl", "http://alert-manager:8090/api/alerts");
 
-        alertService.sendToolExecutionAlert("player2", "restart_server", "restart please", true);
+        alertService.sendToolExecutionAlert("player2", "restart_server", "restart please", true, "Admin");
 
         @SuppressWarnings("unchecked")
         ArgumentCaptor<HttpEntity<Alert>> captor = ArgumentCaptor.forClass(HttpEntity.class);
@@ -153,7 +154,7 @@ class AlertServiceTest {
     void shouldHandleUnknownToolNameInActionDescription() {
         ReflectionTestUtils.setField(alertService, "alertManagerUrl", "http://alert-manager:8090/api/alerts");
 
-        alertService.sendToolExecutionAlert("player3", "custom_tool", "do something", true);
+        alertService.sendToolExecutionAlert("player3", "custom_tool", "do something", true, "Admin");
 
         @SuppressWarnings("unchecked")
         ArgumentCaptor<HttpEntity<Alert>> captor = ArgumentCaptor.forClass(HttpEntity.class);
@@ -170,7 +171,7 @@ class AlertServiceTest {
         ReflectionTestUtils.setField(alertService, "alertManagerUrl", "http://alert-manager:8090/api/alerts");
 
         String prompt = "hey can you please start the minecraft server for us?";
-        alertService.sendToolExecutionAlert("player4", "start_server", prompt, true);
+        alertService.sendToolExecutionAlert("player4", "start_server", prompt, true, "Admin");
 
         @SuppressWarnings("unchecked")
         ArgumentCaptor<HttpEntity<Alert>> captor = ArgumentCaptor.forClass(HttpEntity.class);
@@ -186,7 +187,7 @@ class AlertServiceTest {
     void shouldSkipAlertWhenUrlIsWhitespace() {
         ReflectionTestUtils.setField(alertService, "alertManagerUrl", "   ");
 
-        alertService.sendToolExecutionAlert("testuser", "start_server", "start", true);
+        alertService.sendToolExecutionAlert("testuser", "start_server", "start", true, "Admin");
 
         verify(restTemplate, never()).postForEntity(anyString(), any(), any());
     }

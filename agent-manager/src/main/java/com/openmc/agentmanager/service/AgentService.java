@@ -42,13 +42,25 @@ public class AgentService {
      * Process a user message through the agent loop.
      * @param userMessage the natural language user message
      * @param discordUsername the Discord username who sent the message
+     * @param permittedTools the tools the requesting user is allowed to use based on their role
+     * @param roleName the display name of the requesting user's role tier
      * @return the agent response, which may include a text reply or a confirmation request
      */
-    public AgentResponse processMessage(String userMessage, String discordUsername) {
+    public AgentResponse processMessage(String userMessage, String discordUsername,
+                                        java.util.List<com.openmc.agentmanager.model.ToolDefinition> permittedTools,
+                                        String roleName) {
         log.info("Processing user message: {}", userMessage);
 
+        // Step 0: Reject users with no permitted tools (unrecognized role)
+        if (permittedTools.isEmpty()) {
+            log.info("User {} has no permitted tools (role: {}). Declining request.", discordUsername, roleName);
+            return new AgentResponse(
+                    "I'm sorry, but you don't have permission to use any server management tools. Please contact an administrator if you believe this is a mistake.",
+                    false, null, null, null, userMessage, null);
+        }
+
         // Step 1: Send message to Anthropic API
-        AnthropicResponse response = anthropicService.sendMessage(userMessage);
+        AnthropicResponse response = anthropicService.sendMessage(userMessage, permittedTools, roleName);
 
         if (response == null) {
             log.warn("Anthropic API returned null response for message: {}", userMessage);
@@ -93,7 +105,7 @@ public class AgentService {
 
         // Step 5: No confirmation needed — execute immediately
         log.info("Tool {} does not require confirmation, executing immediately", toolName);
-        return executeToolAndRespond(userMessage, response.getContent(), toolUseId, toolName, discordUsername, toolUseBlock.getInput());
+        return executeToolAndRespond(userMessage, response.getContent(), toolUseId, toolName, discordUsername, toolUseBlock.getInput(), permittedTools, roleName);
     }
 
     /**
@@ -104,25 +116,29 @@ public class AgentService {
      * @param toolName the tool name
      * @param discordUsername the Discord username who triggered the action
      * @param toolInput the tool input parameters from the Anthropic response (may be null)
+     * @param permittedTools the tools the requesting user is allowed to use
+     * @param roleName the display name of the requesting user's role tier
      * @return the final agent response
      */
     public AgentResponse executeToolAndRespond(String userMessage,
                                                 java.util.List<AnthropicResponse.ContentBlock> assistantContent,
                                                 String toolUseId, String toolName, String discordUsername,
-                                                java.util.Map<String, Object> toolInput) {
+                                                java.util.Map<String, Object> toolInput,
+                                                java.util.List<com.openmc.agentmanager.model.ToolDefinition> permittedTools,
+                                                String roleName) {
         log.info("Executing tool: {} (ID: {})", toolName, toolUseId);
         // Execute the tool
         ToolResult toolResult = toolExecutionService.executeTool(toolUseId, toolName, toolInput);
         log.info("Tool {} execution result: success={}, message={}", toolName, toolResult.isSuccess(), toolResult.getMessage());
 
         // Send alert for tool execution
-        alertService.sendToolExecutionAlert(discordUsername, toolName, userMessage, toolResult.isSuccess());
+        alertService.sendToolExecutionAlert(discordUsername, toolName, userMessage, toolResult.isSuccess(), roleName);
 
         // Send the tool result back to Anthropic for a natural language response
         try {
             log.debug("Sending tool result back to Anthropic for natural language summary");
             AnthropicResponse followUpResponse = anthropicService.sendToolResult(
-                    userMessage, assistantContent, toolResult);
+                    userMessage, assistantContent, toolResult, permittedTools, roleName);
             String text = anthropicService.extractTextContent(followUpResponse);
             if (!text.isEmpty()) {
                 log.debug("Received follow-up response from Anthropic ({} chars)", text.length());

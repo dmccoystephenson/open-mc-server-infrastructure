@@ -225,6 +225,9 @@ See [alert-manager/README.md](alert-manager/README.md) for detailed configuratio
 - `AGENT_START_SERVER_REQUIRES_CONFIRMATION`: Require confirmation to start server (default: `true`)
 - `AGENT_STOP_SERVER_REQUIRES_CONFIRMATION`: Require confirmation to stop server (default: `true`)
 - `AGENT_RESTART_SERVER_REQUIRES_CONFIRMATION`: Require confirmation to restart server (default: `true`)
+- `AGENT_ADMIN_ROLE_ID`: Discord role ID for Admin tier (all tools)
+- `AGENT_MODERATOR_ROLE_ID`: Discord role ID for Moderator tier (restart, backup, status)
+- `AGENT_MEMBER_ROLE_ID`: Discord role ID for Member tier (status only)
 
 See [agent-manager/README.md](agent-manager/README.md) for detailed configuration, Discord bot setup, and usage examples.
 
@@ -407,6 +410,7 @@ docker compose build --no-cache
 - Don't expose the server publicly without proper security measures
 - Regularly backup your world data
 - Keep `RCON_PASSWORD` secure and different from default values
+- **Agent Manager RBAC**: The agent manager uses role-based access control via Discord roles to restrict which server management tools are available to each user. Configure `AGENT_ADMIN_ROLE_ID`, `AGENT_MODERATOR_ROLE_ID`, and `AGENT_MEMBER_ROLE_ID` in `.env` to restrict access. Users without a matching role receive a polite refusal and no tool calls are made. See [agent-manager/README.md](agent-manager/README.md) for details.
 
 ## License
 

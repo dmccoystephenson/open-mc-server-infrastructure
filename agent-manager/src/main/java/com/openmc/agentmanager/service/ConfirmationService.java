@@ -38,7 +38,9 @@ public class ConfirmationService {
     public record PendingConfirmation(String toolUseId, String toolName, String userMessage,
                                       java.util.List<com.openmc.agentmanager.model.AnthropicResponse.ContentBlock> assistantContent,
                                       String channelId, String requestingUserId, String discordUsername,
-                                      java.util.Map<String, Object> toolInput, Instant createdAt) {
+                                      java.util.Map<String, Object> toolInput, Instant createdAt,
+                                      java.util.List<com.openmc.agentmanager.model.ToolDefinition> permittedTools,
+                                      String roleName) {
     }
 
     private final Map<String, PendingConfirmation> pendingConfirmations = new ConcurrentHashMap<>();
