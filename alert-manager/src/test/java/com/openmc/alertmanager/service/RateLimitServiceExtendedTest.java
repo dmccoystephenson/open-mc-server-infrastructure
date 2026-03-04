@@ -44,38 +44,47 @@ class RateLimitServiceExtendedTest {
         AtomicInteger allowedCount = new AtomicInteger(0);
         AtomicInteger blockedCount = new AtomicInteger(0);
         
-        // Submit tasks that will all try to send alerts simultaneously
-        for (int i = 0; i < threadCount; i++) {
-            executor.submit(() -> {
-                try {
-                    for (int j = 0; j < attemptsPerThread; j++) {
-                        if (rateLimitService.shouldAllowAlert(destination)) {
-                            allowedCount.incrementAndGet();
-                        } else {
-                            blockedCount.incrementAndGet();
+        try {
+            // Submit tasks that will all try to send alerts simultaneously
+            for (int i = 0; i < threadCount; i++) {
+                executor.submit(() -> {
+                    try {
+                        for (int j = 0; j < attemptsPerThread; j++) {
+                            if (rateLimitService.shouldAllowAlert(destination)) {
+                                allowedCount.incrementAndGet();
+                            } else {
+                                blockedCount.incrementAndGet();
+                            }
                         }
+                    } finally {
+                        latch.countDown();
                     }
-                } finally {
-                    latch.countDown();
-                }
-            });
+                });
+            }
+            
+            // Wait for all threads to complete
+            assertTrue(latch.await(10, TimeUnit.SECONDS), "All threads should complete within timeout");
+            
+            // Verify that exactly 10 alerts were allowed (the limit)
+            assertEquals(10, allowedCount.get(), "Exactly 10 alerts should be allowed");
+            // The rest should be blocked (50 - 10 = 40)
+            assertEquals(40, blockedCount.get(), "40 alerts should be blocked");
+            // Verify count matches
+            assertEquals(10, rateLimitService.getCurrentCount(destination));
+        } finally {
+            executor.shutdown();
+            if (!executor.awaitTermination(5, TimeUnit.SECONDS)) {
+                executor.shutdownNow();
+            }
         }
-        
-        // Wait for all threads to complete
-        assertTrue(latch.await(10, TimeUnit.SECONDS), "All threads should complete within timeout");
-        executor.shutdown();
-        
-        // Verify that exactly 10 alerts were allowed (the limit)
-        assertEquals(10, allowedCount.get(), "Exactly 10 alerts should be allowed");
-        // The rest should be blocked (50 - 10 = 40)
-        assertEquals(40, blockedCount.get(), "40 alerts should be blocked");
-        // Verify count matches
-        assertEquals(10, rateLimitService.getCurrentCount(destination));
     }
 
     @Test
     @DisplayName("Should handle sliding window correctly with partial expiration")
     void shouldHandleSlidingWindowWithPartialExpiration() throws InterruptedException {
+        // Note: This test uses Thread.sleep to verify real-time sliding window behavior.
+        // While a Clock abstraction would allow deterministic time control, this integration-style
+        // test validates actual time-based expiration which is critical for rate limiting correctness.
         String destination = "DISCORD";
         
         // Send 5 alerts immediately
@@ -182,6 +191,8 @@ class RateLimitServiceExtendedTest {
     @Test
     @DisplayName("Should correctly report count after partial window expiration")
     void shouldCorrectlyReportCountAfterPartialExpiration() throws InterruptedException {
+        // Note: This test uses Thread.sleep to verify real-time window expiration behavior.
+        // This validates that timestamps are correctly removed from the sliding window.
         String destination = "DISCORD";
         
         // Send 3 alerts

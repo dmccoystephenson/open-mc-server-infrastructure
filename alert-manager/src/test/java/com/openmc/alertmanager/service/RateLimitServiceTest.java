@@ -61,6 +61,8 @@ class RateLimitServiceTest {
     @Test
     @DisplayName("Should allow alerts after time window expires")
     void shouldAllowAlertsAfterTimeWindowExpires() throws InterruptedException {
+        // Note: This test uses Thread.sleep to verify real-time window expiration.
+        // This validates the core rate limiting behavior with actual time passage.
         String destination = "DISCORD";
         
         // Fill up to the limit

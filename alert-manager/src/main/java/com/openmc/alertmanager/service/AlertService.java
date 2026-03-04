@@ -47,8 +47,8 @@ public class AlertService {
             try {
                 // Check rate limit for this destination
                 if (!rateLimitService.shouldAllowAlert(destination.name())) {
-                    log.warn("Alert rate limited for destination: {}. Skipping alert: {}", 
-                             destination, alert.getTitle());
+                    log.debug("Alert rate limited for destination: {}. Skipping alert: {}", 
+                              destination, alert.getTitle());
                     continue;
                 }
                 

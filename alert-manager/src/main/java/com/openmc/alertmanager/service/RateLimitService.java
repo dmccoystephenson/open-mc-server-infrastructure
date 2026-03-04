@@ -70,8 +70,8 @@ public class RateLimitService {
             
             // Check if we've exceeded the limit
             if (window.getCount() >= maxAlerts) {
-                log.warn("Rate limit exceeded for destination: {}. Current count: {}, Max: {}, Window: {}s",
-                         destination, window.getCount(), maxAlerts, timeWindowSeconds);
+                log.debug("Rate limit exceeded for destination: {}. Current count: {}, Max: {}, Window: {}s",
+                          destination, window.getCount(), maxAlerts, timeWindowSeconds);
                 return false;
             }
             
