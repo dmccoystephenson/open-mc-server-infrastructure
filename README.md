@@ -100,7 +100,7 @@ The Activity Tracker data will automatically refresh with the server status upda
 
 ### Accordion Chat Integration
 
-The infrastructure supports integration with [Accordion Chat](https://github.com/dmccoystephenson/accordion-prototype), a real-time web-based chat application. When configured, players and administrators can communicate through a modern web interface accessible from the dashboard.
+The infrastructure supports integration with [Accordion Chat](https://github.com/Stephenson-Software/accordion), a real-time web-based chat application. When configured, players and administrators can communicate through a modern web interface accessible from the dashboard.
 
 **Accordion Chat runs as a separate application** to avoid duplication and ensure updates can be made to Accordion independently of the infrastructure project.
 
@@ -132,7 +132,7 @@ To enable Accordion Chat integration:
 
 Once configured, a "Chat" link will appear in the web dashboard's External Services section pointing to your Accordion Chat instance.
 
-**Note**: For production use with persistent storage and other configuration options, refer to the [Accordion Chat documentation](https://github.com/dmccoystephenson/accordion-prototype).
+**Note**: For production use with persistent storage and other configuration options, refer to the [Accordion Chat documentation](https://github.com/Stephenson-Software/accordion).
 
 ## Configuration
 
