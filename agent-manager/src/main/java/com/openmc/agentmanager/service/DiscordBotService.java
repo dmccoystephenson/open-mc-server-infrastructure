@@ -77,7 +77,7 @@ public class DiscordBotService extends ListenerAdapter {
         }
 
         try {
-            log.debug("Initializing JDA with gateway intents: GUILD_MESSAGES, MESSAGE_CONTENT, GUILD_MESSAGE_REACTIONS");
+            log.debug("Initializing JDA with gateway intents: GUILD_MESSAGES, MESSAGE_CONTENT, GUILD_MESSAGE_REACTIONS, GUILD_MEMBERS");
             jda = JDABuilder.createDefault(botToken)
                     .enableIntents(GatewayIntent.GUILD_MESSAGES, GatewayIntent.MESSAGE_CONTENT,
                             GatewayIntent.GUILD_MESSAGE_REACTIONS, GatewayIntent.GUILD_MEMBERS)

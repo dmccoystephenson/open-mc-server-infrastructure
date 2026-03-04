@@ -141,11 +141,22 @@ The following environment variables can be configured in `.env`:
 
 The following Discord role IDs control which tools each tier of user can access. Leave a variable blank to disable that tier (users matching only disabled tiers are treated as Unrecognized).
 
-- `AGENT_ADMIN_ROLE_ID`: Discord role ID for Admin — access to all tools (start, stop, restart, backup, status)
-- `AGENT_MODERATOR_ROLE_ID`: Discord role ID for Moderator — restart, backup, and all read-only/status tools
-- `AGENT_MEMBER_ROLE_ID`: Discord role ID for Member — read-only/status tools only
+- `AGENT_ADMIN_ROLE_ID`: Discord role ID for Admin — access to all tools (start, stop, restart, backup, status, metrics, activity, diagnostics)
+- `AGENT_MODERATOR_ROLE_ID`: Discord role ID for Moderator — restart, backup, and all read-only/status tools (status, metrics, activity, diagnostics)
+- `AGENT_MEMBER_ROLE_ID`: Discord role ID for Member — read-only/status tools only (status, metrics, activity, diagnostics)
 
 To find a role's ID in Discord: enable Developer Mode (**User Settings → Advanced → Developer Mode**), then right-click the role in **Server Settings → Roles** and choose **Copy Role ID**.
+
+### Public Tools (No Role Required)
+
+Individual tools can be made available to **all users regardless of role** — including users whose role is Unrecognized — using `AGENT_PUBLIC_TOOLS`. This is useful for read-only tools you want openly accessible:
+
+```bash
+# Comma-separated list of tool names. Leave blank (default) to keep all tools role-gated.
+AGENT_PUBLIC_TOOLS=get_server_status,get_server_metrics
+```
+
+When `AGENT_PUBLIC_TOOLS` is set, those tools are merged into the permitted tool list for every role tier. Unrecognized users who would otherwise be refused will be able to use those tools.
 
 ### Discord Bot Setup
 
@@ -307,7 +318,8 @@ At DEBUG level, the agent-manager logs additional detail at each step:
   - **Admin** (`AGENT_ADMIN_ROLE_ID`): All tools — start, stop, restart, backup, and all status/metrics tools
   - **Moderator** (`AGENT_MODERATOR_ROLE_ID`): restart, backup, and all read-only/status tools
   - **Member** (`AGENT_MEMBER_ROLE_ID`): Read-only/status tools only (get_server_status, get_server_metrics, get_activity_tracker_stats, get_activity_tracker_leaderboard, get_server_diagnostics)
-  - **Unrecognized** (no matching role): No tools — the agent politely declines without calling the Anthropic API
+  - **Unrecognized** (no matching role): Public tools only (if any configured), otherwise a polite refusal
+- Use `AGENT_PUBLIC_TOOLS` (comma-separated tool names) to designate tools available to all users regardless of role, including unrecognized users
 - Role IDs are configured via environment variables; no recompilation is needed to adjust permissions
 - The system prompt is dynamically built for each request to reflect only the tools available to the requesting user's role tier
 - Confirmation is required by default for all destructive actions

@@ -39,6 +39,7 @@ class RoleFilterServiceTest {
         ReflectionTestUtils.setField(roleFilterService, "adminRoleId", "admin-role-id");
         ReflectionTestUtils.setField(roleFilterService, "moderatorRoleId", "moderator-role-id");
         ReflectionTestUtils.setField(roleFilterService, "memberRoleId", "member-role-id");
+        ReflectionTestUtils.setField(roleFilterService, "publicToolsConfig", "");
         when(member.getUser()).thenReturn(user);
         when(user.getName()).thenReturn("testuser");
     }
@@ -231,5 +232,87 @@ class RoleFilterServiceTest {
     @DisplayName("Unrecognized display name should be 'Unrecognized'")
     void unrecognizedDisplayNameShouldBeUnrecognized() {
         assertEquals("Unrecognized", roleFilterService.getRoleDisplayName(RoleFilterService.RoleTier.UNRECOGNIZED));
+    }
+
+    // ── public tools ─────────────────────────────────────────────────────────
+
+    @Test
+    @DisplayName("Unrecognized user should get public tools when configured")
+    void unrecognizedShouldGetPublicToolsWhenConfigured() {
+        ReflectionTestUtils.setField(roleFilterService, "publicToolsConfig", "get_server_status");
+
+        List<ToolDefinition> tools = roleFilterService.getPermittedTools(RoleFilterService.RoleTier.UNRECOGNIZED);
+
+        assertEquals(1, tools.size());
+        assertEquals("get_server_status", tools.get(0).getName());
+    }
+
+    @Test
+    @DisplayName("Unrecognized user should get multiple public tools when configured")
+    void unrecognizedShouldGetMultiplePublicToolsWhenConfigured() {
+        ReflectionTestUtils.setField(roleFilterService, "publicToolsConfig", "get_server_status,get_server_metrics");
+
+        List<ToolDefinition> tools = roleFilterService.getPermittedTools(RoleFilterService.RoleTier.UNRECOGNIZED);
+
+        assertEquals(2, tools.size());
+        assertTrue(tools.stream().anyMatch(t -> "get_server_status".equals(t.getName())));
+        assertTrue(tools.stream().anyMatch(t -> "get_server_metrics".equals(t.getName())));
+    }
+
+    @Test
+    @DisplayName("Public tools should not be duplicated for member who already has them")
+    void publicToolsShouldNotBeDuplicatedForMember() {
+        ReflectionTestUtils.setField(roleFilterService, "publicToolsConfig", "get_server_status");
+
+        List<ToolDefinition> tools = roleFilterService.getPermittedTools(RoleFilterService.RoleTier.MEMBER);
+
+        long count = tools.stream().filter(t -> "get_server_status".equals(t.getName())).count();
+        assertEquals(1, count);
+    }
+
+    @Test
+    @DisplayName("Public tools should add new tools to member tier")
+    void publicToolsShouldAddNewToolsToMemberTier() {
+        // restart_server is not in MEMBER tier by default
+        ReflectionTestUtils.setField(roleFilterService, "publicToolsConfig", "restart_server");
+
+        List<ToolDefinition> tools = roleFilterService.getPermittedTools(RoleFilterService.RoleTier.MEMBER);
+
+        assertTrue(tools.stream().anyMatch(t -> "restart_server".equals(t.getName())));
+    }
+
+    @Test
+    @DisplayName("Empty public tools config should return empty set of public names")
+    void emptyPublicToolsConfigShouldReturnEmptySet() {
+        ReflectionTestUtils.setField(roleFilterService, "publicToolsConfig", "");
+        assertTrue(roleFilterService.getPublicToolNames().isEmpty());
+    }
+
+    @Test
+    @DisplayName("Blank public tools config should return empty set of public names")
+    void blankPublicToolsConfigShouldReturnEmptySet() {
+        ReflectionTestUtils.setField(roleFilterService, "publicToolsConfig", "   ");
+        assertTrue(roleFilterService.getPublicToolNames().isEmpty());
+    }
+
+    @Test
+    @DisplayName("Public tool names should be parsed from comma-separated config")
+    void publicToolNamesShouldBeParsedFromCommaSeparatedConfig() {
+        ReflectionTestUtils.setField(roleFilterService, "publicToolsConfig", "get_server_status, get_server_metrics");
+
+        var names = roleFilterService.getPublicToolNames();
+
+        assertTrue(names.contains("get_server_status"));
+        assertTrue(names.contains("get_server_metrics"));
+    }
+
+    @Test
+    @DisplayName("Unknown tool name in public tools should be silently ignored in tool list")
+    void unknownToolNameInPublicToolsShouldBeIgnored() {
+        ReflectionTestUtils.setField(roleFilterService, "publicToolsConfig", "nonexistent_tool");
+
+        List<ToolDefinition> tools = roleFilterService.getPermittedTools(RoleFilterService.RoleTier.UNRECOGNIZED);
+
+        assertTrue(tools.isEmpty());
     }
 }

@@ -226,8 +226,9 @@ See [alert-manager/README.md](alert-manager/README.md) for detailed configuratio
 - `AGENT_STOP_SERVER_REQUIRES_CONFIRMATION`: Require confirmation to stop server (default: `true`)
 - `AGENT_RESTART_SERVER_REQUIRES_CONFIRMATION`: Require confirmation to restart server (default: `true`)
 - `AGENT_ADMIN_ROLE_ID`: Discord role ID for Admin tier (all tools)
-- `AGENT_MODERATOR_ROLE_ID`: Discord role ID for Moderator tier (restart, backup, status)
-- `AGENT_MEMBER_ROLE_ID`: Discord role ID for Member tier (status only)
+- `AGENT_MODERATOR_ROLE_ID`: Discord role ID for Moderator tier (restart, backup, status, metrics, activity, diagnostics)
+- `AGENT_MEMBER_ROLE_ID`: Discord role ID for Member tier (status, metrics, activity, diagnostics)
+- `AGENT_PUBLIC_TOOLS`: Comma-separated tool names accessible to all users regardless of role (e.g. `get_server_status`)
 
 See [agent-manager/README.md](agent-manager/README.md) for detailed configuration, Discord bot setup, and usage examples.
 
