@@ -70,7 +70,7 @@ Forward these ports to your server's static IP:
 | 25565 | TCP      | Minecraft Server      | Yes       |
 | 8443  | TCP      | Web Dashboard (HTTPS) | Recommended |
 | 8100  | TCP      | BlueMap               | Optional  |
-| 25575 | TCP      | RCON                  | ⚠️ Do not expose publicly |
+| 25575 | TCP      | RCON                  | **Do not expose publicly** |
 
 In your router's admin UI (typically `192.168.1.1`), add a port forwarding rule for each port you need pointing to your server's static IP.
 
@@ -269,7 +269,7 @@ cd /path/to/open-mc-server-infrastructure && docker compose restart nginx
 | Players can't connect | Port forwarding, `docker ps`, server logs |
 | Web dashboard inaccessible | `docker logs open-mc-nginx`, SSL cert files in `nginx/ssl/` |
 | High latency | `docker stats`, increase `JAVA_OPTS` memory, reduce view-distance |
-| Server crashes | `docker logs open-mc-server`, `dmesg \| grep -i "out of memory"` |
+| Server crashes | `docker logs open-mc-server`, `dmesg | grep -i "out of memory"` |
 
 ### Advanced Firewall (OPNsense / pfSense)
 
