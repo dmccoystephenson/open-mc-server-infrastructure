@@ -147,16 +147,16 @@ class ServerConfigTest {
     }
 
     @Test
-    @DisplayName("Should have empty Accord Chat URL by default")
-    void shouldHaveEmptyAccordChatUrl() {
-        assertEquals("", serverConfig.getAccordChatUrl());
+    @DisplayName("Should have empty Accordion Chat URL by default")
+    void shouldHaveEmptyAccordionChatUrl() {
+        assertEquals("", serverConfig.getAccordionChatUrl());
     }
 
     @Test
-    @DisplayName("Should allow setting Accord Chat URL")
-    void shouldAllowSettingAccordChatUrl() {
-        serverConfig.setAccordChatUrl("http://localhost:3000");
-        assertEquals("http://localhost:3000", serverConfig.getAccordChatUrl());
+    @DisplayName("Should allow setting Accordion Chat URL")
+    void shouldAllowSettingAccordionChatUrl() {
+        serverConfig.setAccordionChatUrl("http://localhost:3000");
+        assertEquals("http://localhost:3000", serverConfig.getAccordionChatUrl());
     }
 
     @Test

@@ -24,7 +24,7 @@ public class ServerConfig {
     private String dashboardPrimaryColor = "#667eea";
     private String dashboardSecondaryColor = "#764ba2";
     private String pluginsDirectory = "/mcserver/plugins";
-    private String accordChatUrl = "";
+    private String accordionChatUrl = "";
     private boolean dashboardDarkMode = true;
     
     // Getters and setters
@@ -164,12 +164,12 @@ public class ServerConfig {
         this.pluginsDirectory = pluginsDirectory;
     }
     
-    public String getAccordChatUrl() {
-        return accordChatUrl;
+    public String getAccordionChatUrl() {
+        return accordionChatUrl;
     }
     
-    public void setAccordChatUrl(String accordChatUrl) {
-        this.accordChatUrl = accordChatUrl;
+    public void setAccordionChatUrl(String accordionChatUrl) {
+        this.accordionChatUrl = accordionChatUrl;
     }
     
     public boolean isDashboardDarkMode() {
