@@ -171,6 +171,8 @@ sudo apt-get install certbot
 
 Obtain a certificate (requires domain name):
 
+> **Note**: The `--standalone` challenge requires port 80 to be publicly accessible on your domain. Temporarily forward port 80 from your router to your server, or use a DNS-01 challenge (`--preferred-challenges dns`) if port 80 is unavailable.
+
 ```bash
 sudo certbot certonly --standalone -d yourdomain.com
 ```
@@ -214,11 +216,8 @@ services:
       - FOWNER
     security_opt:
       - no-new-privileges:true
-    deploy:
-      resources:
-        limits:
-          cpus: '4'
-          memory: 8G
+    cpus: '4'
+    mem_limit: 8g
 
   webapp:
     cap_drop:
@@ -230,11 +229,8 @@ services:
       - SETGID
     security_opt:
       - no-new-privileges:true
-    deploy:
-      resources:
-        limits:
-          cpus: '2'
-          memory: 2G
+    cpus: '2'
+    mem_limit: 2g
 
   nginx:
     cap_drop:
@@ -246,14 +242,11 @@ services:
       - SETGID
     security_opt:
       - no-new-privileges:true
-    deploy:
-      resources:
-        limits:
-          cpus: '1'
-          memory: 512M
+    cpus: '1'
+    mem_limit: 512m
 ```
 
-**Note**: These settings do not require Docker's privileged mode. They use standard Docker security hardening features. Adjust the CPU and memory limits based on your server hardware.
+**Note**: These settings do not require Docker's privileged mode. They use standard Docker security hardening features. The `cpus` and `mem_limit` keys are the Compose-native way to set resource limits (supported in regular `docker compose up`, unlike `deploy.resources` which only applies in Swarm mode). Adjust the limits based on your server hardware.
 
 ### 5. Regular Updates
 
@@ -427,8 +420,13 @@ Create a filter for Minecraft: `/etc/fail2ban/filter.d/minecraft.conf`
 
 ```ini
 [Definition]
-failregex = ^.*\[INFO\].*<HOST>.*lost connection.*$
-            ^.*\[WARNING\].*<HOST>.*was kicked.*$
+# NOTE: Do not use generic patterns like "lost connection" or "was kicked" as
+# they match normal gameplay and disconnects, and can cause legitimate players
+# to be banned. Define failregex based on clear abuse indicators from your
+# server logs (e.g., repeated authentication failures or connection throttling).
+# The example below is intentionally left empty — inspect your server's
+# latest.log and craft patterns specific to your version and plugins.
+failregex =
 ignoreregex =
 ```
 
@@ -578,7 +576,7 @@ sudo bash -c 'cat > /etc/letsencrypt/renewal-hooks/deploy/01-copy-certs.sh << EO
 #!/bin/bash
 cp /etc/letsencrypt/live/yourdomain.duckdns.org/fullchain.pem /path/to/open-mc-server-infrastructure/nginx/ssl/cert.pem
 cp /etc/letsencrypt/live/yourdomain.duckdns.org/privkey.pem /path/to/open-mc-server-infrastructure/nginx/ssl/key.pem
-docker compose -f /path/to/open-mc-server-infrastructure/compose.yml restart nginx
+cd /path/to/open-mc-server-infrastructure && docker compose restart nginx
 EOF'
 
 sudo chmod +x /etc/letsencrypt/renewal-hooks/deploy/01-copy-certs.sh
@@ -849,14 +847,22 @@ pfSense is similar to OPNsense with a slightly different interface:
 
 ### Docker-Based Alternative: Containerized Firewall
 
-For a lighter approach, you can add a containerized firewall service to your `docker compose` configuration. Create a `firewall-rules.sh` script and a new service entry:
+> ⚠️ **Warning**: This approach applies iptables rules directly to the **host network** (`network_mode: host`) and requires `privileged: true`. If the container stops or crashes, the DROP policies remain active on the host, which can lock you out. Using an unpinned image (`alpine:latest`) also introduces supply chain risk. **For production use, prefer host-based firewalling (UFW/nftables) or a dedicated router firewall (OPNsense/pfSense) instead.**
+>
+> **Before applying**: Save your current iptables rules so you can restore them if needed:
+> ```bash
+> sudo iptables-save > ~/iptables-before-firewall.rules
+> # To restore: sudo iptables-restore < ~/iptables-before-firewall.rules
+> ```
+
+For a lighter approach, you can add a containerized firewall service to your `docker compose` configuration. Pin the image to a specific digest or version tag to avoid supply-chain risk. Create a `firewall-rules.sh` script and a new service entry:
 
 **firewall service (add to your compose file):**
 
 ```yaml
 services:
   firewall:
-    image: alpine:latest
+    image: alpine:3.21  # Pin to a specific version rather than 'latest'
     container_name: open-mc-firewall
     privileged: true
     network_mode: host
@@ -911,7 +917,16 @@ iptables -P FORWARD DROP
 tail -f /dev/null
 ```
 
-**Note**: This approach requires Docker's privileged mode and may have limitations compared to host-based or dedicated firewall solutions. SSH access (port 22) is included to prevent accidental lockout. Adjust the SSH port if your server uses a non-default port.
+**To remove these rules** if the container crashes or you need to roll back:
+
+```bash
+# Flush all rules and reset to permissive defaults
+sudo iptables -F
+sudo iptables -P INPUT ACCEPT
+sudo iptables -P FORWARD ACCEPT
+# Or restore from the backup you created before applying:
+# sudo iptables-restore < ~/iptables-before-firewall.rules
+```
 
 ## Conclusion
 
