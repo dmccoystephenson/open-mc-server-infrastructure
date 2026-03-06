@@ -16,20 +16,25 @@
 #
 # Optional
 #   BUILD_COMMAND      – Gradle/Maven command to produce the JAR (default: ./gradlew build)
+#                        ⚠️  WARNING: this variable is executed as a shell command.
+#                        Only repository admins should have write access to this variable.
 #   JAR_PATH           – Relative path to the built JAR inside the repository
 #                        (default: build/libs/*.jar)
 # ─────────────────────────────────────────────────────────────────────────────
 
 name: Deploy Plugin to omcsi
 
+# Trigger on all pushes; the job condition below restricts execution to the
+# configured branch.  Note: ${{ vars.* }} expressions are NOT evaluated inside
+# the `on:` event filter – only inside job steps and conditions.
 on:
   push:
-    branches:
-      - ${{ vars.DEPLOY_BRANCH || 'main' }}
 
 jobs:
   build-and-deploy:
     name: Build and Deploy Plugin
+    # Only run when the pushed branch matches DEPLOY_BRANCH (default: main)
+    if: ${{ github.ref_name == (vars.DEPLOY_BRANCH || 'main') }}
     runs-on: ubuntu-latest
     permissions:
       contents: read

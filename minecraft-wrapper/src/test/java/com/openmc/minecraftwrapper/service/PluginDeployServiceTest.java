@@ -119,7 +119,7 @@ class PluginDeployServiceTest {
         MockMultipartFile file = validJarFile("evil.jar");
 
         assertThrows(IllegalArgumentException.class,
-                () -> pluginDeployService.replacePlugin("../evil.jar", file));
+                () -> pluginDeployService.replacePlugin("sub/evil.jar", file));
     }
 
     @Test

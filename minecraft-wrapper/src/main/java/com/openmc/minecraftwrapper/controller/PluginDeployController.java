@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 
 @Slf4j
@@ -45,11 +46,11 @@ public class PluginDeployController {
             @RequestParam("file") MultipartFile file) {
 
         if (!isAuthorized(authHeader)) {
-            log.warn("Unauthorized plugin deploy attempt for plugin: {}", pluginName);
+            log.warn("Unauthorized plugin deploy attempt");
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
         }
 
-        log.info("Received plugin deploy request for: {}", pluginName);
+        log.info("Received plugin deploy request");
 
         try {
             pluginDeployService.replacePlugin(pluginName, file);
@@ -82,7 +83,7 @@ public class PluginDeployController {
         }
         String providedToken = authHeader.substring(BEARER_PREFIX.length());
         return MessageDigest.isEqual(
-                deployAuthToken.getBytes(),
-                providedToken.getBytes());
+                deployAuthToken.getBytes(StandardCharsets.UTF_8),
+                providedToken.getBytes(StandardCharsets.UTF_8));
     }
 }
