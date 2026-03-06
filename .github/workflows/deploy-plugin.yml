@@ -26,17 +26,19 @@
 
 name: Deploy Plugin to omcsi
 
-# Trigger on all pushes; the job condition below restricts execution to the
-# configured branch.  Note: ${{ vars.* }} expressions are NOT evaluated inside
-# the `on:` event filter – only inside job steps and conditions.
+# Trigger on all pushes and on manual dispatch; the job condition below
+# restricts push execution to the configured branch.
+# Note: ${{ vars.* }} expressions are NOT evaluated inside the `on:` event
+# filter – only inside job steps and conditions.
 on:
   push:
+  workflow_dispatch:
 
 jobs:
   build-and-deploy:
     name: Build and Deploy Plugin
-    # Only run when the pushed branch matches DEPLOY_BRANCH (default: main)
-    if: ${{ github.ref_name == (vars.DEPLOY_BRANCH || 'main') }}
+    # Always run on manual dispatch; for push events only run on DEPLOY_BRANCH (default: main)
+    if: ${{ github.event_name == 'workflow_dispatch' || github.ref_name == (vars.DEPLOY_BRANCH || 'main') }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
