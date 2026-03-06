@@ -1,0 +1,89 @@
+# Reference workflow for automatically deploying a Spigot plugin JAR to a running
+# omcsi (open-mc-server-infrastructure) instance whenever a configured branch is pushed.
+#
+# ─── Setup ───────────────────────────────────────────────────────────────────
+# Copy this file into your plugin repository at .github/workflows/deploy-plugin.yml
+# and configure the secrets and variables described below.
+#
+# Required GitHub repository secrets
+#   OMCSI_URL          – Base URL of your omcsi instance, e.g. https://mc.example.com:8092
+#   OMCSI_DEPLOY_TOKEN – The value you set as DEPLOY_AUTH_TOKEN in your omcsi .env file
+#
+# Required GitHub repository variables (or edit the defaults below)
+#   PLUGIN_JAR_NAME    – Filename of the plugin JAR already installed on the server,
+#                        e.g. MyPlugin.jar  (the file that will be replaced)
+#   DEPLOY_BRANCH      – Branch that triggers a deployment, e.g. main
+#
+# Optional
+#   BUILD_COMMAND      – Gradle/Maven command to produce the JAR (default: ./gradlew build)
+#   JAR_PATH           – Relative path to the built JAR inside the repository
+#                        (default: build/libs/*.jar)
+# ─────────────────────────────────────────────────────────────────────────────
+
+name: Deploy Plugin to omcsi
+
+on:
+  push:
+    branches:
+      - ${{ vars.DEPLOY_BRANCH || 'main' }}
+
+jobs:
+  build-and-deploy:
+    name: Build and Deploy Plugin
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Build plugin JAR
+        run: ${{ vars.BUILD_COMMAND || './gradlew build' }}
+
+      - name: Locate built JAR
+        id: locate-jar
+        run: |
+          JAR_GLOB="${{ vars.JAR_PATH || 'build/libs/*.jar' }}"
+          # Expand the glob and pick the first match that is not a *-sources or *-javadoc JAR
+          JAR_FILE=$(ls ${JAR_GLOB} 2>/dev/null | grep -v '\-sources\.jar' | grep -v '\-javadoc\.jar' | head -n 1)
+          if [ -z "${JAR_FILE}" ]; then
+            echo "❌ No JAR found matching: ${JAR_GLOB}"
+            exit 1
+          fi
+          echo "jar_file=${JAR_FILE}" >> "$GITHUB_OUTPUT"
+          echo "✅ Found JAR: ${JAR_FILE}"
+
+      - name: Deploy plugin to omcsi
+        run: |
+          PLUGIN_JAR_NAME="${{ vars.PLUGIN_JAR_NAME }}"
+          if [ -z "${PLUGIN_JAR_NAME}" ]; then
+            echo "❌ PLUGIN_JAR_NAME variable is not set"
+            exit 1
+          fi
+
+          HTTP_STATUS=$(curl --silent --output /dev/null --write-out "%{http_code}" \
+            --request POST \
+            --header "Authorization: Bearer ${{ secrets.OMCSI_DEPLOY_TOKEN }}" \
+            --form "pluginName=${PLUGIN_JAR_NAME}" \
+            --form "file=@${{ steps.locate-jar.outputs.jar_file }}" \
+            "${{ secrets.OMCSI_URL }}/api/plugins/deploy")
+
+          if [ "${HTTP_STATUS}" -eq 200 ]; then
+            echo "✅ Plugin deployed successfully (HTTP ${HTTP_STATUS})"
+          elif [ "${HTTP_STATUS}" -eq 401 ]; then
+            echo "❌ Authentication failed – check OMCSI_DEPLOY_TOKEN (HTTP ${HTTP_STATUS})"
+            exit 1
+          elif [ "${HTTP_STATUS}" -eq 400 ]; then
+            echo "❌ Bad request – check PLUGIN_JAR_NAME and the uploaded JAR (HTTP ${HTTP_STATUS})"
+            exit 1
+          else
+            echo "❌ Deployment failed (HTTP ${HTTP_STATUS})"
+            exit 1
+          fi
