@@ -33,10 +33,11 @@ public class PluginDeployService {
     private String pluginsDirectory;
 
     /**
-     * Replace an existing plugin JAR with the provided file.
+     * Deploy a plugin JAR with the provided file, creating it if it does not exist or
+     * replacing it if it does.
      *
-     * @param pluginName the filename of the plugin to replace (e.g. {@code MyPlugin.jar})
-     * @param file       the new JAR file to deploy
+     * @param pluginName the filename of the plugin JAR to deploy (e.g. {@code MyPlugin.jar})
+     * @param file       the JAR file to deploy
      * @throws IllegalArgumentException if {@code pluginName} or {@code file} fails validation
      * @throws IOException              if the file cannot be written to the plugins directory
      */
@@ -67,8 +68,9 @@ public class PluginDeployService {
             }
         }
 
-        // Write to a temp file first, then move into place
-        Path tempPath = pluginsDirPath.resolve(sanitizedName + ".tmp");
+        // Write to a unique temp file first, then move into place.
+        // Using a unique name avoids races between concurrent deploys of the same plugin.
+        Path tempPath = Files.createTempFile(pluginsDirPath, sanitizedName, ".tmp");
         try {
             try (InputStream is = file.getInputStream()) {
                 Files.copy(is, tempPath, StandardCopyOption.REPLACE_EXISTING);
@@ -153,7 +155,7 @@ public class PluginDeployService {
                 ZipEntry entry;
                 int entryCount = 0;
                 while ((entry = zis.getNextEntry()) != null) {
-                    if (entryCount++ > MAX_ZIP_ENTRIES) {
+                    if (++entryCount > MAX_ZIP_ENTRIES) {
                         log.warn("JAR validation aborted: too many ZIP entries");
                         return false;
                     }

@@ -20,6 +20,8 @@
 #                        Only repository admins should have write access to this variable.
 #   JAR_PATH           – Relative path to the built JAR inside the repository
 #                        (default: build/libs/*.jar)
+#                        ⚠️  WARNING: passed to `find` as a path glob via an env variable;
+#                        avoid metacharacters.
 # ─────────────────────────────────────────────────────────────────────────────
 
 name: Deploy Plugin to omcsi
@@ -54,10 +56,16 @@ jobs:
 
       - name: Locate built JAR
         id: locate-jar
+        env:
+          JAR_GLOB: ${{ vars.JAR_PATH || 'build/libs/*.jar' }}
         run: |
-          JAR_GLOB="${{ vars.JAR_PATH || 'build/libs/*.jar' }}"
-          # Expand the glob and pick the first match that is not a *-sources or *-javadoc JAR
-          JAR_FILE=$(ls ${JAR_GLOB} 2>/dev/null | grep -v '\-sources\.jar' | grep -v '\-javadoc\.jar' | head -n 1)
+          # Use find to expand the glob safely (handles paths with spaces).
+          JAR_DIR=$(dirname "${JAR_GLOB}")
+          JAR_PATTERN=$(basename "${JAR_GLOB}")
+          JAR_FILE=$(
+            find "${JAR_DIR}" -maxdepth 1 -type f -name "${JAR_PATTERN}" \
+              ! -name '*-sources.jar' ! -name '*-javadoc.jar' | head -n 1
+          )
           if [ -z "${JAR_FILE}" ]; then
             echo "❌ No JAR found matching: ${JAR_GLOB}"
             exit 1
@@ -66,8 +74,9 @@ jobs:
           echo "✅ Found JAR: ${JAR_FILE}"
 
       - name: Deploy plugin to omcsi
+        env:
+          PLUGIN_JAR_NAME: ${{ vars.PLUGIN_JAR_NAME }}
         run: |
-          PLUGIN_JAR_NAME="${{ vars.PLUGIN_JAR_NAME }}"
           if [ -z "${PLUGIN_JAR_NAME}" ]; then
             echo "❌ PLUGIN_JAR_NAME variable is not set"
             exit 1
