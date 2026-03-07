@@ -155,7 +155,7 @@ Set the following variables in your omcsi `.env` file (see `sample.env` for refe
 
 ### Reference Workflow for Spigot Plugin Repositories
 
-A ready-to-use workflow is provided at `.github/workflows/deploy-plugin.yml`. Copy it into your plugin repository and configure the following:
+A ready-to-use workflow is provided at `docs/github-actions/deploy-plugin.yml`. Copy it into your plugin repository at `.github/workflows/deploy-plugin.yml` and configure the following:
 
 **Repository Secrets** (Settings → Secrets and variables → Actions):
 
