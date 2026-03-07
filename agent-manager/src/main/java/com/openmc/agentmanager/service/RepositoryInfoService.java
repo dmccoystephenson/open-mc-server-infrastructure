@@ -428,7 +428,7 @@ public class RepositoryInfoService {
     /**
      * Extract the first Markdown heading (# Title) from content.
      */
-    String extractMarkdownTitle(String content) {
+    private String extractMarkdownTitle(String content) {
         for (String line : content.split("\n")) {
             String trimmed = line.trim();
             if (trimmed.startsWith("# ")) return trimmed.substring(2).trim();
@@ -439,7 +439,7 @@ public class RepositoryInfoService {
     /**
      * Extract the first non-heading paragraph from Markdown content.
      */
-    String extractFirstParagraph(String content) {
+    private String extractFirstParagraph(String content) {
         StringBuilder paragraph = new StringBuilder();
         boolean pastTitle = false;
         boolean collecting = false;
