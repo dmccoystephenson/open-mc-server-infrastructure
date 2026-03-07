@@ -2,6 +2,7 @@ package com.openmc.webapp.startup;
 
 import com.openmc.webapp.config.ServerConfig;
 import com.openmc.webapp.rcon.RconClient;
+import com.openmc.webapp.service.RconService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -24,6 +25,7 @@ public class RconReadinessChecker implements ApplicationRunner {
     private static final Logger logger = LoggerFactory.getLogger(RconReadinessChecker.class);
     
     private final ServerConfig serverConfig;
+    private final RconService rconService;
     private final int maxRetries;
     private final int initialDelayMs;
     private final int maxDelayMs;
@@ -32,12 +34,14 @@ public class RconReadinessChecker implements ApplicationRunner {
     
     public RconReadinessChecker(
             ServerConfig serverConfig,
+            RconService rconService,
             @Value("${minecraft.server.readiness.max-retries:30}") int maxRetries,
             @Value("${minecraft.server.readiness.initial-delay-ms:1000}") int initialDelayMs,
             @Value("${minecraft.server.readiness.max-delay-ms:10000}") int maxDelayMs,
             @Value("${minecraft.server.readiness.backoff-multiplier:1.5}") double backoffMultiplier,
             @Value("${minecraft.server.readiness.connect-timeout-ms:3000}") int connectTimeoutMs) {
         this.serverConfig = serverConfig;
+        this.rconService = rconService;
         this.maxRetries = maxRetries;
         this.initialDelayMs = initialDelayMs;
         this.maxDelayMs = maxDelayMs;
@@ -68,6 +72,13 @@ public class RconReadinessChecker implements ApplicationRunner {
                     
                     // If we get here, RCON is available
                     logger.info("Minecraft server RCON is ready! (attempt {}/{})", attempt, maxRetries);
+                    
+                    // Initialize the cache now that RCON is ready
+                    // This prevents the webapp from caching an "offline" state on first access
+                    logger.info("Initializing server status cache...");
+                    rconService.getServerStatus();
+                    logger.info("Server status cache initialized successfully");
+                    
                     return;
                 }
             } catch (Exception e) {
