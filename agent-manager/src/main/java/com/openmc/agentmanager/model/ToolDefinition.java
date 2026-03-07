@@ -176,10 +176,38 @@ public class ToolDefinition {
     }
 
     /**
+     * Creates the get_repository_info tool definition.
+     */
+    public static ToolDefinition getRepositoryInfo() {
+        return ToolDefinition.builder()
+                .name("get_repository_info")
+                .description("Retrieves information about the OMCSI (Open MC Server Infrastructure) repository, " +
+                        "its services, architecture, configuration, and usage. Use this when the user asks about " +
+                        "the infrastructure itself, how to set it up, what services are available, how they are " +
+                        "configured, or any other question about the OMCSI project. " +
+                        "Always read-only — never requires confirmation.")
+                .inputSchema(Map.of(
+                        "type", "object",
+                        "properties", Map.of(
+                                "topic", Map.of(
+                                        "type", "string",
+                                        "description", "The specific topic to query. Available topics: " +
+                                                "overview, services, getting_started, architecture, scripts, " +
+                                                "configuration, self_hosting, ci_cd. " +
+                                                "If omitted, returns all repository information."
+                                )
+                        ),
+                        "required", List.of()
+                ))
+                .build();
+    }
+
+    /**
      * Returns all available tool definitions.
      */
     public static List<ToolDefinition> allTools() {
         return List.of(startServer(), stopServer(), restartServer(), getServerStatus(), triggerBackup(),
-                getServerMetrics(), getActivityTrackerStats(), getActivityTrackerLeaderboard(), getServerDiagnostics());
+                getServerMetrics(), getActivityTrackerStats(), getActivityTrackerLeaderboard(), getServerDiagnostics(),
+                getRepositoryInfo());
     }
 }

@@ -26,6 +26,9 @@ class ToolExecutionServiceTest {
     @Mock
     private DiagnosticsService diagnosticsService;
 
+    @Mock
+    private RepositoryInfoService repositoryInfoService;
+
     @InjectMocks
     private ToolExecutionService toolExecutionService;
 
@@ -228,5 +231,38 @@ class ToolExecutionServiceTest {
     @DisplayName("Should recognize get_server_diagnostics as valid tool")
     void shouldRecognizeGetServerDiagnosticsAsValidTool() {
         assertTrue(toolExecutionService.isRecognizedTool("get_server_diagnostics"));
+    }
+
+    @Test
+    @DisplayName("Should execute get_repository_info tool successfully")
+    void shouldExecuteGetRepositoryInfoTool() {
+        String infoJson = "{\"topic\":\"overview\",\"data\":{\"name\":\"OMCSI\"}}";
+        when(repositoryInfoService.getRepositoryInfo(null)).thenReturn(infoJson);
+
+        ToolResult result = toolExecutionService.executeTool("tool-11", "get_repository_info");
+
+        assertTrue(result.isSuccess());
+        assertEquals(infoJson, result.getMessage());
+        assertEquals("get_repository_info", result.getToolName());
+        verify(repositoryInfoService).getRepositoryInfo(null);
+    }
+
+    @Test
+    @DisplayName("Should pass topic input to repository info service")
+    void shouldPassTopicInputToRepositoryInfoService() {
+        String infoJson = "{\"topic\":\"services\",\"data\":{}}";
+        when(repositoryInfoService.getRepositoryInfo("services")).thenReturn(infoJson);
+
+        ToolResult result = toolExecutionService.executeTool("tool-12", "get_repository_info",
+                Map.of("topic", "services"));
+
+        assertTrue(result.isSuccess());
+        verify(repositoryInfoService).getRepositoryInfo("services");
+    }
+
+    @Test
+    @DisplayName("Should recognize get_repository_info as valid tool")
+    void shouldRecognizeGetRepositoryInfoAsValidTool() {
+        assertTrue(toolExecutionService.isRecognizedTool("get_repository_info"));
     }
 }

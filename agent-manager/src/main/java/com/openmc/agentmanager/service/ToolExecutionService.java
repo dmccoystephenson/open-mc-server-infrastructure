@@ -16,13 +16,16 @@ public class ToolExecutionService {
     private final MinecraftWrapperService minecraftWrapperService;
     private final BackupManagerService backupManagerService;
     private final DiagnosticsService diagnosticsService;
+    private final RepositoryInfoService repositoryInfoService;
 
     public ToolExecutionService(MinecraftWrapperService minecraftWrapperService,
                                 BackupManagerService backupManagerService,
-                                DiagnosticsService diagnosticsService) {
+                                DiagnosticsService diagnosticsService,
+                                RepositoryInfoService repositoryInfoService) {
         this.minecraftWrapperService = minecraftWrapperService;
         this.backupManagerService = backupManagerService;
         this.diagnosticsService = diagnosticsService;
+        this.repositoryInfoService = repositoryInfoService;
     }
 
     /**
@@ -74,6 +77,16 @@ public class ToolExecutionService {
                     }
                     yield diagnosticsService.getServerDiagnostics(limit);
                 }
+                case "get_repository_info" -> {
+                    String topic = null;
+                    if (toolInput != null) {
+                        Object rawTopic = toolInput.get("topic");
+                        if (rawTopic instanceof String str) {
+                            topic = str;
+                        }
+                    }
+                    yield repositoryInfoService.getRepositoryInfo(topic);
+                }
                 default -> throw new IllegalArgumentException("Unknown tool: " + toolName);
             };
             log.info("Tool {} executed successfully: {}", toolName, result);
@@ -111,7 +124,8 @@ public class ToolExecutionService {
         return toolName != null && switch (toolName) {
             case "start_server", "stop_server", "restart_server", "get_server_status",
                     "trigger_backup", "get_server_metrics", "get_activity_tracker_stats",
-                    "get_activity_tracker_leaderboard", "get_server_diagnostics" -> true;
+                    "get_activity_tracker_leaderboard", "get_server_diagnostics",
+                    "get_repository_info" -> true;
             default -> false;
         };
     }

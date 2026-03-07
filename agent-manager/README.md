@@ -171,6 +171,7 @@ The agent exposes the following tools to the Anthropic API:
 | `restart_server` | Gracefully restarts the server | `POST /api/server/restart` (minecraft-wrapper) |
 | `get_server_status` | Gets the current server status | `GET /api/server/status` (minecraft-wrapper) |
 | `trigger_backup` | Triggers a manual backup of world data | `POST /api/backups/trigger` (backup-manager) |
+| `get_repository_info` | Gets information about the OMCSI repository, services, architecture, and configuration | Built-in (reads from `repository-info.json`) |
 
 The `start_server`, `stop_server`, and `restart_server` tools call the `minecraft-wrapper` REST API (port 8092). The `get_server_status` tool also calls `minecraft-wrapper` and is read-only — it never requires confirmation. The `trigger_backup` tool calls the `backup-manager` REST API (port 8091), consistent with how `trigger-backup.sh` works at the infrastructure level. The `stop_server` and `restart_server` tools leverage the graceful shutdown behavior already implemented in `minecraft-wrapper` — players receive countdown warnings at 30, 20, 10, and 5 seconds before the server stops.
 
