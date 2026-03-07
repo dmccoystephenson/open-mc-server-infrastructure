@@ -11,6 +11,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
 import static org.mockito.Mockito.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -62,5 +63,50 @@ class BackupControllerTest {
 
         verify(backupService, times(1)).createBackup();
         verify(backupService, never()).cleanupOldBackups();
+    }
+
+    @Test
+    @DisplayName("Should return no-backup status when no backup has run")
+    void shouldReturnNoneWhenNoBackupHasRun() throws Exception {
+        when(backupService.getLatestBackupStatus()).thenReturn(null);
+
+        mockMvc.perform(get("/api/backups/latest")
+                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.available").value(false))
+                .andExpect(jsonPath("$.message").value("No backup has been performed yet"));
+    }
+
+    @Test
+    @DisplayName("Should return latest successful backup status")
+    void shouldReturnLatestSuccessfulBackupStatus() throws Exception {
+        BackupService.LatestBackupStatus status = new BackupService.LatestBackupStatus(
+                true, "2024-01-01T02:00:00", "/backups/backup-20240101-020000",
+                "Minecraft server backup created successfully.");
+        when(backupService.getLatestBackupStatus()).thenReturn(status);
+
+        mockMvc.perform(get("/api/backups/latest")
+                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.available").value(true))
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.timestamp").value("2024-01-01T02:00:00"))
+                .andExpect(jsonPath("$.backupPath").value("/backups/backup-20240101-020000"));
+    }
+
+    @Test
+    @DisplayName("Should return latest failed backup status without backupPath")
+    void shouldReturnLatestFailedBackupStatus() throws Exception {
+        BackupService.LatestBackupStatus status = new BackupService.LatestBackupStatus(
+                false, "2024-01-01T02:05:00", null, "Backup failed: volume not found");
+        when(backupService.getLatestBackupStatus()).thenReturn(status);
+
+        mockMvc.perform(get("/api/backups/latest")
+                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.available").value(true))
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.message").value("Backup failed: volume not found"))
+                .andExpect(jsonPath("$.backupPath").doesNotExist());
     }
 }

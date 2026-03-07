@@ -22,6 +22,24 @@ An open, community-agnostic, Docker-based Minecraft server infrastructure runnin
 - [Docker Compose](https://docs.docker.com/compose/install/)
 - [Git](https://git-scm.com/downloads)
 
+## Deployment Options
+
+### Local Development
+Follow the Quick Start guide below for running the server on your local machine.
+
+### Self-Hosting at Home
+For secure home deployment with proper firewall configuration, network setup, and security best practices, see the **[Self-Hosting Guide](SELF-HOSTING.md)**.
+
+The Self-Hosting Guide covers:
+- Hardware and network requirements
+- Router and port forwarding configuration
+- Firewall setup (UFW, iptables, OPNsense, pfSense)
+- DDoS protection and rate limiting
+- Dynamic DNS configuration
+- SSL certificate setup for public access
+- Monitoring and maintenance
+- Advanced security configurations
+
 ## Quick Start
 
 1. **Clone the repository**
@@ -56,7 +74,7 @@ The server includes a built-in web dashboard that provides:
 
 - **Server Status**: Real-time view of server status, player count, and MOTD
 - **Admin Console**: Send commands to the server using RCON
-- **External Links**: Quick access to Dynmap, BlueMap, and other services
+- **External Links**: Quick access to Dynmap, BlueMap, Accordion Chat, and other services
 - **Activity Tracker Integration**: View player statistics and leaderboards (optional)
 - **Secure Access**: HTTPS encryption with reverse proxy to protect credentials
 
@@ -98,6 +116,42 @@ To enable Activity Tracker integration:
 
 The Activity Tracker data will automatically refresh with the server status updates. If the Activity Tracker API is not available, the sections will be hidden without affecting other dashboard functionality.
 
+### Accordion Chat Integration
+
+The infrastructure supports integration with [Accordion Chat](https://github.com/Stephenson-Software/accordion), a real-time web-based chat application. When configured, players and administrators can communicate through a modern web interface accessible from the dashboard.
+
+**Accordion Chat runs as a separate application** to avoid duplication and ensure updates can be made to Accordion independently of the infrastructure project.
+
+To enable Accordion Chat integration:
+
+1. **Initialize and run the Accordion Chat submodule**:
+   ```bash
+   # Initialize the accordion-chat submodule
+   git submodule update --init accordion-chat
+   cd accordion-chat
+   # Follow the Accordion setup instructions in its README
+   docker compose up -d
+   ```
+
+2. **Configure the web dashboard** to link to your running Accordion instance by setting the following in your `.env` file:
+   ```bash
+   ACCORDION_CHAT_URL=http://localhost:3000
+   ```
+   
+   For accessing from other machines on your network, use your server's IP address:
+   ```bash
+   ACCORDION_CHAT_URL=http://192.168.1.100:3000
+   ```
+
+3. **Restart the infrastructure services** to apply the configuration:
+   ```bash
+   ./up.sh
+   ```
+
+Once configured, a "Chat" link will appear in the web dashboard's External Services section pointing to your Accordion Chat instance.
+
+**Note**: For production use with persistent storage and other configuration options, refer to the [Accordion Chat documentation](https://github.com/Stephenson-Software/accordion).
+
 ## Configuration
 
 Copy `sample.env` to `.env` and modify the following settings:
@@ -137,6 +191,7 @@ These settings allow you to run multiple server instances in parallel without co
 - `ADMIN_PASSWORD`: Password for admin console authentication (default: `admin`)
 - `DYNMAP_URL`: URL to Dynmap web interface (optional)
 - `BLUEMAP_URL`: URL to BlueMap web interface (optional)
+- `ACCORDION_CHAT_URL`: URL to Accordion Chat web interface (optional, e.g., `http://localhost:3000`). Accordion runs separately - see Accordion Chat Integration section.
 - `ACTIVITY_TRACKER_URL`: URL to Activity Tracker plugin REST API (optional, e.g., `http://localhost:8080`)
 - `ACTIVITY_TRACKER_ENABLED`: Enable Activity Tracker integration (default: `false`)
 
@@ -176,6 +231,36 @@ To enable Discord notifications:
 The alert manager API is accessible on the configured port (default: 8090) for testing and integration from the host machine.
 
 See [alert-manager/README.md](alert-manager/README.md) for detailed configuration and usage examples.
+
+### Agent Manager Configuration
+
+- `AGENT_CONTAINER_NAME`: Agent manager container name (default: `open-mc-agent-manager`)
+- `AGENT_PORT`: Agent manager API port (default: `8093`)
+- `AGENT_DISCORD_BOT_TOKEN`: Discord bot token (required for agent manager)
+- `AGENT_DISCORD_CHANNEL_ID`: Discord channel ID to listen on (required for agent manager)
+- `AGENT_ANTHROPIC_API_KEY`: Anthropic API key (required for agent manager)
+- `AGENT_ENABLED`: Enable/disable the agent manager (default: `false`)
+- `AGENT_START_SERVER_REQUIRES_CONFIRMATION`: Require confirmation to start server (default: `true`)
+- `AGENT_STOP_SERVER_REQUIRES_CONFIRMATION`: Require confirmation to stop server (default: `true`)
+- `AGENT_RESTART_SERVER_REQUIRES_CONFIRMATION`: Require confirmation to restart server (default: `true`)
+
+See [agent-manager/README.md](agent-manager/README.md) for detailed configuration, Discord bot setup, and usage examples.
+
+#### AI Diagnostic Feature
+
+The agent uses the `get_server_diagnostics` tool to answer open-ended health questions by
+gathering context from multiple sources in a single pass — server status, recent alerts, the
+latest backup result, live server performance metrics (e.g. JVM heap usage and TPS), and,
+when enabled, recent **sanitized** log snippets controlled via the `diagnostics.logs.*`
+configuration toggles — then synthesising a natural language summary.
+
+**Example interaction:**
+
+> **User:** What happened while I was offline? Is everything okay?
+
+> **Agent:** The server has been running for 6 hours with 3 players online. There was a crash alert at 2:14 AM, after which the server restarted automatically. The last backup completed successfully at 2:00 AM, just before the crash. Current performance metrics (TPS and heap usage) look healthy. If sanitized diagnostic logs are enabled via `diagnostics.logs.*`, I can also summarise any recent errors around 2:14 AM; otherwise, you may want to review the server logs directly to understand the crash cause.
+
+This differs from a simple `/status` command because the agent **reasons** over the combined data rather than just returning a single API response. If any upstream source is unavailable the agent acknowledges the gap explicitly (e.g. "I wasn't able to reach the backup manager, but based on server status and recent alerts…"). Operators can control whether recent logs are included in diagnostics (and how they are anonymised) using the `diagnostics.logs.*` privacy toggles.
 
 **Running Parallel Development Servers**: To run multiple servers simultaneously (e.g., for testing different configurations), create separate `.env` files with different values for these settings and use `docker compose --env-file <env-file>` to start each server.
 
@@ -341,11 +426,62 @@ docker compose build --no-cache
 - Regularly backup your world data
 - Keep `RCON_PASSWORD` secure and different from default values
 
+**For comprehensive security guidance**, especially for public/home hosting, see the **[Self-Hosting Guide](SELF-HOSTING.md)** which covers:
+- Firewall configuration (UFW, iptables, OPNsense, pfSense)
+- DDoS protection and rate limiting
+- Port forwarding best practices
+- Network security hardening
+- Advanced security configurations
+
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## Development
+
+### Modules
+
+The infrastructure consists of several Spring Boot modules:
+
+#### Alert Manager
+Handles alert notifications to Discord and sends messages to Minecraft players via RCON.
+- **Port**: 8090
+- **Location**: `alert-manager/`
+- **Documentation**: [alert-manager/README.md](alert-manager/README.md)
+
+#### Backup Manager  
+Automated backup service with scheduling and size management.
+- **Port**: 8091
+- **Location**: `backup-manager/`
+- **Documentation**: [backup-manager/README.md](backup-manager/README.md)
+
+#### Minecraft Wrapper
+Spring Boot service providing testable, REST-accessible wrapper functionality for Minecraft server management. This module is integrated into the main Minecraft server container.
+- **Location**: `minecraft-wrapper/`
+- **Documentation**: [minecraft-wrapper/README.md](minecraft-wrapper/README.md)
+- **Features**:
+  - Unit-tested server lifecycle management (15 tests)
+  - REST API for server status, commands, and messaging (port 8092)
+  - Graceful shutdown with player warnings
+  - Alert integration
+  - Process management for Minecraft server
+
+#### Web App
+Spring Boot web dashboard for server management and monitoring.
+- **Port**: 8080 (behind nginx proxy on 8443)
+- **Location**: `web-app/`
+
+#### Agent Manager
+Discord-based server management agent powered by the Anthropic API. Users send natural language messages in a Discord channel to start, stop, or restart the Minecraft server.
+- **Port**: 8093
+- **Location**: `agent-manager/`
+- **Documentation**: [agent-manager/README.md](agent-manager/README.md)
+- **Features**:
+  - Natural language Discord commands via Anthropic tool-use API
+  - Start, stop, and restart server tools
+  - Per-tool confirmation flow via Discord reactions
+  - Requesting-user validation on confirmations
+  - Disabled by default (`AGENT_ENABLED=false`)
 
 ### CI/CD Pipeline
 

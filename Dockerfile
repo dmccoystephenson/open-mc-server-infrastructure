@@ -22,6 +22,13 @@ RUN wget -O BuildTools.jar https://hub.spigotmc.org/jenkins/job/BuildTools/lastS
 RUN git config --global --unset core.autocrlf || :
 RUN java -jar BuildTools.jar --rev ${MINECRAFT_VERSION}
 
+# Build minecraft-wrapper Spring Boot application
+FROM base as wrapper-builder
+WORKDIR /wrapper-build
+COPY minecraft-wrapper/ .
+# Build with tests - ensures code quality before creating Docker image
+RUN ./gradlew build --no-daemon
+
 FROM base as final
 
 # Accept Minecraft version as build argument
@@ -30,9 +37,14 @@ ARG MINECRAFT_VERSION=1.21.10
 # Copy built server from builder stage
 COPY --from=builder /mcserver-build/spigot-${MINECRAFT_VERSION}.jar /mcserver-build/spigot-${MINECRAFT_VERSION}.jar
 
+# Copy minecraft-wrapper Spring Boot application
+# Spring Boot Gradle plugin creates a JAR with the name pattern: {projectName}-{version}.jar
+# We copy all JARs to ensure we get the executable JAR (not the -plain.jar)
+COPY --from=wrapper-builder /wrapper-build/build/libs/minecraft-wrapper-*.jar /app/minecraft-wrapper.jar
+
 # Copy resources and make scripts executable
 COPY ./resources /resources
-RUN chmod +x /resources/post-create.sh /resources/minecraft-wrapper.sh
+RUN chmod +x /resources/post-create.sh
 
 # Run server
 WORKDIR /mcserver

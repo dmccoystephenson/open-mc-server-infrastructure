@@ -1,5 +1,5 @@
 services:
-  mcserver:
+  minecraft-wrapper:
     build:
       context: .
       args:
@@ -12,6 +12,7 @@ services:
       - "${HOST_PORT:-25565}:25565"
       - "${HOST_RCON_PORT:-25575}:25575"
       - "${HOST_BLUEMAP_PORT:-8100}:8100"
+      - "${WRAPPER_PORT:-8092}:8092"
     volumes:
       - mcserver:/mcserver
       - ./deposit-box:/deposit-box
@@ -33,11 +34,14 @@ services:
       - JAVA_OPTS=${JAVA_OPTS}
       - RCON_PASSWORD=${RCON_PASSWORD:-minecraft}
       # Alert configuration
-      - ALERT_MANAGER_URL=${ALERT_MANAGER_URL:-}
+      - ALERT_MANAGER_URL=${ALERT_MANAGER_URL:-http://alert-manager:8090/api/alerts}
       - ALERTS_SERVER_START=${ALERTS_SERVER_START:-true}
       - ALERTS_SERVER_STOP=${ALERTS_SERVER_STOP:-true}
       - ALERTS_SERVER_CRASH=${ALERTS_SERVER_CRASH:-true}
       - ALERTS_CONFIG_WARNING=${ALERTS_CONFIG_WARNING:-false}
+      # Plugin deployment CI/CD configuration
+      - DEPLOY_AUTH_TOKEN=${DEPLOY_AUTH_TOKEN:-}
+      - PLUGINS_DIRECTORY=${PLUGINS_DIRECTORY:-/mcserver/plugins}
 
   webapp:
     build:
@@ -54,9 +58,9 @@ services:
       # so we mount the entire volume but PluginService enforces access only to /mcserver/plugins
       - mcserver:/mcserver:rw
     depends_on:
-      - mcserver
+      - minecraft-wrapper
     environment:
-      - MC_HOST=mcserver
+      - MC_HOST=minecraft-wrapper
       - MC_RCON_PORT=25575
       - MC_RCON_PASSWORD=${RCON_PASSWORD:-minecraft}
       - MC_MOTD=${SERVER_MOTD}
@@ -75,6 +79,8 @@ services:
       - DATA_STORAGE_PATH=${DATA_STORAGE_PATH:-/app/data}
       - ALERT_MANAGER_URL=${ALERT_MANAGER_URL:-http://alert-manager:8090}
       - ALERT_MANAGER_ENABLED=${ALERT_MANAGER_ENABLED:-true}
+      - MINECRAFT_WRAPPER_URL=${MINECRAFT_WRAPPER_URL:-http://minecraft-wrapper:8092}
+      - ACCORDION_CHAT_URL=${ACCORDION_CHAT_URL:-}
 
   nginx:
     build:
@@ -130,13 +136,45 @@ services:
       timeout: 5s
       retries: 5
       start_period: 30s
+    volumes:
+      - alert-manager-data:/app/data
     environment:
       - DISCORD_WEBHOOK_URL=${DISCORD_WEBHOOK_URL:-}
       - DISCORD_ENABLED=${DISCORD_ENABLED:-false}
-      - MINECRAFT_RCON_HOST=${MINECRAFT_RCON_HOST:-mcserver}
+      - MINECRAFT_RCON_HOST=${MINECRAFT_RCON_HOST:-minecraft-wrapper}
       - MINECRAFT_RCON_PORT=${MINECRAFT_RCON_PORT:-25575}
       - MINECRAFT_RCON_PASSWORD=${RCON_PASSWORD:-minecraft}
       - MINECRAFT_RCON_ENABLED=${MINECRAFT_RCON_ENABLED:-true}
+
+  agent-manager:
+    build:
+      context: ./agent-manager
+    image: open-mc-server-agent-manager
+    restart: always
+    container_name: ${AGENT_CONTAINER_NAME:-open-mc-agent-manager}
+    ports:
+      - "${AGENT_PORT:-8093}:8093"
+    depends_on:
+      alert-manager:
+        condition: service_healthy
+      minecraft-wrapper:
+        condition: service_started
+      backup-manager:
+        condition: service_started
+    environment:
+      - AGENT_DISCORD_BOT_TOKEN=${AGENT_DISCORD_BOT_TOKEN:-}
+      - AGENT_DISCORD_CHANNEL_ID=${AGENT_DISCORD_CHANNEL_ID:-}
+      - AGENT_ANTHROPIC_API_KEY=${AGENT_ANTHROPIC_API_KEY:-}
+      - AGENT_ENABLED=${AGENT_ENABLED:-false}
+      - MINECRAFT_WRAPPER_URL=${MINECRAFT_WRAPPER_URL:-http://minecraft-wrapper:8092}
+      - AGENT_START_SERVER_REQUIRES_CONFIRMATION=${AGENT_START_SERVER_REQUIRES_CONFIRMATION:-true}
+      - AGENT_STOP_SERVER_REQUIRES_CONFIRMATION=${AGENT_STOP_SERVER_REQUIRES_CONFIRMATION:-true}
+      - AGENT_RESTART_SERVER_REQUIRES_CONFIRMATION=${AGENT_RESTART_SERVER_REQUIRES_CONFIRMATION:-true}
+      - AGENT_TRIGGER_BACKUP_REQUIRES_CONFIRMATION=${AGENT_TRIGGER_BACKUP_REQUIRES_CONFIRMATION:-true}
+      - ALERT_MANAGER_URL=${ALERT_MANAGER_URL:-http://alert-manager:8090/api/alerts}
+      - BACKUP_MANAGER_URL=${BACKUP_MANAGER_URL:-http://backup-manager:8091}
+      - DIAGNOSTICS_WEBAPP_ENABLED=${DIAGNOSTICS_WEBAPP_ENABLED:-false}
+      - WEBAPP_URL=${WEBAPP_URL:-http://webapp:8080}
 
 volumes:
   mcserver:
@@ -144,4 +182,7 @@ volumes:
     external: false
   webapp-data:
     name: ${WEBAPP_VOLUME_NAME:-webapp-data}
+    external: false
+  alert-manager-data:
+    name: ${ALERT_MANAGER_VOLUME_NAME:-alert-manager-data}
     external: false

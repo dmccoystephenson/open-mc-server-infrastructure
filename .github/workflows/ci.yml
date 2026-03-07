@@ -35,10 +35,9 @@ jobs:
         bash -n upgrade.sh
         bash -n trigger-backup.sh
         bash -n resources/post-create.sh
-        bash -n resources/minecraft-wrapper.sh
         
         echo "🔍 Running ShellCheck linter..."
-        shellcheck up.sh down.sh upgrade.sh trigger-backup.sh resources/*.sh scripts/*.sh
+        shellcheck up.sh down.sh upgrade.sh trigger-backup.sh resources/post-create.sh scripts/*.sh
         
     - name: Validate Docker configuration
       run: |
@@ -86,17 +85,42 @@ jobs:
         ./gradlew test
         echo "✓ All tests passed"
         
+    - name: Build minecraft-wrapper module
+      run: |
+        echo "🎮 Building minecraft-wrapper module..."
+        cd minecraft-wrapper
+        ./gradlew build
+        echo "✓ Minecraft wrapper built successfully"
+        ls -lh build/libs/
+        
+    - name: Run minecraft-wrapper tests
+      run: |
+        echo "🧪 Running minecraft-wrapper tests..."
+        cd minecraft-wrapper
+        ./gradlew test
+        echo "✓ All tests passed"
+        
+    - name: Build agent-manager module
+      run: |
+        echo "🤖 Building agent-manager module..."
+        cd agent-manager
+        ./gradlew build
+        echo "✓ Agent manager built successfully"
+        ls -lh build/libs/
+        
+    - name: Run agent-manager tests
+      run: |
+        echo "🧪 Running agent-manager tests..."
+        cd agent-manager
+        ./gradlew test
+        echo "✓ All tests passed"
+        
     - name: Validate documentation
       run: |
         echo "📚 Validating documentation..."
         test -f README.md
         grep -q "# Open Minecraft Server Infrastructure" README.md  
         test -f LICENSE
-        
-    - name: Test graceful shutdown functionality
-      run: |
-        echo "🧪 Testing graceful shutdown functionality..."
-        ./scripts/test-graceful-shutdown.sh
         
   security-scan:
     name: Security Scanning

@@ -32,6 +32,17 @@ public class BackupService {
 
     private static final DateTimeFormatter BACKUP_DIR_FORMAT = DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss");
     private static final Pattern ERROR_PATTERN = Pattern.compile(".*(error|warning|cannot|failed).*", Pattern.CASE_INSENSITIVE);
+    private static final String BACKUP_FILE_NAME = "mcserver-backup.tar.gz";
+
+    /**
+     * Status of the most recent backup attempt.
+     *
+     * @param success     whether the backup completed successfully
+     * @param timestamp   ISO-8601 timestamp of when the backup finished
+     * @param backupPath  path to the backup directory (null on failure)
+     * @param message     human-readable result message
+     */
+    public record LatestBackupStatus(boolean success, String timestamp, String backupPath, String message) {}
 
     @Value("${backup.directory:/backups}")
     private String backupDirectory;
@@ -78,9 +89,65 @@ public class BackupService {
     }
 
     /**
+     * Scan the backups directory and return the status of the most recent backup.
+     * A backup is considered successful when its {@code mcserver-backup.tar.gz} file is present.
+     * Returns {@code null} if no backup directories exist yet.
+     *
+     * @return latest backup status derived from disk, or null
+     */
+    public LatestBackupStatus getLatestBackupStatus() {
+        Path backupDir = Paths.get(backupDirectory);
+        if (!Files.exists(backupDir)) {
+            return null;
+        }
+
+        Path latestDir = null;
+        try (DirectoryStream<Path> stream = Files.newDirectoryStream(backupDir,
+                path -> Files.isDirectory(path) && path.getFileName().toString().startsWith("backup-"))) {
+            for (Path entry : stream) {
+                if (latestDir == null
+                        || entry.getFileName().toString().compareTo(latestDir.getFileName().toString()) > 0) {
+                    latestDir = entry;
+                }
+            }
+        } catch (IOException e) {
+            log.error("Failed to scan backup directory {}: {}", backupDirectory, e.getMessage());
+            return null;
+        }
+
+        if (latestDir == null) {
+            return null;
+        }
+
+        Path backupFile = latestDir.resolve(BACKUP_FILE_NAME);
+        boolean success = Files.exists(backupFile);
+
+        String timestamp;
+        try {
+            Path timeSource = success ? backupFile : latestDir;
+            timestamp = Files.getLastModifiedTime(timeSource).toInstant().toString();
+        } catch (IOException e) {
+            log.warn("Could not read modification time for {}: {}", latestDir, e.getMessage());
+            timestamp = null;
+        }
+
+        if (success) {
+            String msg = String.format("Backup available at %s", latestDir);
+            return new LatestBackupStatus(true, timestamp, latestDir.toString(), msg);
+        } else {
+            String msg = String.format("Backup at %s is incomplete or failed", latestDir);
+            return new LatestBackupStatus(false, timestamp, null, msg);
+        }
+    }
+
+    /**
      * Create a backup of the Minecraft server volume using Docker
      */
     public String createBackup() throws BackupException {
+        return doCreateBackup();
+    }
+
+    private String doCreateBackup() throws BackupException {
         log.info("Creating backup...");
         
         // Create backup directory with timestamp
@@ -190,7 +257,6 @@ public class BackupService {
         String successMsg = String.format("Minecraft server backup created successfully. Size: %s, Location: %s", 
                                          backupSizeStr, backupDir);
         sendAlert("Backup Completed", successMsg, "INFO", alertsBackupSuccess);
-        
         return backupDir.toString();
     }
 

@@ -145,4 +145,30 @@ class ServerConfigTest {
         serverConfig.setRefreshIntervalMs(60000);
         assertEquals(60000, serverConfig.getRefreshIntervalMs());
     }
+
+    @Test
+    @DisplayName("Should have empty Accordion Chat URL by default")
+    void shouldHaveEmptyAccordionChatUrl() {
+        assertEquals("", serverConfig.getAccordionChatUrl());
+    }
+
+    @Test
+    @DisplayName("Should allow setting Accordion Chat URL")
+    void shouldAllowSettingAccordionChatUrl() {
+        serverConfig.setAccordionChatUrl("http://localhost:3000");
+        assertEquals("http://localhost:3000", serverConfig.getAccordionChatUrl());
+    }
+
+    @Test
+    @DisplayName("Should have dark mode enabled by default")
+    void shouldHaveDarkModeEnabledByDefault() {
+        assertTrue(serverConfig.isDashboardDarkMode());
+    }
+
+    @Test
+    @DisplayName("Should allow setting dark mode")
+    void shouldAllowSettingDarkMode() {
+        serverConfig.setDashboardDarkMode(false);
+        assertFalse(serverConfig.isDashboardDarkMode());
+    }
 }

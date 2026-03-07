@@ -214,11 +214,22 @@ EOF
 
 # Function: Start server
 start_server() {
-    log "Starting server with graceful shutdown wrapper..."
-    exec /resources/minecraft-wrapper.sh \
-        "spigot-${MINECRAFT_VERSION}.jar" \
-        "$SERVER_DIR" \
-        "${JAVA_OPTS:--Xmx2G -Xms1G}"
+    log "Starting server with Spring Boot wrapper..."
+    local wrapper_jar="${MINECRAFT_WRAPPER_JAR:-/app/minecraft-wrapper.jar}"
+    
+    # Verify wrapper JAR exists
+    if [ ! -f "$wrapper_jar" ]; then
+        log "ERROR: Minecraft wrapper JAR not found at: $wrapper_jar"
+        exit 1
+    fi
+    
+    # Export environment variables for Spring Boot to read
+    export MINECRAFT_SERVER_JAR="spigot-${MINECRAFT_VERSION}.jar"
+    export MINECRAFT_SERVER_DIRECTORY="$SERVER_DIR"
+    export JAVA_OPTS="${JAVA_OPTS:--Xmx2G -Xms1G}"
+    export MINECRAFT_AUTO_START=true
+    
+    exec java -jar "$wrapper_jar"
 }
 
 # Main Process

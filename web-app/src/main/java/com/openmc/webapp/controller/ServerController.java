@@ -13,7 +13,9 @@ import com.openmc.webapp.service.PluginService;
 import com.openmc.webapp.service.RconService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
@@ -34,16 +36,35 @@ public class ServerController {
     private final ActivityTrackerService activityTrackerService;
     private final PluginService pluginService;
     private final AlertNotificationService alertNotificationService;
+    private final com.openmc.webapp.service.MinecraftWrapperService minecraftWrapperService;
     
     public ServerController(RconService rconService, ServerConfig serverConfig, 
                           ActivityTrackerService activityTrackerService,
                           PluginService pluginService,
-                          AlertNotificationService alertNotificationService) {
+                          AlertNotificationService alertNotificationService,
+                          com.openmc.webapp.service.MinecraftWrapperService minecraftWrapperService) {
         this.rconService = rconService;
         this.serverConfig = serverConfig;
         this.activityTrackerService = activityTrackerService;
         this.pluginService = pluginService;
         this.alertNotificationService = alertNotificationService;
+        this.minecraftWrapperService = minecraftWrapperService;
+    }
+    
+    /**
+     * Adds common attributes to all views to avoid duplication across handler methods.
+     * This ensures consistency and reduces the risk of missing attributes on specific pages.
+     */
+    @ModelAttribute
+    public void addCommonAttributes(Model model) {
+        model.addAttribute("dashboardTitle", serverConfig.getDashboardTitle());
+        model.addAttribute("dashboardSubtitle", serverConfig.getDashboardSubtitle());
+        model.addAttribute("dashboardPrimaryColor", serverConfig.getDashboardPrimaryColor());
+        model.addAttribute("dashboardSecondaryColor", serverConfig.getDashboardSecondaryColor());
+        model.addAttribute("dashboardDarkMode", serverConfig.isDashboardDarkMode());
+        model.addAttribute("dynmapUrl", serverConfig.getDynmapUrl());
+        model.addAttribute("bluemapUrl", serverConfig.getBluemapUrl());
+        model.addAttribute("accordionChatUrl", serverConfig.getAccordionChatUrl());
     }
     
     @GetMapping("/")
@@ -55,24 +76,14 @@ public class ServerController {
     public String publicPage(Model model) {
         RconService.ServerStatus status = rconService.getServerStatus();
         model.addAttribute("status", status);
-        model.addAttribute("dynmapUrl", serverConfig.getDynmapUrl());
-        model.addAttribute("bluemapUrl", serverConfig.getBluemapUrl());
         model.addAttribute("refreshIntervalMs", serverConfig.getRefreshIntervalMs());
         model.addAttribute("lastFetchTime", rconService.getLastFetchTime());
         model.addAttribute("activityTrackerEnabled", activityTrackerService.isEnabled());
-        model.addAttribute("dashboardTitle", serverConfig.getDashboardTitle());
-        model.addAttribute("dashboardSubtitle", serverConfig.getDashboardSubtitle());
-        model.addAttribute("dashboardPrimaryColor", serverConfig.getDashboardPrimaryColor());
-        model.addAttribute("dashboardSecondaryColor", serverConfig.getDashboardSecondaryColor());
         return "public";
     }
     
     @GetMapping("/admin")
     public String adminPage(Model model) {
-        model.addAttribute("dashboardTitle", serverConfig.getDashboardTitle());
-        model.addAttribute("dashboardSubtitle", serverConfig.getDashboardSubtitle());
-        model.addAttribute("dashboardPrimaryColor", serverConfig.getDashboardPrimaryColor());
-        model.addAttribute("dashboardSecondaryColor", serverConfig.getDashboardSecondaryColor());
         return "admin";
     }
     
@@ -292,5 +303,113 @@ public class ServerController {
         } else {
             return PluginOperationResponse.error(result);
         }
+    }
+    
+    @PostMapping("/api/server/start")
+    @ResponseBody
+    public Map<String, Object> startServer(@RequestBody Map<String, String> payload) {
+        String username = payload.get("username");
+        String password = payload.get("password");
+        
+        // Validate credentials
+        if (username == null || password == null || !validateCredentials(username, password)) {
+            alertNotificationService.sendWarningAlert(
+                "Server Start Authentication Failed",
+                "Failed authentication attempt for server start endpoint"
+            );
+            return Map.of("success", false, "message", "Invalid username or password");
+        }
+        
+        boolean success = minecraftWrapperService.startServer();
+        
+        if (success) {
+            alertNotificationService.sendInfoAlert(
+                "Server Start Initiated",
+                String.format("User '%s' initiated server start", username)
+            );
+            return Map.of("success", true, "message", "Server start initiated");
+        } else {
+            return Map.of("success", false, "message", "Failed to start server");
+        }
+    }
+    
+    @PostMapping("/api/server/stop")
+    @ResponseBody
+    public Map<String, Object> stopServer(@RequestBody Map<String, String> payload) {
+        String username = payload.get("username");
+        String password = payload.get("password");
+        
+        // Validate credentials
+        if (username == null || password == null || !validateCredentials(username, password)) {
+            alertNotificationService.sendWarningAlert(
+                "Server Stop Authentication Failed",
+                "Failed authentication attempt for server stop endpoint"
+            );
+            return Map.of("success", false, "message", "Invalid username or password");
+        }
+        
+        boolean success = minecraftWrapperService.stopServer();
+        
+        if (success) {
+            alertNotificationService.sendInfoAlert(
+                "Server Stop Initiated",
+                String.format("User '%s' initiated server stop", username)
+            );
+            return Map.of("success", true, "message", "Server stop initiated");
+        } else {
+            return Map.of("success", false, "message", "Failed to stop server");
+        }
+    }
+    
+    @PostMapping("/api/server/restart")
+    @ResponseBody
+    public Map<String, Object> restartServer(@RequestBody Map<String, String> payload) {
+        String username = payload.get("username");
+        String password = payload.get("password");
+        
+        // Validate credentials
+        if (username == null || password == null || !validateCredentials(username, password)) {
+            alertNotificationService.sendWarningAlert(
+                "Server Restart Authentication Failed",
+                "Failed authentication attempt for server restart endpoint"
+            );
+            return Map.of("success", false, "message", "Invalid username or password");
+        }
+        
+        boolean success = minecraftWrapperService.restartServer();
+        
+        if (success) {
+            alertNotificationService.sendInfoAlert(
+                "Server Restart Initiated",
+                String.format("User '%s' initiated server restart", username)
+            );
+            return Map.of("success", true, "message", "Server restart initiated");
+        } else {
+            return Map.of("success", false, "message", "Failed to restart server");
+        }
+    }
+    
+    @GetMapping("/player/{playerName}")
+    public String playerProfile(@PathVariable String playerName, Model model) {
+        com.openmc.webapp.model.PlayerProfile profile = activityTrackerService.getPlayerProfile(playerName);
+        
+        if (profile == null) {
+            model.addAttribute("error", "Player not found: " + playerName);
+            model.addAttribute("playerName", playerName);
+        } else {
+            model.addAttribute("profile", profile);
+        }
+        
+        return "player";
+    }
+    
+    @GetMapping("/api/player/{playerName}")
+    @ResponseBody
+    public ResponseEntity<com.openmc.webapp.model.PlayerProfile> getPlayerProfile(@PathVariable String playerName) {
+        com.openmc.webapp.model.PlayerProfile profile = activityTrackerService.getPlayerProfile(playerName);
+        if (profile == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        }
+        return ResponseEntity.ok(profile);
     }
 }
