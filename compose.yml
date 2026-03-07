@@ -39,6 +39,9 @@ services:
       - ALERTS_SERVER_STOP=${ALERTS_SERVER_STOP:-true}
       - ALERTS_SERVER_CRASH=${ALERTS_SERVER_CRASH:-true}
       - ALERTS_CONFIG_WARNING=${ALERTS_CONFIG_WARNING:-false}
+      # Plugin deployment CI/CD configuration
+      - DEPLOY_AUTH_TOKEN=${DEPLOY_AUTH_TOKEN:-}
+      - PLUGINS_DIRECTORY=${PLUGINS_DIRECTORY:-/mcserver/plugins}
 
   webapp:
     build:

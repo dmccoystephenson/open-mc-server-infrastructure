@@ -117,6 +117,68 @@ This script mirrors the CI pipeline checks and helps catch issues before submitt
 - Required documentation presence
 - Structure validation
 
+## CI/CD Plugin Deployment
+
+The `minecraft-wrapper` exposes a secure HTTP endpoint that allows automated deployment of Spigot/Paper plugin JARs from GitHub Actions directly into a running omcsi instance.
+
+### Endpoint
+
+```
+POST /api/plugins/deploy
+Authorization: Bearer <DEPLOY_AUTH_TOKEN>
+Content-Type: multipart/form-data
+
+pluginName=<existing-plugin-filename.jar>
+file=@<path-to-new-jar>
+```
+
+- **`pluginName`** – The filename of the plugin JAR already installed on the server (e.g. `MyPlugin.jar`).  The new file is written under that same name in the configured plugins directory.
+- **`file`** – The new JAR file to deploy.
+
+#### HTTP Responses
+
+| Code | Meaning |
+|------|---------|
+| `200 OK` | Plugin deployed successfully |
+| `400 Bad Request` | Invalid `pluginName` or non-JAR file |
+| `401 Unauthorized` | Missing, wrong, or unconfigured token |
+| `500 Internal Server Error` | I/O failure during file replacement |
+
+### Configuration
+
+Set the following variables in your omcsi `.env` file (see `sample.env` for reference):
+
+| Variable | Description |
+|----------|-------------|
+| `DEPLOY_AUTH_TOKEN` | Shared secret used to authenticate deploy requests. Leave empty to disable the endpoint entirely. |
+| `PLUGINS_DIRECTORY` | Absolute path to the Minecraft plugins directory inside the container (default: `/mcserver/plugins`). |
+
+### Reference Workflow for Spigot Plugin Repositories
+
+A ready-to-use workflow is provided at `docs/github-actions/deploy-plugin.yml`. Copy it into your plugin repository at `.github/workflows/deploy-plugin.yml` and configure the following:
+
+**Repository Secrets** (Settings → Secrets and variables → Actions):
+
+| Secret | Value |
+|--------|-------|
+| `OMCSI_URL` | Base URL of your omcsi instance, e.g. `https://mc.example.com:8092` |
+| `OMCSI_DEPLOY_TOKEN` | The same value as `DEPLOY_AUTH_TOKEN` in your omcsi `.env` |
+
+**Repository Variables** (Settings → Secrets and variables → Actions):
+
+| Variable | Example | Description |
+|----------|---------|-------------|
+| `PLUGIN_JAR_NAME` | `MyPlugin.jar` | Filename of the plugin to replace on the server |
+| `DEPLOY_BRANCH` | `main` | Branch that triggers a deployment |
+| `BUILD_COMMAND` | `./gradlew build` | Command used to build the JAR (optional) |
+| `JAR_PATH` | `build/libs/*.jar` | Glob path to the built JAR (optional) |
+
+The workflow:
+1. Builds the plugin JAR using Gradle (or a custom build command)
+2. Locates the built JAR (excluding `-sources` / `-javadoc` artefacts)
+3. Sends it to the omcsi deploy endpoint via `curl`
+4. Fails the workflow if deployment is rejected
+
 ## CI Pipeline Benefits
 
 1. **Early Issue Detection**: Catches problems before they reach production

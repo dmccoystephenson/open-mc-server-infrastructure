@@ -29,6 +29,9 @@ public class AlertService {
     @Value("${alerts.server.crash:true}")
     private boolean alertsServerCrash;
 
+    @Value("${alerts.plugin.deploy:true}")
+    private boolean alertsPluginDeploy;
+
     private final RestTemplate restTemplate;
 
     public AlertService(RestTemplate restTemplate) {
@@ -84,6 +87,7 @@ public class AlertService {
             case "ALERTS_SERVER_START" -> alertsServerStart;
             case "ALERTS_SERVER_STOP" -> alertsServerStop;
             case "ALERTS_SERVER_CRASH" -> alertsServerCrash;
+            case "ALERTS_PLUGIN_DEPLOY" -> alertsPluginDeploy;
             default -> true;
         };
     }
@@ -107,5 +111,45 @@ public class AlertService {
                  String.format("The Minecraft server exited unexpectedly with code %d. Check logs for details.", exitCode), 
                  "ERROR", 
                  "ALERTS_SERVER_CRASH");
+    }
+
+    public void sendPluginDeploySuccessAlert(String pluginName) {
+        sendPluginDeploySuccessAlert(pluginName, null, null);
+    }
+
+    public void sendPluginDeploySuccessAlert(String pluginName, String branch, String repoUrl) {
+        String message = buildDeployMessage(
+                String.format("Plugin '%s' was deployed successfully.", pluginName),
+                branch, repoUrl);
+        sendAlert("Plugin Deployed Successfully", message, "INFO", "ALERTS_PLUGIN_DEPLOY");
+    }
+
+    public void sendPluginDeployFailureAlert(String pluginName, String reason) {
+        sendPluginDeployFailureAlert(pluginName, reason, null, null);
+    }
+
+    public void sendPluginDeployFailureAlert(String pluginName, String reason, String branch, String repoUrl) {
+        String message = buildDeployMessage(
+                String.format("Deployment of plugin '%s' failed: %s", pluginName, reason),
+                branch, repoUrl);
+        sendAlert("Plugin Deployment Failed", message, "ERROR", "ALERTS_PLUGIN_DEPLOY");
+    }
+
+    private String buildDeployMessage(String base, String branch, String repoUrl) {
+        if (isNullOrBlank(branch) && isNullOrBlank(repoUrl)) {
+            return base;
+        }
+        StringBuilder sb = new StringBuilder(base);
+        if (!isNullOrBlank(branch)) {
+            sb.append("\nBranch: ").append(branch);
+        }
+        if (!isNullOrBlank(repoUrl)) {
+            sb.append("\nRepository: ").append(repoUrl);
+        }
+        return sb.toString();
+    }
+
+    private static boolean isNullOrBlank(String value) {
+        return value == null || value.isBlank();
     }
 }
