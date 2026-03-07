@@ -32,13 +32,15 @@ public class PluginDeployController {
     }
 
     /**
-     * Replace an existing plugin JAR with the uploaded file.
+     * Deploy a plugin JAR with the uploaded file.
      *
      * <p>Authentication is required via an {@code Authorization: Bearer <token>} header.
      * The token must match the value configured in {@code deploy.auth.token}.
      *
      * @param authHeader the HTTP {@code Authorization} header
-     * @param pluginName the filename of the plugin JAR to replace (e.g. {@code MyPlugin.jar})
+     * @param pluginName the filename of the plugin JAR to deploy (e.g. {@code MyPlugin.jar})
+     * @param branch     optional Git branch name that triggered the deployment
+     * @param repoUrl    optional URL of the repository that initiated the deployment
      * @param file       the new JAR file
      * @return 200 OK on success, 400 on bad input, 401 on auth failure, 500 on I/O error
      */
@@ -46,6 +48,8 @@ public class PluginDeployController {
     public ResponseEntity<String> deploy(
             @RequestHeader(value = "Authorization", required = false) String authHeader,
             @RequestParam("pluginName") String pluginName,
+            @RequestParam(value = "branch", required = false) String branch,
+            @RequestParam(value = "repoUrl", required = false) String repoUrl,
             @RequestParam("file") MultipartFile file) {
 
         if (!isAuthorized(authHeader)) {
@@ -57,15 +61,15 @@ public class PluginDeployController {
 
         try {
             pluginDeployService.replacePlugin(pluginName, file);
-            alertService.sendPluginDeploySuccessAlert(pluginName);
+            alertService.sendPluginDeploySuccessAlert(pluginName, branch, repoUrl);
             return ResponseEntity.ok("Plugin deployed successfully");
         } catch (IllegalArgumentException e) {
             log.warn("Invalid plugin deploy request: {}", e.getMessage());
-            alertService.sendPluginDeployFailureAlert(pluginName, e.getMessage());
+            alertService.sendPluginDeployFailureAlert(pluginName, e.getMessage(), branch, repoUrl);
             return ResponseEntity.badRequest().body("Invalid request");
         } catch (IOException e) {
             log.error("Failed to deploy plugin: {}", e.getMessage());
-            alertService.sendPluginDeployFailureAlert(pluginName, e.getMessage());
+            alertService.sendPluginDeployFailureAlert(pluginName, e.getMessage(), branch, repoUrl);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body("Failed to deploy plugin");
         }

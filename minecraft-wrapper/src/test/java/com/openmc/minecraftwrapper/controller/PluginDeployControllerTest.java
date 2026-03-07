@@ -61,7 +61,25 @@ class PluginDeployControllerTest {
                 .andExpect(content().string("Plugin deployed successfully"));
 
         verify(pluginDeployService, times(1)).replacePlugin(eq("MyPlugin.jar"), any());
-        verify(alertService, times(1)).sendPluginDeploySuccessAlert("MyPlugin.jar");
+        verify(alertService, times(1)).sendPluginDeploySuccessAlert("MyPlugin.jar", null, null);
+    }
+
+    @Test
+    @DisplayName("Should include branch and repoUrl in success alert when provided")
+    void shouldForwardBranchAndRepoUrlInSuccessAlert() throws Exception {
+        MockMultipartFile file = new MockMultipartFile("file", "MyPlugin.jar",
+                "application/java-archive", "jar-content".getBytes());
+
+        mockMvc.perform(multipart(DEPLOY_URL)
+                        .file(file)
+                        .param("pluginName", "MyPlugin.jar")
+                        .param("branch", "main")
+                        .param("repoUrl", "https://github.com/org/repo")
+                        .header("Authorization", "Bearer " + VALID_TOKEN))
+                .andExpect(status().isOk());
+
+        verify(alertService, times(1))
+                .sendPluginDeploySuccessAlert("MyPlugin.jar", "main", "https://github.com/org/repo");
     }
 
     // ── authentication ────────────────────────────────────────────────────────
@@ -145,7 +163,7 @@ class PluginDeployControllerTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(content().string("Invalid request"));
 
-        verify(alertService, times(1)).sendPluginDeployFailureAlert(eq("bad.zip"), anyString());
+        verify(alertService, times(1)).sendPluginDeployFailureAlert(eq("bad.zip"), anyString(), isNull(), isNull());
     }
 
     @Test
@@ -163,6 +181,6 @@ class PluginDeployControllerTest {
                         .header("Authorization", "Bearer " + VALID_TOKEN))
                 .andExpect(status().isInternalServerError());
 
-        verify(alertService, times(1)).sendPluginDeployFailureAlert(eq("MyPlugin.jar"), anyString());
+        verify(alertService, times(1)).sendPluginDeployFailureAlert(eq("MyPlugin.jar"), anyString(), isNull(), isNull());
     }
 }

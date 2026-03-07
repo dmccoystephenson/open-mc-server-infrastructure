@@ -114,16 +114,42 @@ public class AlertService {
     }
 
     public void sendPluginDeploySuccessAlert(String pluginName) {
-        sendAlert("Plugin Deployed Successfully",
-                 String.format("Plugin '%s' was deployed successfully.", pluginName),
-                 "INFO",
-                 "ALERTS_PLUGIN_DEPLOY");
+        sendPluginDeploySuccessAlert(pluginName, null, null);
+    }
+
+    public void sendPluginDeploySuccessAlert(String pluginName, String branch, String repoUrl) {
+        String message = buildDeployMessage(
+                String.format("Plugin '%s' was deployed successfully.", pluginName),
+                branch, repoUrl);
+        sendAlert("Plugin Deployed Successfully", message, "INFO", "ALERTS_PLUGIN_DEPLOY");
     }
 
     public void sendPluginDeployFailureAlert(String pluginName, String reason) {
-        sendAlert("Plugin Deployment Failed",
-                 String.format("Deployment of plugin '%s' failed: %s", pluginName, reason),
-                 "ERROR",
-                 "ALERTS_PLUGIN_DEPLOY");
+        sendPluginDeployFailureAlert(pluginName, reason, null, null);
+    }
+
+    public void sendPluginDeployFailureAlert(String pluginName, String reason, String branch, String repoUrl) {
+        String message = buildDeployMessage(
+                String.format("Deployment of plugin '%s' failed: %s", pluginName, reason),
+                branch, repoUrl);
+        sendAlert("Plugin Deployment Failed", message, "ERROR", "ALERTS_PLUGIN_DEPLOY");
+    }
+
+    private String buildDeployMessage(String base, String branch, String repoUrl) {
+        if (isNullOrBlank(branch) && isNullOrBlank(repoUrl)) {
+            return base;
+        }
+        StringBuilder sb = new StringBuilder(base);
+        if (!isNullOrBlank(branch)) {
+            sb.append("\nBranch: ").append(branch);
+        }
+        if (!isNullOrBlank(repoUrl)) {
+            sb.append("\nRepository: ").append(repoUrl);
+        }
+        return sb.toString();
+    }
+
+    private static boolean isNullOrBlank(String value) {
+        return value == null || value.isBlank();
     }
 }

@@ -88,6 +88,8 @@ jobs:
             --request POST \
             --header "Authorization: Bearer ${{ secrets.OMCSI_DEPLOY_TOKEN }}" \
             --form "pluginName=${PLUGIN_JAR_NAME}" \
+            --form "branch=${{ github.ref_name }}" \
+            --form "repoUrl=${{ github.server_url }}/${{ github.repository }}" \
             --form "file=@${{ steps.locate-jar.outputs.jar_file }}" \
             "${{ secrets.OMCSI_URL }}/api/plugins/deploy")
 
