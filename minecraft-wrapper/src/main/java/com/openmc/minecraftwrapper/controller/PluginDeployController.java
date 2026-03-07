@@ -1,5 +1,6 @@
 package com.openmc.minecraftwrapper.controller;
 
+import com.openmc.minecraftwrapper.service.AlertService;
 import com.openmc.minecraftwrapper.service.PluginDeployService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -23,9 +24,11 @@ public class PluginDeployController {
     private String deployAuthToken;
 
     private final PluginDeployService pluginDeployService;
+    private final AlertService alertService;
 
-    public PluginDeployController(PluginDeployService pluginDeployService) {
+    public PluginDeployController(PluginDeployService pluginDeployService, AlertService alertService) {
         this.pluginDeployService = pluginDeployService;
+        this.alertService = alertService;
     }
 
     /**
@@ -54,12 +57,15 @@ public class PluginDeployController {
 
         try {
             pluginDeployService.replacePlugin(pluginName, file);
+            alertService.sendPluginDeploySuccessAlert(pluginName);
             return ResponseEntity.ok("Plugin deployed successfully");
         } catch (IllegalArgumentException e) {
             log.warn("Invalid plugin deploy request: {}", e.getMessage());
+            alertService.sendPluginDeployFailureAlert(pluginName, e.getMessage());
             return ResponseEntity.badRequest().body("Invalid request");
         } catch (IOException e) {
             log.error("Failed to deploy plugin: {}", e.getMessage());
+            alertService.sendPluginDeployFailureAlert(pluginName, e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body("Failed to deploy plugin");
         }

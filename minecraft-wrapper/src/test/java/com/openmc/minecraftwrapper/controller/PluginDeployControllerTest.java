@@ -1,5 +1,6 @@
 package com.openmc.minecraftwrapper.controller;
 
+import com.openmc.minecraftwrapper.service.AlertService;
 import com.openmc.minecraftwrapper.service.PluginDeployService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -30,6 +31,9 @@ class PluginDeployControllerTest {
     @Mock
     private PluginDeployService pluginDeployService;
 
+    @Mock
+    private AlertService alertService;
+
     @InjectMocks
     private PluginDeployController pluginDeployController;
 
@@ -57,6 +61,7 @@ class PluginDeployControllerTest {
                 .andExpect(content().string("Plugin deployed successfully"));
 
         verify(pluginDeployService, times(1)).replacePlugin(eq("MyPlugin.jar"), any());
+        verify(alertService, times(1)).sendPluginDeploySuccessAlert("MyPlugin.jar");
     }
 
     // ── authentication ────────────────────────────────────────────────────────
@@ -139,6 +144,8 @@ class PluginDeployControllerTest {
                         .header("Authorization", "Bearer " + VALID_TOKEN))
                 .andExpect(status().isBadRequest())
                 .andExpect(content().string("Invalid request"));
+
+        verify(alertService, times(1)).sendPluginDeployFailureAlert(eq("bad.zip"), anyString());
     }
 
     @Test
@@ -155,5 +162,7 @@ class PluginDeployControllerTest {
                         .param("pluginName", "MyPlugin.jar")
                         .header("Authorization", "Bearer " + VALID_TOKEN))
                 .andExpect(status().isInternalServerError());
+
+        verify(alertService, times(1)).sendPluginDeployFailureAlert(eq("MyPlugin.jar"), anyString());
     }
 }

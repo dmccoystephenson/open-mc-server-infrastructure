@@ -29,6 +29,9 @@ public class AlertService {
     @Value("${alerts.server.crash:true}")
     private boolean alertsServerCrash;
 
+    @Value("${alerts.plugin.deploy:true}")
+    private boolean alertsPluginDeploy;
+
     private final RestTemplate restTemplate;
 
     public AlertService(RestTemplate restTemplate) {
@@ -84,6 +87,7 @@ public class AlertService {
             case "ALERTS_SERVER_START" -> alertsServerStart;
             case "ALERTS_SERVER_STOP" -> alertsServerStop;
             case "ALERTS_SERVER_CRASH" -> alertsServerCrash;
+            case "ALERTS_PLUGIN_DEPLOY" -> alertsPluginDeploy;
             default -> true;
         };
     }
@@ -107,5 +111,19 @@ public class AlertService {
                  String.format("The Minecraft server exited unexpectedly with code %d. Check logs for details.", exitCode), 
                  "ERROR", 
                  "ALERTS_SERVER_CRASH");
+    }
+
+    public void sendPluginDeploySuccessAlert(String pluginName) {
+        sendAlert("Plugin Deployed Successfully",
+                 String.format("Plugin '%s' was deployed successfully.", pluginName),
+                 "INFO",
+                 "ALERTS_PLUGIN_DEPLOY");
+    }
+
+    public void sendPluginDeployFailureAlert(String pluginName, String reason) {
+        sendAlert("Plugin Deployment Failed",
+                 String.format("Deployment of plugin '%s' failed: %s", pluginName, reason),
+                 "ERROR",
+                 "ALERTS_PLUGIN_DEPLOY");
     }
 }
