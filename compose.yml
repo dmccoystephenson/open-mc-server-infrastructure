@@ -154,6 +154,8 @@ services:
     container_name: ${AGENT_CONTAINER_NAME:-open-mc-agent-manager}
     ports:
       - "${AGENT_PORT:-8093}:8093"
+    volumes:
+      - .:/repo:ro
     depends_on:
       alert-manager:
         condition: service_healthy
@@ -175,6 +177,7 @@ services:
       - BACKUP_MANAGER_URL=${BACKUP_MANAGER_URL:-http://backup-manager:8091}
       - DIAGNOSTICS_WEBAPP_ENABLED=${DIAGNOSTICS_WEBAPP_ENABLED:-false}
       - WEBAPP_URL=${WEBAPP_URL:-http://webapp:8080}
+      - REPOSITORY_ROOT=/repo
 
 volumes:
   mcserver:
