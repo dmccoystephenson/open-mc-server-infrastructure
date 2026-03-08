@@ -4,7 +4,6 @@ import com.openmc.webapp.model.DeploymentRecord;
 import com.openmc.webapp.repository.DeploymentRecordRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
@@ -29,7 +28,7 @@ public class DeploymentHistoryService {
     /**
      * Record a new deployment event.
      */
-    public synchronized void recordDeployment(String pluginName, String status, String source,
+    public void recordDeployment(String pluginName, String status, String source,
                                   String branch, String repoUrl, String message) {
         DeploymentRecord record = new DeploymentRecord(
                 Instant.now(), pluginName, status, source, branch, repoUrl, message);
