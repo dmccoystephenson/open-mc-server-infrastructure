@@ -1,17 +1,43 @@
 package com.openmc.webapp.model;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import jakarta.persistence.*;
 import java.time.Instant;
 
+@Entity
+@Table(name = "deployment_records")
 public class DeploymentRecord {
-    private final Instant timestamp;
-    private final String pluginName;
-    private final String status;
-    private final String source;
-    private final String branch;
-    private final String repoUrl;
-    private final String message;
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @JsonIgnore
+    private Long id;
+
+    @Column(nullable = false)
+    private Instant timestamp;
+
+    @Column(name = "plugin_name")
+    private String pluginName;
+
+    @Column
+    private String status;
+
+    @Column
+    private String source;
+
+    @Column
+    private String branch;
+
+    @Column(name = "repo_url", length = 1024)
+    private String repoUrl;
+
+    @Column(columnDefinition = "TEXT")
+    private String message;
+
+    protected DeploymentRecord() {
+    }
 
     @JsonCreator
     public DeploymentRecord(

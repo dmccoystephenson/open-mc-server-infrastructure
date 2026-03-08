@@ -1,4 +1,23 @@
 services:
+  postgres:
+    image: postgres:16-alpine
+    restart: always
+    container_name: ${POSTGRES_CONTAINER_NAME:-open-mc-postgres}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB:-openmc}
+      - POSTGRES_USER=${POSTGRES_USER:-openmc}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-openmc}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-openmc} -d ${POSTGRES_DB:-openmc}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
   minecraft-wrapper:
     build:
       context: .
@@ -61,8 +80,16 @@ services:
       # so we mount the entire volume but PluginService enforces access only to /mcserver/plugins
       - mcserver:/mcserver:rw
     depends_on:
-      - minecraft-wrapper
+      postgres:
+        condition: service_healthy
+      minecraft-wrapper:
+        condition: service_started
     environment:
+      - POSTGRES_HOST=${POSTGRES_HOST:-postgres}
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=${POSTGRES_DB:-openmc}
+      - POSTGRES_USER=${POSTGRES_USER:-openmc}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-openmc}
       - MC_HOST=minecraft-wrapper
       - MC_RCON_PORT=25575
       - MC_RCON_PASSWORD=${RCON_PASSWORD:-minecraft}
@@ -142,7 +169,15 @@ services:
       start_period: 30s
     volumes:
       - alert-manager-data:/app/data
+    depends_on:
+      postgres:
+        condition: service_healthy
     environment:
+      - POSTGRES_HOST=${POSTGRES_HOST:-postgres}
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=${POSTGRES_DB:-openmc}
+      - POSTGRES_USER=${POSTGRES_USER:-openmc}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-openmc}
       - DISCORD_WEBHOOK_URL=${DISCORD_WEBHOOK_URL:-}
       - DISCORD_ENABLED=${DISCORD_ENABLED:-false}
       - MINECRAFT_RCON_HOST=${MINECRAFT_RCON_HOST:-minecraft-wrapper}
@@ -183,6 +218,9 @@ services:
 volumes:
   mcserver:
     name: ${VOLUME_NAME:-mcserver}
+    external: false
+  pgdata:
+    name: ${POSTGRES_VOLUME_NAME:-pgdata}
     external: false
   webapp-data:
     name: ${WEBAPP_VOLUME_NAME:-webapp-data}

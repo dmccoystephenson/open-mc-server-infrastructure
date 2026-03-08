@@ -5,8 +5,10 @@ import com.openmc.alertmanager.model.AlertDestination;
 import com.openmc.alertmanager.model.AlertRecord;
 import com.openmc.alertmanager.repository.AlertRepository;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 
+import java.time.Instant;
 import java.util.Arrays;
 import java.util.List;
 
@@ -37,7 +39,7 @@ public class AlertService {
      */
     public List<AlertRecord> getRecentAlerts(int limit) {
         int safeLimit = Math.max(0, Math.min(limit, AlertRepository.MAX_STORED_ALERTS));
-        return alertRepository.getRecent(safeLimit);
+        return alertRepository.findAllByOrderByReceivedAtDesc(PageRequest.of(0, safeLimit));
     }
 
     /**
@@ -49,7 +51,14 @@ public class AlertService {
         log.info("Processing alert: {} from source: {}", alert.getTitle(), alert.getSource());
 
         // Store in history for later retrieval
-        alertRepository.store(alert);
+        AlertRecord record = AlertRecord.builder()
+                .title(alert.getTitle())
+                .message(alert.getMessage())
+                .level(alert.getLevel())
+                .source(alert.getSource())
+                .receivedAt(Instant.now())
+                .build();
+        alertRepository.save(record);
 
         // Determine destinations - if not specified, send to all
         List<AlertDestination> destinations = alert.getDestinations();

@@ -1,32 +1,23 @@
 package com.openmc.webapp.repository;
 
-import com.openmc.webapp.config.DataStorageConfig;
 import com.openmc.webapp.model.RetrievalRecord;
-import org.springframework.stereotype.Component;
+import org.springframework.data.jpa.repository.JpaRepository;
 
-import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
 
 /**
- * Repository for persisting RetrievalRecord entities.
- * Uses JSON file storage with a 7-day retention period.
+ * Spring Data JPA repository for RetrievalRecord entities.
  */
-@Component
-public class RetrievalRecordRepository extends JsonRepository<RetrievalRecord> {
-    
-    private static final String FILENAME = "retrieval-history.json";
-    
-    @org.springframework.beans.factory.annotation.Autowired
-    public RetrievalRecordRepository(DataStorageConfig config) {
-        super(config.getFilePath(FILENAME), RetrievalRecord[].class);
-    }
-    
-    public RetrievalRecordRepository(DataStorageConfig config, Duration retentionPeriod) {
-        super(config.getFilePath(FILENAME), RetrievalRecord[].class, retentionPeriod);
-    }
-    
-    @Override
-    protected Instant getEntityTimestamp(RetrievalRecord entity) {
-        return entity.getTimestamp();
-    }
+public interface RetrievalRecordRepository extends JpaRepository<RetrievalRecord, Long> {
+
+    /**
+     * Find all records with timestamp after the given cutoff, ordered by timestamp descending.
+     */
+    List<RetrievalRecord> findByTimestampAfterOrderByTimestampDesc(Instant cutoff);
+
+    /**
+     * Delete all records with timestamp before the given cutoff.
+     */
+    void deleteByTimestampBefore(Instant cutoff);
 }

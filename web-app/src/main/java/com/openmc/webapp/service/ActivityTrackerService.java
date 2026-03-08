@@ -4,13 +4,14 @@ import com.openmc.webapp.config.ServerConfig;
 import com.openmc.webapp.model.ActivityTrackerSnapshot;
 import com.openmc.webapp.model.ActivityTrackerStats;
 import com.openmc.webapp.model.LeaderboardEntry;
-import com.openmc.webapp.repository.Repository;
+import com.openmc.webapp.repository.ActivityTrackerSnapshotRepository;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -27,10 +28,11 @@ public class ActivityTrackerService {
     private static final Logger logger = LoggerFactory.getLogger(ActivityTrackerService.class);
     private static final int DEFAULT_MAX_HISTORY_SIZE = 10;
     private static final long CACHE_DURATION_MS = 300000; // 5 minutes
+    private static final Duration RETENTION_PERIOD = Duration.ofDays(7);
     
     private final ServerConfig serverConfig;
     private final RestTemplate restTemplate;
-    private final Repository<ActivityTrackerSnapshot> repository;
+    private final ActivityTrackerSnapshotRepository repository;
     private final LinkedList<ActivityTrackerSnapshot> snapshotHistory = new LinkedList<>();
     private int maxHistorySize = DEFAULT_MAX_HISTORY_SIZE;
     
@@ -38,7 +40,7 @@ public class ActivityTrackerService {
     private List<LeaderboardEntry> cachedLeaderboard;
     private Instant lastFetchTime;
     
-    public ActivityTrackerService(ServerConfig serverConfig, Repository<ActivityTrackerSnapshot> repository) {
+    public ActivityTrackerService(ServerConfig serverConfig, ActivityTrackerSnapshotRepository repository) {
         this.serverConfig = serverConfig;
         this.restTemplate = new RestTemplate();
         this.repository = repository;
@@ -47,7 +49,8 @@ public class ActivityTrackerService {
     }
     
     private void loadHistoricalData() {
-        List<ActivityTrackerSnapshot> loadedSnapshots = repository.findAll();
+        Instant cutoff = Instant.now().minus(RETENTION_PERIOD);
+        List<ActivityTrackerSnapshot> loadedSnapshots = repository.findByTimestampAfterOrderByTimestampDesc(cutoff);
         if (!loadedSnapshots.isEmpty()) {
             snapshotHistory.addAll(loadedSnapshots);
             while (snapshotHistory.size() > maxHistorySize) {
@@ -168,12 +171,8 @@ public class ActivityTrackerService {
     private synchronized void addSnapshot(ActivityTrackerSnapshot snapshot) {
         snapshotHistory.addFirst(snapshot);
         
-        // Persist all snapshots to storage (repository handles retention filtering)
-        // Load all from repository first to ensure we don't lose older snapshots
-        List<ActivityTrackerSnapshot> allSnapshots = new ArrayList<>(repository.findAll());
-        // Add new snapshot to the beginning
-        allSnapshots.add(0, snapshot);
-        repository.save(allSnapshots);
+        // Persist the new snapshot to the database
+        repository.save(snapshot);
         
         // Keep only the last maxHistorySize snapshots in memory for API responses
         while (snapshotHistory.size() > maxHistorySize) {
@@ -239,7 +238,8 @@ public class ActivityTrackerService {
             // If increasing size and we have fewer snapshots than the new limit,
             // reload from repository to get more historical data
             snapshotHistory.clear();
-            List<ActivityTrackerSnapshot> allSnapshots = repository.findAll();
+            Instant cutoff = Instant.now().minus(RETENTION_PERIOD);
+            List<ActivityTrackerSnapshot> allSnapshots = repository.findByTimestampAfterOrderByTimestampDesc(cutoff);
             snapshotHistory.addAll(allSnapshots);
         }
         

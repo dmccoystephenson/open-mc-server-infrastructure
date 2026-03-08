@@ -1,32 +1,23 @@
 package com.openmc.webapp.repository;
 
-import com.openmc.webapp.config.DataStorageConfig;
 import com.openmc.webapp.model.ActivityTrackerSnapshot;
-import org.springframework.stereotype.Component;
+import org.springframework.data.jpa.repository.JpaRepository;
 
-import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
 
 /**
- * Repository for persisting ActivityTrackerSnapshot entities.
- * Uses JSON file storage with a 7-day retention period.
+ * Spring Data JPA repository for ActivityTrackerSnapshot entities.
  */
-@Component
-public class ActivityTrackerSnapshotRepository extends JsonRepository<ActivityTrackerSnapshot> {
-    
-    private static final String FILENAME = "activity-tracker-history.json";
-    
-    @org.springframework.beans.factory.annotation.Autowired
-    public ActivityTrackerSnapshotRepository(DataStorageConfig config) {
-        super(config.getFilePath(FILENAME), ActivityTrackerSnapshot[].class);
-    }
-    
-    public ActivityTrackerSnapshotRepository(DataStorageConfig config, Duration retentionPeriod) {
-        super(config.getFilePath(FILENAME), ActivityTrackerSnapshot[].class, retentionPeriod);
-    }
-    
-    @Override
-    protected Instant getEntityTimestamp(ActivityTrackerSnapshot entity) {
-        return entity.getTimestamp();
-    }
+public interface ActivityTrackerSnapshotRepository extends JpaRepository<ActivityTrackerSnapshot, Long> {
+
+    /**
+     * Find all snapshots with timestamp after the given cutoff, ordered by timestamp descending.
+     */
+    List<ActivityTrackerSnapshot> findByTimestampAfterOrderByTimestampDesc(Instant cutoff);
+
+    /**
+     * Delete all snapshots with timestamp before the given cutoff.
+     */
+    void deleteByTimestampBefore(Instant cutoff);
 }

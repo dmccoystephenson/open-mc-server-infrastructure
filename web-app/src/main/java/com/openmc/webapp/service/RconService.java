@@ -3,11 +3,12 @@ package com.openmc.webapp.service;
 import com.openmc.webapp.config.ServerConfig;
 import com.openmc.webapp.model.RetrievalRecord;
 import com.openmc.webapp.rcon.RconClient;
-import com.openmc.webapp.repository.Repository;
+import com.openmc.webapp.repository.RetrievalRecordRepository;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -18,24 +19,25 @@ import java.util.List;
 public class RconService {
     
     private static final int DEFAULT_MAX_HISTORY_SIZE = 10;
+    private static final Duration RETENTION_PERIOD = Duration.ofDays(7);
     
     private final ServerConfig serverConfig;
-    private final Repository<RetrievalRecord> repository;
+    private final RetrievalRecordRepository repository;
     private ServerStatus cachedStatus;
     private Instant lastFetchTime;
     private final LinkedList<RetrievalRecord> retrievalHistory = new LinkedList<>();
     private int maxHistorySize = DEFAULT_MAX_HISTORY_SIZE;
     
-    public RconService(ServerConfig serverConfig, Repository<RetrievalRecord> repository) {
+    public RconService(ServerConfig serverConfig, RetrievalRecordRepository repository) {
         this.serverConfig = serverConfig;
         this.repository = repository;
         loadHistoricalData();
     }
     
     private void loadHistoricalData() {
-        List<RetrievalRecord> loadedRecords = repository.findAll();
+        Instant cutoff = Instant.now().minus(RETENTION_PERIOD);
+        List<RetrievalRecord> loadedRecords = repository.findByTimestampAfterOrderByTimestampDesc(cutoff);
         if (!loadedRecords.isEmpty()) {
-            // Add loaded records to history, keeping only the most recent maxHistorySize
             retrievalHistory.addAll(loadedRecords);
             while (retrievalHistory.size() > maxHistorySize) {
                 retrievalHistory.removeLast();
@@ -67,7 +69,8 @@ public class RconService {
             // If increasing size and we have fewer records than the new limit,
             // reload from repository to get more historical data
             retrievalHistory.clear();
-            List<RetrievalRecord> allRecords = repository.findAll();
+            Instant cutoff = Instant.now().minus(RETENTION_PERIOD);
+            List<RetrievalRecord> allRecords = repository.findByTimestampAfterOrderByTimestampDesc(cutoff);
             retrievalHistory.addAll(allRecords);
         }
         
@@ -143,12 +146,8 @@ public class RconService {
     private synchronized void addRetrievalRecord(RetrievalRecord record) {
         retrievalHistory.addFirst(record);
         
-        // Persist all records to storage (repository handles retention filtering)
-        // Load all from repository first to ensure we don't lose older records
-        List<RetrievalRecord> allRecords = new ArrayList<>(repository.findAll());
-        // Add new record to the beginning
-        allRecords.add(0, record);
-        repository.save(allRecords);
+        // Persist the new record to the database
+        repository.save(record);
         
         // Keep only the last maxHistorySize records in memory for API responses
         while (retrievalHistory.size() > maxHistorySize) {

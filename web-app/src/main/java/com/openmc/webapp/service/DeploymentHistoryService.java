@@ -4,11 +4,11 @@ import com.openmc.webapp.model.DeploymentRecord;
 import com.openmc.webapp.repository.DeploymentRecordRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
+import java.time.Duration;
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 
 /**
@@ -18,6 +18,7 @@ import java.util.List;
 public class DeploymentHistoryService {
 
     private static final Logger logger = LoggerFactory.getLogger(DeploymentHistoryService.class);
+    private static final Duration RETENTION_PERIOD = Duration.ofDays(7);
 
     private final DeploymentRecordRepository repository;
 
@@ -27,26 +28,22 @@ public class DeploymentHistoryService {
 
     /**
      * Record a new deployment event.
-     * Synchronized to prevent lost updates from concurrent notifications.
      */
     public synchronized void recordDeployment(String pluginName, String status, String source,
                                   String branch, String repoUrl, String message) {
         DeploymentRecord record = new DeploymentRecord(
                 Instant.now(), pluginName, status, source, branch, repoUrl, message);
 
-        List<DeploymentRecord> history = new ArrayList<>(repository.findAll());
-        history.add(record);
-        repository.save(history);
+        repository.save(record);
 
         logger.info("Recorded deployment: plugin={}, status={}, source={}", pluginName, status, source);
     }
 
     /**
-     * Get all deployment records, sorted by timestamp descending (most recent first).
+     * Get all deployment records within the retention period, sorted by timestamp descending (most recent first).
      */
     public List<DeploymentRecord> getDeploymentHistory() {
-        List<DeploymentRecord> history = new ArrayList<>(repository.findAll());
-        history.sort(Comparator.comparing(DeploymentRecord::getTimestamp).reversed());
-        return history;
+        Instant cutoff = Instant.now().minus(RETENTION_PERIOD);
+        return repository.findByTimestampAfterOrderByTimestampDesc(cutoff);
     }
 }

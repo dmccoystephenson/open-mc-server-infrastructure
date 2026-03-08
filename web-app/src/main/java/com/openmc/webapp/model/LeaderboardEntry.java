@@ -1,12 +1,35 @@
 package com.openmc.webapp.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import jakarta.persistence.*;
+
 /**
  * Represents a player entry in the Activity Tracker leaderboard
  */
+@Entity
+@Table(name = "leaderboard_entries")
 public class LeaderboardEntry {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @JsonIgnore
+    private Long id;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "snapshot_id", nullable = false)
+    @JsonIgnore
+    private ActivityTrackerSnapshot snapshot;
+
+    @Column(name = "player_uuid")
     private String playerUuid;
+
+    @Column(name = "player_name")
     private String playerName;
+
+    @Column(name = "hours_played")
     private double hoursPlayed;
+
+    @Column(name = "total_logins")
     private int totalLogins;
     
     public LeaderboardEntry() {
@@ -49,5 +72,14 @@ public class LeaderboardEntry {
     
     public void setTotalLogins(int totalLogins) {
         this.totalLogins = totalLogins;
+    }
+
+    @JsonIgnore
+    public ActivityTrackerSnapshot getSnapshot() {
+        return snapshot;
+    }
+
+    public void setSnapshot(ActivityTrackerSnapshot snapshot) {
+        this.snapshot = snapshot;
     }
 }

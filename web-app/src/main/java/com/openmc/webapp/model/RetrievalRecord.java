@@ -1,16 +1,48 @@
 package com.openmc.webapp.model;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.openmc.webapp.service.RconService.ResourceUsage;
+import jakarta.persistence.*;
 import java.time.Instant;
 
+@Entity
+@Table(name = "retrieval_records")
 public class RetrievalRecord {
-    private final Instant timestamp;
-    private final boolean success;
-    private final int playerCount;
-    private final ResourceUsage resourceUsage;
-    
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @JsonIgnore
+    private Long id;
+
+    @Column(nullable = false)
+    private Instant timestamp;
+
+    @Column(nullable = false)
+    private boolean success;
+
+    @Column(name = "player_count", nullable = false)
+    private int playerCount;
+
+    @Column
+    private String tps;
+
+    @Column(name = "memory_used")
+    private String memoryUsed;
+
+    @Column(name = "memory_max")
+    private String memoryMax;
+
+    @Column(name = "memory_free")
+    private String memoryFree;
+
+    @Column(name = "memory_used_percent")
+    private double memoryUsedPercent;
+
+    protected RetrievalRecord() {
+    }
+
     @JsonCreator
     public RetrievalRecord(
             @JsonProperty("timestamp") Instant timestamp, 
@@ -20,7 +52,13 @@ public class RetrievalRecord {
         this.timestamp = timestamp;
         this.success = success;
         this.playerCount = playerCount;
-        this.resourceUsage = resourceUsage;
+        if (resourceUsage != null) {
+            this.tps = resourceUsage.getTps();
+            this.memoryUsed = resourceUsage.getMemoryUsed();
+            this.memoryMax = resourceUsage.getMemoryMax();
+            this.memoryFree = resourceUsage.getMemoryFree();
+            this.memoryUsedPercent = resourceUsage.getMemoryUsedPercent();
+        }
     }
     
     public Instant getTimestamp() {
@@ -35,7 +73,8 @@ public class RetrievalRecord {
         return playerCount;
     }
     
+    @Transient
     public ResourceUsage getResourceUsage() {
-        return resourceUsage;
+        return new ResourceUsage(tps, memoryUsed, memoryMax, memoryFree, memoryUsedPercent);
     }
 }
