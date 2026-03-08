@@ -53,6 +53,9 @@ class ServerControllerTest {
     
     @MockBean
     private com.openmc.webapp.service.MinecraftWrapperService minecraftWrapperService;
+    
+    @MockBean
+    private com.openmc.webapp.service.DeploymentHistoryService deploymentHistoryService;
 
     private RconService.ServerStatus mockStatus;
 

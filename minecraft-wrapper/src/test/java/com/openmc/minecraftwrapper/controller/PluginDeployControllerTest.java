@@ -2,6 +2,7 @@ package com.openmc.minecraftwrapper.controller;
 
 import com.openmc.minecraftwrapper.service.AlertService;
 import com.openmc.minecraftwrapper.service.PluginDeployService;
+import com.openmc.minecraftwrapper.service.WebAppNotificationService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -33,6 +34,9 @@ class PluginDeployControllerTest {
 
     @Mock
     private AlertService alertService;
+
+    @Mock
+    private WebAppNotificationService webAppNotificationService;
 
     @InjectMocks
     private PluginDeployController pluginDeployController;

@@ -6,9 +6,11 @@ import com.openmc.webapp.dto.PluginListRequest;
 import com.openmc.webapp.dto.PluginListResponse;
 import com.openmc.webapp.dto.PluginOperationResponse;
 import com.openmc.webapp.model.ActivityTrackerStats;
+import com.openmc.webapp.model.DeploymentRecord;
 import com.openmc.webapp.model.LeaderboardEntry;
 import com.openmc.webapp.service.ActivityTrackerService;
 import com.openmc.webapp.service.AlertNotificationService;
+import com.openmc.webapp.service.DeploymentHistoryService;
 import com.openmc.webapp.service.PluginService;
 import com.openmc.webapp.service.RconService;
 import org.slf4j.Logger;
@@ -37,18 +39,21 @@ public class ServerController {
     private final PluginService pluginService;
     private final AlertNotificationService alertNotificationService;
     private final com.openmc.webapp.service.MinecraftWrapperService minecraftWrapperService;
+    private final DeploymentHistoryService deploymentHistoryService;
     
     public ServerController(RconService rconService, ServerConfig serverConfig, 
                           ActivityTrackerService activityTrackerService,
                           PluginService pluginService,
                           AlertNotificationService alertNotificationService,
-                          com.openmc.webapp.service.MinecraftWrapperService minecraftWrapperService) {
+                          com.openmc.webapp.service.MinecraftWrapperService minecraftWrapperService,
+                          DeploymentHistoryService deploymentHistoryService) {
         this.rconService = rconService;
         this.serverConfig = serverConfig;
         this.activityTrackerService = activityTrackerService;
         this.pluginService = pluginService;
         this.alertNotificationService = alertNotificationService;
         this.minecraftWrapperService = minecraftWrapperService;
+        this.deploymentHistoryService = deploymentHistoryService;
     }
     
     /**
@@ -389,6 +394,38 @@ public class ServerController {
         }
     }
     
+    @GetMapping("/api/deployment-history")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> getDeploymentHistory(
+            @RequestParam(required = false) String username,
+            @RequestParam(required = false) String password) {
+        if (username == null || password == null || !validateCredentials(username, password)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("error", "Invalid username or password"));
+        }
+        List<DeploymentRecord> history = deploymentHistoryService.getDeploymentHistory();
+        return ResponseEntity.ok(Map.of("deployments", history));
+    }
+
+    @PostMapping("/api/deployment-history")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> recordDeployment(@RequestBody Map<String, String> payload) {
+        String pluginName = payload.get("pluginName");
+        String status = payload.get("status");
+        String source = payload.get("source");
+        String branch = payload.get("branch");
+        String repoUrl = payload.get("repoUrl");
+        String message = payload.get("message");
+
+        if (pluginName == null || pluginName.isEmpty() || status == null || status.isEmpty()) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("success", false, "error", "pluginName and status are required"));
+        }
+
+        deploymentHistoryService.recordDeployment(pluginName, status, source, branch, repoUrl, message);
+        return ResponseEntity.ok(Map.of("success", true));
+    }
+
     @GetMapping("/player/{playerName}")
     public String playerProfile(@PathVariable String playerName, Model model) {
         com.openmc.webapp.model.PlayerProfile profile = activityTrackerService.getPlayerProfile(playerName);

@@ -42,6 +42,8 @@ services:
       # Plugin deployment CI/CD configuration
       - DEPLOY_AUTH_TOKEN=${DEPLOY_AUTH_TOKEN:-}
       - PLUGINS_DIRECTORY=${PLUGINS_DIRECTORY:-/mcserver/plugins}
+      # Web app integration
+      - WEBAPP_URL=${WEBAPP_URL:-http://webapp:8080}
 
   webapp:
     build:

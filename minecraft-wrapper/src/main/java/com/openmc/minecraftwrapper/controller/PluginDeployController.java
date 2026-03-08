@@ -2,6 +2,7 @@ package com.openmc.minecraftwrapper.controller;
 
 import com.openmc.minecraftwrapper.service.AlertService;
 import com.openmc.minecraftwrapper.service.PluginDeployService;
+import com.openmc.minecraftwrapper.service.WebAppNotificationService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
@@ -25,10 +26,13 @@ public class PluginDeployController {
 
     private final PluginDeployService pluginDeployService;
     private final AlertService alertService;
+    private final WebAppNotificationService webAppNotificationService;
 
-    public PluginDeployController(PluginDeployService pluginDeployService, AlertService alertService) {
+    public PluginDeployController(PluginDeployService pluginDeployService, AlertService alertService,
+                                   WebAppNotificationService webAppNotificationService) {
         this.pluginDeployService = pluginDeployService;
         this.alertService = alertService;
+        this.webAppNotificationService = webAppNotificationService;
     }
 
     /**
@@ -62,14 +66,17 @@ public class PluginDeployController {
         try {
             pluginDeployService.replacePlugin(pluginName, file);
             alertService.sendPluginDeploySuccessAlert(pluginName, branch, repoUrl);
+            webAppNotificationService.notifyDeploymentSuccess(pluginName, branch, repoUrl);
             return ResponseEntity.ok("Plugin deployed successfully");
         } catch (IllegalArgumentException e) {
             log.warn("Invalid plugin deploy request: {}", e.getMessage());
             alertService.sendPluginDeployFailureAlert(pluginName, e.getMessage(), branch, repoUrl);
+            webAppNotificationService.notifyDeploymentFailure(pluginName, e.getMessage(), branch, repoUrl);
             return ResponseEntity.badRequest().body("Invalid request");
         } catch (IOException e) {
             log.error("Failed to deploy plugin: {}", e.getMessage());
             alertService.sendPluginDeployFailureAlert(pluginName, e.getMessage(), branch, repoUrl);
+            webAppNotificationService.notifyDeploymentFailure(pluginName, e.getMessage(), branch, repoUrl);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body("Failed to deploy plugin");
         }
