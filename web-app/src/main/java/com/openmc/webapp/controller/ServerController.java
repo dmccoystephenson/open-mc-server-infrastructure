@@ -394,17 +394,11 @@ public class ServerController {
         }
     }
     
-    @PostMapping("/api/deployment-history/list")
+    @GetMapping("/api/deployment-history")
     @ResponseBody
-    public ResponseEntity<Map<String, Object>> getDeploymentHistory(@RequestBody Map<String, String> payload) {
-        String username = payload.get("username");
-        String password = payload.get("password");
-        if (username == null || password == null || !validateCredentials(username, password)) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(Map.of("error", "Invalid username or password"));
-        }
+    public Map<String, Object> getDeploymentHistory() {
         List<DeploymentRecord> history = deploymentHistoryService.getDeploymentHistory();
-        return ResponseEntity.ok(Map.of("deployments", history));
+        return Map.of("deployments", history);
     }
 
     @PostMapping("/api/deployment-history")

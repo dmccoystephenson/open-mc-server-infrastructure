@@ -274,79 +274,6 @@
             text-align: center;
             color: var(--text-faint);
         }
-        
-        .deployment-list {
-            margin-top: 15px;
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            overflow: hidden;
-        }
-        
-        .deployment-item {
-            padding: 12px 15px;
-            border-bottom: 1px solid var(--border-color);
-            background: var(--card-bg);
-        }
-        
-        .deployment-item:last-child {
-            border-bottom: none;
-        }
-        
-        .deployment-item:hover {
-            background: var(--hover-bg);
-        }
-        
-        .deployment-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 8px;
-        }
-        
-        .deployment-plugin {
-            font-family: 'Courier New', monospace;
-            font-weight: 600;
-            color: var(--text-secondary);
-        }
-        
-        .deployment-badge {
-            display: inline-block;
-            padding: 2px 8px;
-            border-radius: 4px;
-            font-size: 0.8em;
-            font-weight: 600;
-        }
-        
-        .deployment-badge.success {
-            background: #d1fae5;
-            color: #065f46;
-        }
-        
-        html.dark .deployment-badge.success {
-            background: #064e3b;
-            color: #6ee7b7;
-        }
-        
-        .deployment-badge.failure {
-            background: #fee2e2;
-            color: #991b1b;
-        }
-        
-        html.dark .deployment-badge.failure {
-            background: #7f1d1d;
-            color: #fca5a5;
-        }
-        
-        .deployment-details {
-            margin-top: 6px;
-            font-size: 0.85em;
-            color: var(--text-muted);
-        }
-        
-        .deployment-details span {
-            margin-right: 15px;
-        }
     </style>
 </head>
 <body>
@@ -441,16 +368,6 @@
             
             <div id="pluginsListContainer" style="margin-top: 20px;">
                 <div class="empty-state">Click "Refresh List" to load plugins</div>
-            </div>
-        </div>
-        
-        <!-- Deployment History Card -->
-        <div class="card">
-            <h2>Deployment History</h2>
-            <p style="color: var(--text-muted); margin-bottom: 15px;">Recent automated and manual plugin deployments</p>
-            <button onclick="refreshDeploymentHistory()" class="btn btn-primary">Refresh History</button>
-            <div id="deploymentHistoryContainer" style="margin-top: 20px;">
-                <div class="empty-state">Click "Refresh History" to load deployment history</div>
             </div>
         </div>
     </div>
@@ -751,72 +668,6 @@
                 output.textContent = data.success ? '✓ ' + data.message : '✗ ' + data.message;
             } catch (error) {
                 output.textContent = '✗ Error: ' + error.message;
-            }
-        }
-        
-        async function refreshDeploymentHistory() {
-            const { username, password } = getCredentials();
-            
-            if (!username || !password) {
-                alert('Please enter username and password above');
-                return;
-            }
-            
-            const container = document.getElementById('deploymentHistoryContainer');
-            container.innerHTML = '<div class="empty-state">Loading deployment history...</div>';
-            
-            try {
-                const response = await fetch('/api/deployment-history/list', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        username: username,
-                        password: password
-                    })
-                });
-                const data = await response.json();
-                
-                if (data.error) {
-                    container.innerHTML = `<div class="empty-state" style="color: #ef4444;">${escapeHtml(data.error)}</div>`;
-                    return;
-                }
-                
-                if (!data.deployments || data.deployments.length === 0) {
-                    container.innerHTML = '<div class="empty-state">No deployment history found</div>';
-                    return;
-                }
-                
-                let html = '<div class="deployment-list">';
-                data.deployments.forEach(dep => {
-                    const isSuccess = dep.status === 'SUCCESS';
-                    const badgeClass = isSuccess ? 'success' : 'failure';
-                    const time = new Date(dep.timestamp).toLocaleString();
-                    
-                    html += `<div class="deployment-item">`;
-                    html += `<div class="deployment-header">`;
-                    html += `<span class="deployment-plugin">${escapeHtml(dep.pluginName)}</span>`;
-                    html += `<span class="deployment-badge ${badgeClass}">${escapeHtml(dep.status)}</span>`;
-                    html += `</div>`;
-                    html += `<div class="deployment-details">`;
-                    html += `<span>📅 ${escapeHtml(time)}</span>`;
-                    if (dep.source) {
-                        html += `<span>📦 ${escapeHtml(dep.source)}</span>`;
-                    }
-                    if (dep.branch) {
-                        html += `<span>🌿 ${escapeHtml(dep.branch)}</span>`;
-                    }
-                    if (dep.message) {
-                        html += `<div style="margin-top: 4px;">${escapeHtml(dep.message)}</div>`;
-                    }
-                    html += `</div>`;
-                    html += `</div>`;
-                });
-                html += '</div>';
-                container.innerHTML = html;
-            } catch (error) {
-                container.innerHTML = `<div class="empty-state" style="color: #ef4444;">Error: ${escapeHtml(error.message)}</div>`;
             }
         }
     </script>
