@@ -47,6 +47,8 @@ public class ServerController {
 
     @org.springframework.beans.factory.annotation.Value("${deployment.auth.token:}")
     private String deploymentAuthToken;
+
+    private volatile boolean deploymentTokenWarningLogged = false;
     
     public ServerController(RconService rconService, ServerConfig serverConfig, 
                           ActivityTrackerService activityTrackerService,
@@ -448,7 +450,10 @@ public class ServerController {
      */
     private boolean isDeploymentAuthorized(String authHeader) {
         if (deploymentAuthToken == null || deploymentAuthToken.trim().isEmpty()) {
-            logger.warn("deployment.auth.token is not configured; all deployment record requests will be rejected");
+            if (!deploymentTokenWarningLogged) {
+                logger.warn("deployment.auth.token is not configured; all deployment record requests will be rejected");
+                deploymentTokenWarningLogged = true;
+            }
             return false;
         }
         if (authHeader == null || !authHeader.startsWith(BEARER_PREFIX)) {
