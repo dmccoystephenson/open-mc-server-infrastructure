@@ -27,8 +27,9 @@ public class DeploymentHistoryService {
 
     /**
      * Record a new deployment event.
+     * Synchronized to prevent lost updates from concurrent notifications.
      */
-    public void recordDeployment(String pluginName, String status, String source,
+    public synchronized void recordDeployment(String pluginName, String status, String source,
                                   String branch, String repoUrl, String message) {
         DeploymentRecord record = new DeploymentRecord(
                 Instant.now(), pluginName, status, source, branch, repoUrl, message);

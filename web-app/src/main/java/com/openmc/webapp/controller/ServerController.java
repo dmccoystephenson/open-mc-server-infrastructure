@@ -23,15 +23,19 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 @Controller
 public class ServerController {
     
     private static final Logger logger = LoggerFactory.getLogger(ServerController.class);
+    private static final String BEARER_PREFIX = "Bearer ";
+    private static final Set<String> VALID_DEPLOYMENT_STATUSES = Set.of("SUCCESS", "FAILURE");
     
     private final RconService rconService;
     private final ServerConfig serverConfig;
@@ -40,6 +44,9 @@ public class ServerController {
     private final AlertNotificationService alertNotificationService;
     private final com.openmc.webapp.service.MinecraftWrapperService minecraftWrapperService;
     private final DeploymentHistoryService deploymentHistoryService;
+
+    @org.springframework.beans.factory.annotation.Value("${deployment.auth.token:}")
+    private String deploymentAuthToken;
     
     public ServerController(RconService rconService, ServerConfig serverConfig, 
                           ActivityTrackerService activityTrackerService,
@@ -403,7 +410,14 @@ public class ServerController {
 
     @PostMapping("/api/deployment-history")
     @ResponseBody
-    public ResponseEntity<Map<String, Object>> recordDeployment(@RequestBody Map<String, String> payload) {
+    public ResponseEntity<Map<String, Object>> recordDeployment(
+            @RequestHeader(value = "Authorization", required = false) String authHeader,
+            @RequestBody Map<String, String> payload) {
+        if (!isDeploymentAuthorized(authHeader)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("success", false, "message", "Unauthorized"));
+        }
+
         String pluginName = payload.get("pluginName");
         String status = payload.get("status");
         String source = payload.get("source");
@@ -413,11 +427,37 @@ public class ServerController {
 
         if (pluginName == null || pluginName.isEmpty() || status == null || status.isEmpty()) {
             return ResponseEntity.badRequest()
-                    .body(Map.of("success", false, "error", "pluginName and status are required"));
+                    .body(Map.of("success", false, "message", "pluginName and status are required"));
         }
 
-        deploymentHistoryService.recordDeployment(pluginName, status, source, branch, repoUrl, message);
+        String normalizedStatus = status.toUpperCase();
+        if (!VALID_DEPLOYMENT_STATUSES.contains(normalizedStatus)) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("success", false, "message",
+                            "Invalid status. Allowed values: " + VALID_DEPLOYMENT_STATUSES));
+        }
+
+        deploymentHistoryService.recordDeployment(pluginName, normalizedStatus, source, branch, repoUrl, message);
         return ResponseEntity.ok(Map.of("success", true));
+    }
+
+    /**
+     * Returns {@code true} if the provided {@code Authorization} header carries a Bearer
+     * token that matches the configured deployment auth token.
+     * Uses constant-time comparison to prevent timing attacks.
+     */
+    private boolean isDeploymentAuthorized(String authHeader) {
+        if (deploymentAuthToken == null || deploymentAuthToken.trim().isEmpty()) {
+            logger.warn("deployment.auth.token is not configured; all deployment record requests will be rejected");
+            return false;
+        }
+        if (authHeader == null || !authHeader.startsWith(BEARER_PREFIX)) {
+            return false;
+        }
+        String providedToken = authHeader.substring(BEARER_PREFIX.length());
+        return MessageDigest.isEqual(
+                deploymentAuthToken.getBytes(StandardCharsets.UTF_8),
+                providedToken.getBytes(StandardCharsets.UTF_8));
     }
 
     @GetMapping("/player/{playerName}")

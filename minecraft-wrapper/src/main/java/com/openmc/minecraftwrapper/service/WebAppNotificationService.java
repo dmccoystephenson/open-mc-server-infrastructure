@@ -18,6 +18,9 @@ public class WebAppNotificationService {
     @Value("${webapp.url:}")
     private String webappUrl;
 
+    @Value("${deployment.auth.token:}")
+    private String deploymentAuthToken;
+
     private final RestTemplate restTemplate;
 
     public WebAppNotificationService(RestTemplate restTemplate) {
@@ -46,7 +49,7 @@ public class WebAppNotificationService {
             return;
         }
 
-        String url = webappUrl + "/api/deployment-history";
+        String url = webappUrl.replaceAll("/+$", "") + "/api/deployment-history";
 
         Map<String, String> payload = new HashMap<>();
         payload.put("pluginName", pluginName);
@@ -65,6 +68,9 @@ public class WebAppNotificationService {
         try {
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
+            if (deploymentAuthToken != null && !deploymentAuthToken.trim().isEmpty()) {
+                headers.set("Authorization", "Bearer " + deploymentAuthToken);
+            }
             HttpEntity<Map<String, String>> request = new HttpEntity<>(payload, headers);
 
             restTemplate.postForEntity(url, request, String.class);

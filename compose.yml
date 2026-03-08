@@ -44,6 +44,7 @@ services:
       - PLUGINS_DIRECTORY=${PLUGINS_DIRECTORY:-/mcserver/plugins}
       # Web app integration
       - WEBAPP_URL=${WEBAPP_URL:-http://webapp:8080}
+      - DEPLOYMENT_AUTH_TOKEN=${DEPLOYMENT_AUTH_TOKEN:-}
 
   webapp:
     build:
@@ -83,6 +84,7 @@ services:
       - ALERT_MANAGER_ENABLED=${ALERT_MANAGER_ENABLED:-true}
       - MINECRAFT_WRAPPER_URL=${MINECRAFT_WRAPPER_URL:-http://minecraft-wrapper:8092}
       - ACCORDION_CHAT_URL=${ACCORDION_CHAT_URL:-}
+      - DEPLOYMENT_AUTH_TOKEN=${DEPLOYMENT_AUTH_TOKEN:-}
 
   nginx:
     build:

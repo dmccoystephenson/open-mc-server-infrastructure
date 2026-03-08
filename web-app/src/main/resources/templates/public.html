@@ -1307,6 +1307,10 @@
             
             try {
                 const response = await fetch('/api/deployment-history');
+                if (!response.ok) {
+                    container.innerHTML = `<div class="deployment-empty">Failed to load deployment history (HTTP ${response.status})</div>`;
+                    return;
+                }
                 const data = await response.json();
                 
                 if (!data.deployments || data.deployments.length === 0) {
