@@ -1,47 +1,49 @@
 package com.openmc.webapp.service;
 
 import com.openmc.webapp.config.ServerConfig;
-import com.openmc.webapp.config.TestDataStorageConfig;
 import com.openmc.webapp.model.RetrievalRecord;
 import com.openmc.webapp.repository.RetrievalRecordRepository;
 import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.io.File;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
 
 @DisplayName("RconService Persistence Tests")
+@ExtendWith(MockitoExtension.class)
 class RconServicePersistenceTest {
     
-    private static final String TEST_DATA_FILE = "data/retrieval-history.json";
     private ServerConfig serverConfig;
+    
+    @Mock
     private RetrievalRecordRepository repository;
-    private TestDataStorageConfig config;
+    
+    private final List<RetrievalRecord> savedRecords = Collections.synchronizedList(new ArrayList<>());
     
     @BeforeEach
     void setUp() {
-        cleanupDataFile();
+        savedRecords.clear();
         serverConfig = new ServerConfig();
         serverConfig.setRefreshIntervalMs(1); // Very short interval for testing
-        config = new TestDataStorageConfig();
-        repository = new RetrievalRecordRepository(config);
-    }
-    
-    @AfterEach
-    void tearDown() {
-        cleanupDataFile();
-    }
-    
-    private void cleanupDataFile() {
-        File dataFile = new File(TEST_DATA_FILE);
-        if (dataFile.exists()) {
-            dataFile.delete();
-        }
-        File dataDir = dataFile.getParentFile();
-        if (dataDir != null && dataDir.exists() && dataDir.list() != null && dataDir.list().length == 0) {
-            dataDir.delete();
-        }
+        when(repository.findByTimestampAfterOrderByTimestampDesc(any(Instant.class)))
+            .thenAnswer(invocation -> savedRecords.stream()
+                .sorted(Comparator.comparing(RetrievalRecord::getTimestamp).reversed())
+                .collect(Collectors.toList()));
+        lenient().when(repository.save(any(RetrievalRecord.class)))
+            .thenAnswer(invocation -> {
+                savedRecords.add(invocation.getArgument(0));
+                return invocation.getArgument(0);
+            });
     }
     
     @Test

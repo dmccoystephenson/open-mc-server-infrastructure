@@ -2,25 +2,39 @@ package com.openmc.webapp.service;
 
 import com.openmc.webapp.config.ServerConfig;
 import com.openmc.webapp.model.RetrievalRecord;
-import com.openmc.webapp.repository.InMemoryRepository;
+import com.openmc.webapp.repository.RetrievalRecordRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.Instant;
+import java.util.Collections;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
 
 @DisplayName("RconService History Tests")
+@ExtendWith(MockitoExtension.class)
 class RconServiceHistoryTest {
 
     private ServerConfig serverConfig;
+
+    @Mock
+    private RetrievalRecordRepository repository;
+
     private RconService rconService;
 
     @BeforeEach
     void setUp() {
         serverConfig = new ServerConfig();
-        rconService = new RconService(serverConfig, new InMemoryRepository<>());
+        when(repository.findByTimestampAfterOrderByTimestampDesc(any(Instant.class)))
+            .thenReturn(Collections.emptyList());
+        rconService = new RconService(serverConfig, repository);
     }
 
     @Test

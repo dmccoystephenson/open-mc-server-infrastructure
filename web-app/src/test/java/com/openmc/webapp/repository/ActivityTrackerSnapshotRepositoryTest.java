@@ -1,12 +1,13 @@
 package com.openmc.webapp.repository;
 
-import com.openmc.webapp.config.TestDataStorageConfig;
 import com.openmc.webapp.model.ActivityTrackerSnapshot;
 import com.openmc.webapp.model.ActivityTrackerStats;
 import com.openmc.webapp.model.LeaderboardEntry;
 import org.junit.jupiter.api.*;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 
-import java.io.File;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -15,39 +16,22 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+@DataJpaTest
+@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @DisplayName("ActivityTrackerSnapshotRepository Tests")
 class ActivityTrackerSnapshotRepositoryTest {
     
-    private static final String TEST_DATA_FILE = "data/activity-tracker-history.json";
+    @Autowired
     private ActivityTrackerSnapshotRepository repository;
-    private TestDataStorageConfig config;
     
     @BeforeEach
     void setUp() {
-        cleanupDataFile();
-        config = new TestDataStorageConfig();
-        repository = new ActivityTrackerSnapshotRepository(config);
-    }
-    
-    @AfterEach
-    void tearDown() {
-        cleanupDataFile();
-    }
-    
-    private void cleanupDataFile() {
-        File dataFile = new File(TEST_DATA_FILE);
-        if (dataFile.exists()) {
-            dataFile.delete();
-        }
-        File dataDir = dataFile.getParentFile();
-        if (dataDir != null && dataDir.exists() && dataDir.list() != null && dataDir.list().length == 0) {
-            dataDir.delete();
-        }
+        repository.deleteAll();
     }
     
     @Test
-    @DisplayName("Should return empty list when no data file exists")
-    void shouldReturnEmptyListWhenNoDataFileExists() {
+    @DisplayName("Should return empty list when no snapshots exist")
+    void shouldReturnEmptyListWhenNoSnapshotsExist() {
         List<ActivityTrackerSnapshot> snapshots = repository.findAll();
         assertNotNull(snapshots);
         assertTrue(snapshots.isEmpty());
@@ -58,7 +42,7 @@ class ActivityTrackerSnapshotRepositoryTest {
     void shouldSaveAndLoadSnapshotsSuccessfully() {
         List<ActivityTrackerSnapshot> snapshots = createTestSnapshots(3);
         
-        repository.save(snapshots);
+        repository.saveAll(snapshots);
         
         List<ActivityTrackerSnapshot> loadedSnapshots = repository.findAll();
         
@@ -74,29 +58,25 @@ class ActivityTrackerSnapshotRepositoryTest {
     }
     
     @Test
-    @DisplayName("Should clear data file when clear is called")
-    void shouldClearDataFileWhenClearIsCalled() {
+    @DisplayName("Should delete all snapshots when deleteAll is called")
+    void shouldDeleteAllSnapshotsWhenDeleteAllIsCalled() {
         List<ActivityTrackerSnapshot> snapshots = createTestSnapshots(2);
-        repository.save(snapshots);
+        repository.saveAll(snapshots);
         
-        File dataFile = new File(TEST_DATA_FILE);
-        assertTrue(dataFile.exists());
+        assertEquals(2, repository.findAll().size());
         
-        repository.clear();
+        repository.deleteAll();
         
-        assertFalse(dataFile.exists());
+        assertTrue(repository.findAll().isEmpty());
     }
     
     @Test
-    @DisplayName("Should filter out snapshots older than retention period")
-    void shouldFilterOutSnapshotsOlderThanRetentionPeriod() {
-        ActivityTrackerSnapshotRepository shortRetentionRepository = new ActivityTrackerSnapshotRepository(config, Duration.ofDays(1));
-        
-        List<ActivityTrackerSnapshot> snapshots = new ArrayList<>();
+    @DisplayName("Should filter out snapshots older than cutoff using findByTimestampAfterOrderByTimestampDesc")
+    void shouldFilterOutSnapshotsOlderThanCutoff() {
         ActivityTrackerStats stats = new ActivityTrackerStats(10, 50);
         
         // Recent snapshot (should be kept)
-        snapshots.add(new ActivityTrackerSnapshot(
+        repository.save(new ActivityTrackerSnapshot(
             Instant.now().minus(Duration.ofHours(12)), 
             stats, 
             Collections.emptyList(), 
@@ -104,32 +84,30 @@ class ActivityTrackerSnapshotRepositoryTest {
         ));
         
         // Old snapshot (should be filtered out)
-        snapshots.add(new ActivityTrackerSnapshot(
+        repository.save(new ActivityTrackerSnapshot(
             Instant.now().minus(Duration.ofDays(2)), 
             stats, 
             Collections.emptyList(), 
             true
         ));
         
-        shortRetentionRepository.save(snapshots);
+        Instant cutoff = Instant.now().minus(Duration.ofDays(1));
+        List<ActivityTrackerSnapshot> filtered = repository.findByTimestampAfterOrderByTimestampDesc(cutoff);
         
-        List<ActivityTrackerSnapshot> loadedSnapshots = shortRetentionRepository.findAll();
-        
-        assertEquals(1, loadedSnapshots.size());
+        assertEquals(1, filtered.size());
     }
     
     @Test
-    @DisplayName("Should preserve leaderboard data")
+    @DisplayName("Should preserve leaderboard data via cascade")
     void shouldPreserveLeaderboardData() {
         ActivityTrackerStats stats = new ActivityTrackerStats(5, 25);
         List<LeaderboardEntry> leaderboard = new ArrayList<>();
         leaderboard.add(new LeaderboardEntry("uuid1", "Player1", 10.5, 15));
         leaderboard.add(new LeaderboardEntry("uuid2", "Player2", 8.2, 12));
         
-        List<ActivityTrackerSnapshot> snapshots = new ArrayList<>();
-        snapshots.add(new ActivityTrackerSnapshot(Instant.now(), stats, leaderboard, true));
+        ActivityTrackerSnapshot snapshot = new ActivityTrackerSnapshot(Instant.now(), stats, leaderboard, true);
+        repository.save(snapshot);
         
-        repository.save(snapshots);
         List<ActivityTrackerSnapshot> loadedSnapshots = repository.findAll();
         
         assertEquals(1, loadedSnapshots.size());
@@ -137,6 +115,27 @@ class ActivityTrackerSnapshotRepositoryTest {
         assertEquals(2, loaded.getLeaderboard().size());
         assertEquals("Player1", loaded.getLeaderboard().get(0).getPlayerName());
         assertEquals(10.5, loaded.getLeaderboard().get(0).getHoursPlayed(), 0.01);
+    }
+    
+    @Test
+    @DisplayName("Should return snapshots ordered by timestamp descending")
+    void shouldReturnSnapshotsOrderedByTimestampDescending() {
+        ActivityTrackerStats stats = new ActivityTrackerStats(10, 50);
+        
+        Instant oldest = Instant.now().minus(Duration.ofHours(3));
+        Instant middle = Instant.now().minus(Duration.ofHours(2));
+        Instant newest = Instant.now().minus(Duration.ofHours(1));
+        
+        repository.save(new ActivityTrackerSnapshot(oldest, stats, Collections.emptyList(), true));
+        repository.save(new ActivityTrackerSnapshot(newest, stats, Collections.emptyList(), true));
+        repository.save(new ActivityTrackerSnapshot(middle, stats, Collections.emptyList(), true));
+        
+        Instant cutoff = Instant.now().minus(Duration.ofDays(1));
+        List<ActivityTrackerSnapshot> snapshots = repository.findByTimestampAfterOrderByTimestampDesc(cutoff);
+        
+        assertEquals(3, snapshots.size());
+        assertTrue(snapshots.get(0).getTimestamp().isAfter(snapshots.get(1).getTimestamp()));
+        assertTrue(snapshots.get(1).getTimestamp().isAfter(snapshots.get(2).getTimestamp()));
     }
     
     private List<ActivityTrackerSnapshot> createTestSnapshots(int count) {

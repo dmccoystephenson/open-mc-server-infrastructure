@@ -1,24 +1,53 @@
 package com.openmc.webapp.service;
 
 import com.openmc.webapp.config.ServerConfig;
-import com.openmc.webapp.repository.InMemoryRepository;
+import com.openmc.webapp.model.RetrievalRecord;
+import com.openmc.webapp.repository.RetrievalRecordRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
+import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
 
 @DisplayName("RconService Max History Size Tests")
+@ExtendWith(MockitoExtension.class)
 class RconServiceMaxHistorySizeTest {
 
     private ServerConfig serverConfig;
+
+    @Mock
+    private RetrievalRecordRepository repository;
+
     private RconService rconService;
+    private final List<RetrievalRecord> savedRecords = Collections.synchronizedList(new ArrayList<>());
 
     @BeforeEach
     void setUp() {
+        savedRecords.clear();
         serverConfig = new ServerConfig();
         serverConfig.setRefreshIntervalMs(1); // Very short interval for testing
-        rconService = new RconService(serverConfig, new InMemoryRepository<>());
+        when(repository.findByTimestampAfterOrderByTimestampDesc(any(Instant.class)))
+            .thenAnswer(invocation -> savedRecords.stream()
+                .sorted(Comparator.comparing(RetrievalRecord::getTimestamp).reversed())
+                .collect(Collectors.toList()));
+        lenient().when(repository.save(any(RetrievalRecord.class)))
+            .thenAnswer(invocation -> {
+                savedRecords.add(invocation.getArgument(0));
+                return invocation.getArgument(0);
+            });
+        rconService = new RconService(serverConfig, repository);
     }
 
     @Test

@@ -1,11 +1,12 @@
 package com.openmc.webapp.repository;
 
-import com.openmc.webapp.config.TestDataStorageConfig;
 import com.openmc.webapp.model.RetrievalRecord;
 import com.openmc.webapp.service.RconService;
 import org.junit.jupiter.api.*;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 
-import java.io.File;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -13,39 +14,22 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+@DataJpaTest
+@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @DisplayName("RetrievalRecordRepository Tests")
 class RetrievalRecordRepositoryTest {
     
-    private static final String TEST_DATA_FILE = "data/retrieval-history.json";
+    @Autowired
     private RetrievalRecordRepository repository;
-    private TestDataStorageConfig config;
     
     @BeforeEach
     void setUp() {
-        cleanupDataFile();
-        config = new TestDataStorageConfig();
-        repository = new RetrievalRecordRepository(config);
-    }
-    
-    @AfterEach
-    void tearDown() {
-        cleanupDataFile();
-    }
-    
-    private void cleanupDataFile() {
-        File dataFile = new File(TEST_DATA_FILE);
-        if (dataFile.exists()) {
-            dataFile.delete();
-        }
-        File dataDir = dataFile.getParentFile();
-        if (dataDir != null && dataDir.exists() && dataDir.list() != null && dataDir.list().length == 0) {
-            dataDir.delete();
-        }
+        repository.deleteAll();
     }
     
     @Test
-    @DisplayName("Should return empty list when no data file exists")
-    void shouldReturnEmptyListWhenNoDataFileExists() {
+    @DisplayName("Should return empty list when no records exist")
+    void shouldReturnEmptyListWhenNoRecordsExist() {
         List<RetrievalRecord> records = repository.findAll();
         assertNotNull(records);
         assertTrue(records.isEmpty());
@@ -56,7 +40,7 @@ class RetrievalRecordRepositoryTest {
     void shouldSaveAndLoadRecordsSuccessfully() {
         List<RetrievalRecord> records = createTestRecords(3);
         
-        repository.save(records);
+        repository.saveAll(records);
         
         List<RetrievalRecord> loadedRecords = repository.findAll();
         
@@ -69,39 +53,56 @@ class RetrievalRecordRepositoryTest {
     }
     
     @Test
-    @DisplayName("Should clear data file when clear is called")
-    void shouldClearDataFileWhenClearIsCalled() {
+    @DisplayName("Should delete all records when deleteAll is called")
+    void shouldDeleteAllRecordsWhenDeleteAllIsCalled() {
         List<RetrievalRecord> records = createTestRecords(2);
-        repository.save(records);
+        repository.saveAll(records);
         
-        File dataFile = new File(TEST_DATA_FILE);
-        assertTrue(dataFile.exists());
+        assertEquals(2, repository.findAll().size());
         
-        repository.clear();
+        repository.deleteAll();
         
-        assertFalse(dataFile.exists());
+        assertTrue(repository.findAll().isEmpty());
     }
     
     @Test
-    @DisplayName("Should filter out records older than retention period")
-    void shouldFilterOutRecordsOlderThanRetentionPeriod() {
-        RetrievalRecordRepository shortRetentionRepository = new RetrievalRecordRepository(config, Duration.ofDays(1));
-        
-        List<RetrievalRecord> records = new ArrayList<>();
+    @DisplayName("Should filter out records older than cutoff using findByTimestampAfterOrderByTimestampDesc")
+    void shouldFilterOutRecordsOlderThanCutoff() {
         RconService.ResourceUsage resourceUsage = new RconService.ResourceUsage("20.0", "1024MB", "2048MB", "1024MB", 50.0);
         
         // Recent record (should be kept)
-        records.add(new RetrievalRecord(Instant.now().minus(Duration.ofHours(12)), true, 5, resourceUsage));
+        repository.save(new RetrievalRecord(Instant.now().minus(Duration.ofHours(12)), true, 5, resourceUsage));
         
         // Old record (should be filtered out)
-        records.add(new RetrievalRecord(Instant.now().minus(Duration.ofDays(2)), true, 3, resourceUsage));
+        repository.save(new RetrievalRecord(Instant.now().minus(Duration.ofDays(2)), true, 3, resourceUsage));
         
-        shortRetentionRepository.save(records);
+        Instant cutoff = Instant.now().minus(Duration.ofDays(1));
+        List<RetrievalRecord> filtered = repository.findByTimestampAfterOrderByTimestampDesc(cutoff);
         
-        List<RetrievalRecord> loadedRecords = shortRetentionRepository.findAll();
+        assertEquals(1, filtered.size());
+        assertEquals(5, filtered.get(0).getPlayerCount());
+    }
+    
+    @Test
+    @DisplayName("Should return records ordered by timestamp descending")
+    void shouldReturnRecordsOrderedByTimestampDescending() {
+        RconService.ResourceUsage resourceUsage = new RconService.ResourceUsage("20.0", "1024MB", "2048MB", "1024MB", 50.0);
         
-        assertEquals(1, loadedRecords.size());
-        assertEquals(5, loadedRecords.get(0).getPlayerCount());
+        Instant oldest = Instant.now().minus(Duration.ofHours(3));
+        Instant middle = Instant.now().minus(Duration.ofHours(2));
+        Instant newest = Instant.now().minus(Duration.ofHours(1));
+        
+        repository.save(new RetrievalRecord(oldest, true, 1, resourceUsage));
+        repository.save(new RetrievalRecord(newest, true, 3, resourceUsage));
+        repository.save(new RetrievalRecord(middle, true, 2, resourceUsage));
+        
+        Instant cutoff = Instant.now().minus(Duration.ofDays(1));
+        List<RetrievalRecord> records = repository.findByTimestampAfterOrderByTimestampDesc(cutoff);
+        
+        assertEquals(3, records.size());
+        assertEquals(3, records.get(0).getPlayerCount());
+        assertEquals(2, records.get(1).getPlayerCount());
+        assertEquals(1, records.get(2).getPlayerCount());
     }
     
     private List<RetrievalRecord> createTestRecords(int count) {

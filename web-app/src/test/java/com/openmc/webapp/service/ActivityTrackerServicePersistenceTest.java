@@ -1,47 +1,36 @@
 package com.openmc.webapp.service;
 
 import com.openmc.webapp.config.ServerConfig;
-import com.openmc.webapp.config.TestDataStorageConfig;
 import com.openmc.webapp.model.ActivityTrackerSnapshot;
 import com.openmc.webapp.repository.ActivityTrackerSnapshotRepository;
 import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.io.File;
+import java.time.Instant;
+import java.util.Collections;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
 
 @DisplayName("ActivityTrackerService Persistence Tests")
+@ExtendWith(MockitoExtension.class)
 class ActivityTrackerServicePersistenceTest {
     
-    private static final String TEST_DATA_FILE = "data/activity-tracker-history.json";
     private ServerConfig serverConfig;
+    
+    @Mock
     private ActivityTrackerSnapshotRepository repository;
-    private TestDataStorageConfig config;
     
     @BeforeEach
     void setUp() {
-        cleanupDataFile();
         serverConfig = new ServerConfig();
         serverConfig.setActivityTrackerEnabled(false); // Disable to prevent actual API calls
-        config = new TestDataStorageConfig();
-        repository = new ActivityTrackerSnapshotRepository(config);
-    }
-    
-    @AfterEach
-    void tearDown() {
-        cleanupDataFile();
-    }
-    
-    private void cleanupDataFile() {
-        File dataFile = new File(TEST_DATA_FILE);
-        if (dataFile.exists()) {
-            dataFile.delete();
-        }
-        File dataDir = dataFile.getParentFile();
-        if (dataDir != null && dataDir.exists() && dataDir.list() != null && dataDir.list().length == 0) {
-            dataDir.delete();
-        }
+        when(repository.findByTimestampAfterOrderByTimestampDesc(any(Instant.class)))
+            .thenReturn(Collections.emptyList());
     }
     
     @Test
