@@ -1,69 +1,65 @@
 package com.openmc.alertmanager.repository;
 
-import com.openmc.alertmanager.config.DataStorageConfig;
-import com.openmc.alertmanager.model.Alert;
 import com.openmc.alertmanager.model.AlertLevel;
 import com.openmc.alertmanager.model.AlertRecord;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.data.domain.PageRequest;
 
-import java.nio.file.Path;
+import java.time.Instant;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+@DataJpaTest
 @DisplayName("AlertRepository Tests")
 class AlertRepositoryTest {
 
-    @TempDir
-    Path tempDir;
-
+    @Autowired
     private AlertRepository alertRepository;
-
-    private DataStorageConfig configFor(Path dir) {
-        DataStorageConfig config = new DataStorageConfig();
-        config.setBaseDirectory(dir.toString());
-        return config;
-    }
 
     @BeforeEach
     void setUp() {
-        alertRepository = new AlertRepository(configFor(tempDir));
+        alertRepository.deleteAll();
     }
 
-    private Alert alert(String title) {
-        return Alert.builder()
+    private AlertRecord createRecord(String title) {
+        return AlertRecord.builder()
                 .title(title)
                 .message("Test message")
                 .level(AlertLevel.INFO)
                 .source("test")
+                .receivedAt(Instant.now())
                 .build();
     }
 
     @Test
-    @DisplayName("Should store alert and return it via getRecent")
+    @DisplayName("Should store alert and return it via findAll")
     void shouldStoreAndRetrieve() {
-        alertRepository.store(alert("First"));
+        alertRepository.save(createRecord("First"));
 
-        List<AlertRecord> records = alertRepository.getRecent(10);
+        List<AlertRecord> records = alertRepository.findAllByOrderByReceivedAtDesc(PageRequest.of(0, 10));
         assertEquals(1, records.size());
         assertEquals("First", records.get(0).getTitle());
     }
 
     @Test
-    @DisplayName("Should persist alerts to disk and reload on new instance")
-    void shouldPersistAcrossRestarts() {
-        alertRepository.store(alert("Alpha"));
-        alertRepository.store(alert("Beta"));
+    @DisplayName("Should persist alerts and return newest first")
+    void shouldReturnNewestFirst() {
+        AlertRecord alpha = createRecord("Alpha");
+        alpha.setReceivedAt(Instant.now().minusSeconds(60));
+        alertRepository.save(alpha);
 
-        // Create a fresh instance pointing at the same directory
-        AlertRepository reloaded = new AlertRepository(configFor(tempDir));
-        List<AlertRecord> records = reloaded.getRecent(10);
+        AlertRecord beta = createRecord("Beta");
+        beta.setReceivedAt(Instant.now());
+        alertRepository.save(beta);
+
+        List<AlertRecord> records = alertRepository.findAllByOrderByReceivedAtDesc(PageRequest.of(0, 10));
 
         assertEquals(2, records.size());
-        // Newest-first order
         assertEquals("Beta", records.get(0).getTitle());
         assertEquals("Alpha", records.get(1).getTitle());
     }
@@ -71,30 +67,26 @@ class AlertRepositoryTest {
     @Test
     @DisplayName("Should return empty list when no alerts stored")
     void shouldReturnEmptyListWhenNoAlerts() {
-        assertTrue(alertRepository.getRecent(10).isEmpty());
+        assertTrue(alertRepository.findAllByOrderByReceivedAtDesc(PageRequest.of(0, 10)).isEmpty());
     }
 
     @Test
-    @DisplayName("Should cap stored alerts at MAX_STORED_ALERTS")
-    void shouldCapAtMaxStoredAlerts() {
-        for (int i = 0; i < AlertRepository.MAX_STORED_ALERTS + 10; i++) {
-            alertRepository.store(alert("Alert " + i));
-        }
-        assertEquals(AlertRepository.MAX_STORED_ALERTS, alertRepository.getRecent(200).size());
-    }
-
-    @Test
-    @DisplayName("getRecent limit should be honoured")
+    @DisplayName("Should respect page size limit")
     void shouldRespectLimit() {
         for (int i = 0; i < 20; i++) {
-            alertRepository.store(alert("Alert " + i));
+            AlertRecord record = createRecord("Alert " + i);
+            record.setReceivedAt(Instant.now().plusSeconds(i));
+            alertRepository.save(record);
         }
-        assertEquals(5, alertRepository.getRecent(5).size());
+        assertEquals(5, alertRepository.findAllByOrderByReceivedAtDesc(PageRequest.of(0, 5)).size());
     }
 
     @Test
-    @DisplayName("New instance starts empty when no file exists")
-    void newInstanceStartsEmptyWithNoFile() {
-        assertTrue(alertRepository.getRecent(10).isEmpty());
+    @DisplayName("Should return all records when count is within limit")
+    void shouldReturnAllRecordsWithinLimit() {
+        for (int i = 0; i < 5; i++) {
+            alertRepository.save(createRecord("Alert " + i));
+        }
+        assertEquals(5, alertRepository.findAllByOrderByReceivedAtDesc(PageRequest.of(0, 100)).size());
     }
 }

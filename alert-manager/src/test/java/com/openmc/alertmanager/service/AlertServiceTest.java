@@ -3,37 +3,44 @@ package com.openmc.alertmanager.service;
 import com.openmc.alertmanager.model.Alert;
 import com.openmc.alertmanager.model.AlertDestination;
 import com.openmc.alertmanager.model.AlertLevel;
+import com.openmc.alertmanager.model.AlertRecord;
+import com.openmc.alertmanager.repository.AlertRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.PageRequest;
 
 import java.util.Collections;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
-@SpringBootTest
+@ExtendWith(MockitoExtension.class)
 @DisplayName("AlertService Tests")
 class AlertServiceTest {
 
-    @Autowired
-    private AlertService alertService;
-
-    @MockBean
+    @Mock
     private DiscordAlertService discordAlertService;
 
-    @MockBean
+    @Mock
     private MinecraftMessageService minecraftMessageService;
+
+    @Mock
+    private AlertRepository alertRepository;
+
+    private AlertService alertService;
 
     private Alert testAlert;
 
     @BeforeEach
     void setUp() {
+        alertService = new AlertService(discordAlertService, minecraftMessageService, alertRepository);
         testAlert = Alert.builder()
             .title("Test Alert")
             .message("This is a test alert message")
@@ -47,9 +54,9 @@ class AlertServiceTest {
     void shouldSendAlertToAllDestinationsWhenNoneSpecified() throws Exception {
         alertService.sendAlert(testAlert);
         
-        // Should send to both Discord and Minecraft
         verify(discordAlertService, times(1)).sendAlert(testAlert);
         verify(minecraftMessageService, times(1)).sendMessage(testAlert.getMessage());
+        verify(alertRepository, times(1)).save(any(AlertRecord.class));
     }
 
     @Test
@@ -77,7 +84,6 @@ class AlertServiceTest {
     void shouldNotThrowExceptionWhenDiscordServiceFails() throws Exception {
         doThrow(new RuntimeException("Discord error")).when(discordAlertService).sendAlert(any());
         
-        // Should handle the exception gracefully
         assertDoesNotThrow(() -> alertService.sendAlert(testAlert));
     }
 
@@ -86,7 +92,6 @@ class AlertServiceTest {
     void shouldNotThrowExceptionWhenMinecraftServiceFails() throws Exception {
         doThrow(new RuntimeException("Minecraft error")).when(minecraftMessageService).sendMessage(anyString());
         
-        // Should handle the exception gracefully
         assertDoesNotThrow(() -> alertService.sendAlert(testAlert));
     }
 
@@ -104,8 +109,20 @@ class AlertServiceTest {
             alertService.sendAlert(alert);
         }
         
-        // Each level should be sent to all destinations (Discord + Minecraft)
         verify(discordAlertService, times(AlertLevel.values().length)).sendAlert(any());
         verify(minecraftMessageService, times(AlertLevel.values().length)).sendMessage(anyString());
+    }
+
+    @Test
+    @DisplayName("Should return recent alerts from repository")
+    void shouldReturnRecentAlertsFromRepository() {
+        List<AlertRecord> expected = List.of(
+            AlertRecord.builder().title("Test").level(AlertLevel.INFO).receivedAt(java.time.Instant.now()).build()
+        );
+        when(alertRepository.findAllByOrderByReceivedAtDesc(any(PageRequest.class))).thenReturn(expected);
+
+        List<AlertRecord> result = alertService.getRecentAlerts(10);
+        assertEquals(1, result.size());
+        assertEquals("Test", result.get(0).getTitle());
     }
 }
