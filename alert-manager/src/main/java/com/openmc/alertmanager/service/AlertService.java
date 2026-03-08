@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.Instant;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -38,7 +39,10 @@ public class AlertService {
      * @return list of recent alert records
      */
     public List<AlertRecord> getRecentAlerts(int limit) {
-        int safeLimit = Math.max(0, Math.min(limit, AlertRepository.MAX_STORED_ALERTS));
+        int safeLimit = Math.max(1, Math.min(limit, AlertRepository.MAX_QUERY_LIMIT));
+        if (limit <= 0) {
+            return Collections.emptyList();
+        }
         return alertRepository.findAllByOrderByReceivedAtDesc(PageRequest.of(0, safeLimit));
     }
 

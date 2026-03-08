@@ -20,4 +20,9 @@ public interface DeploymentRecordRepository extends JpaRepository<DeploymentReco
      * Delete all records with timestamp before the given cutoff.
      */
     void deleteByTimestampBefore(Instant cutoff);
+
+    /**
+     * Check if any records exist in the table.
+     */
+    boolean existsByIdIsNotNull();
 }

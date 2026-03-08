@@ -5,6 +5,7 @@ import com.openmc.webapp.repository.DeploymentRecordRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -26,14 +27,19 @@ public class DeploymentHistoryService {
     }
 
     /**
-     * Record a new deployment event.
+     * Record a new deployment event and clean up records older than the retention period.
      */
+    @Transactional
     public void recordDeployment(String pluginName, String status, String source,
                                   String branch, String repoUrl, String message) {
         DeploymentRecord record = new DeploymentRecord(
                 Instant.now(), pluginName, status, source, branch, repoUrl, message);
 
         repository.save(record);
+
+        // Enforce retention policy to prevent unbounded table growth
+        Instant cutoff = Instant.now().minus(RETENTION_PERIOD);
+        repository.deleteByTimestampBefore(cutoff);
 
         logger.info("Recorded deployment: plugin={}, status={}, source={}", pluginName, status, source);
     }

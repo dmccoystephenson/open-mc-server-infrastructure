@@ -4,7 +4,7 @@ services:
     restart: always
     container_name: ${POSTGRES_CONTAINER_NAME:-open-mc-postgres}
     ports:
-      - "${POSTGRES_PORT:-5432}:5432"
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     environment:

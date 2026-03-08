@@ -56,7 +56,7 @@ public class JsonDataMigration implements ApplicationRunner {
     }
 
     private void migrateRetrievalRecords() {
-        if (retrievalRecordRepository.count() > 0) {
+        if (retrievalRecordRepository.existsByIdIsNotNull()) {
             logger.info("Retrieval records already exist in database, skipping JSON migration");
             return;
         }
@@ -72,12 +72,12 @@ public class JsonDataMigration implements ApplicationRunner {
             retrievalRecordRepository.saveAll(Arrays.asList(records));
             logger.info("Migrated {} retrieval records from JSON to database", records.length);
         } catch (Exception e) {
-            logger.error("Failed to migrate retrieval records from JSON: {}", e.getMessage());
+            logger.error("Failed to migrate retrieval records from JSON", e);
         }
     }
 
     private void migrateDeploymentRecords() {
-        if (deploymentRecordRepository.count() > 0) {
+        if (deploymentRecordRepository.existsByIdIsNotNull()) {
             logger.info("Deployment records already exist in database, skipping JSON migration");
             return;
         }
@@ -93,12 +93,12 @@ public class JsonDataMigration implements ApplicationRunner {
             deploymentRecordRepository.saveAll(Arrays.asList(records));
             logger.info("Migrated {} deployment records from JSON to database", records.length);
         } catch (Exception e) {
-            logger.error("Failed to migrate deployment records from JSON: {}", e.getMessage());
+            logger.error("Failed to migrate deployment records from JSON", e);
         }
     }
 
     private void migrateActivityTrackerSnapshots() {
-        if (activityTrackerSnapshotRepository.count() > 0) {
+        if (activityTrackerSnapshotRepository.existsByIdIsNotNull()) {
             logger.info("Activity tracker snapshots already exist in database, skipping JSON migration");
             return;
         }
@@ -114,7 +114,7 @@ public class JsonDataMigration implements ApplicationRunner {
             activityTrackerSnapshotRepository.saveAll(Arrays.asList(snapshots));
             logger.info("Migrated {} activity tracker snapshots from JSON to database", snapshots.length);
         } catch (Exception e) {
-            logger.error("Failed to migrate activity tracker snapshots from JSON: {}", e.getMessage());
+            logger.error("Failed to migrate activity tracker snapshots from JSON", e);
         }
     }
 }

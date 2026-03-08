@@ -32,7 +32,7 @@ public class ActivityTrackerSnapshot {
     @Column(name = "total_logins")
     private Integer totalLogins;
 
-    @OneToMany(mappedBy = "snapshot", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
+    @OneToMany(mappedBy = "snapshot", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private List<LeaderboardEntry> leaderboard = new ArrayList<>();
 
     protected ActivityTrackerSnapshot() {

@@ -4,6 +4,7 @@ import com.openmc.alertmanager.model.AlertRecord;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.time.Instant;
 import java.util.List;
 
 /**
@@ -12,12 +13,22 @@ import java.util.List;
 public interface AlertRepository extends JpaRepository<AlertRecord, Long> {
 
     /**
-     * Maximum number of alerts to retain.
+     * Maximum number of alerts returned by a single query.
      */
-    int MAX_STORED_ALERTS = 100;
+    int MAX_QUERY_LIMIT = 100;
 
     /**
      * Find the most recent alerts, ordered by receivedAt descending.
      */
     List<AlertRecord> findAllByOrderByReceivedAtDesc(Pageable pageable);
+
+    /**
+     * Delete all records received before the given cutoff.
+     */
+    void deleteByReceivedAtBefore(Instant cutoff);
+
+    /**
+     * Check if any records exist in the table.
+     */
+    boolean existsByIdIsNotNull();
 }

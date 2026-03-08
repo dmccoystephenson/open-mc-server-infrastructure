@@ -42,7 +42,7 @@ public class JsonDataMigration implements ApplicationRunner {
     }
 
     private void migrateAlertRecords() {
-        if (alertRepository.count() > 0) {
+        if (alertRepository.existsByIdIsNotNull()) {
             log.info("Alert records already exist in database, skipping JSON migration");
             return;
         }
@@ -58,7 +58,7 @@ public class JsonDataMigration implements ApplicationRunner {
             alertRepository.saveAll(Arrays.asList(records));
             log.info("Migrated {} alert records from JSON to database", records.length);
         } catch (Exception e) {
-            log.error("Failed to migrate alert records from JSON: {}", e.getMessage());
+            log.error("Failed to migrate alert records from JSON", e);
         }
     }
 }
