@@ -40,6 +40,18 @@ The Self-Hosting Guide covers:
 - Monitoring and maintenance
 - Advanced security configurations
 
+### Deploying to AWS
+For cloud deployment on Amazon Web Services using the AWS CLI, see the **[AWS Deployment Guide](AWS-DEPLOYMENT.md)**.
+
+The AWS Deployment Guide covers:
+- Launching and configuring an EC2 instance
+- Security group setup for required ports
+- Installing Docker and deploying the infrastructure
+- SSL certificate configuration
+- Assigning a static Elastic IP address
+- Offloading backups to Amazon S3
+- Cost estimates and cleanup instructions
+
 ## Quick Start
 
 1. **Clone the repository**
