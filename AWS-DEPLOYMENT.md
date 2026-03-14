@@ -73,10 +73,19 @@ chmod 400 omcsi-key.pem
 Create a security group with the required inbound rules. Replace `<YOUR-PUBLIC-IP>` with your local machine's IP address to restrict SSH access. You can find your public IP by running `curl -s https://checkip.amazonaws.com`.
 
 ```bash
+# Capture the default VPC ID for the current region
+VPC_ID=$(aws ec2 describe-vpcs \
+  --filters "Name=isDefault,Values=true" \
+  --query 'Vpcs[0].VpcId' \
+  --output text)
+
+echo "VPC ID: $VPC_ID"
+
 # Create the security group and capture the GroupId directly from the output
 SG_ID=$(aws ec2 create-security-group \
   --group-name omcsi-sg \
   --description "Open MC Server Infrastructure security group" \
+  --vpc-id "$VPC_ID" \
   --query 'GroupId' \
   --output text)
 
@@ -274,7 +283,9 @@ Once the server is running, verify all containers are healthy:
 docker ps
 ```
 
-You should see containers for `open-mc-server`, `open-mc-webapp`, `open-mc-nginx`, `open-mc-backup-manager`, and `open-mc-alert-manager` all with a status of `Up`.
+You should see containers for `open-mc-server`, `open-mc-webapp`, `open-mc-nginx`, `open-mc-backup-manager`, `open-mc-alert-manager`, and `open-mc-agent-manager` all with a status of `Up`.
+
+> **Note**: `open-mc-agent-manager` is always started but remains effectively disabled unless `AGENT_ENABLED=true` is set in your `.env`.
 
 Access the web dashboard at:
 
@@ -414,6 +425,8 @@ echo "Bucket: $BUCKET_NAME"
 
 ### Sync Backups to S3
 
+The sync cron job and restore commands below use the `aws` CLI **on the EC2 instance**. Ubuntu 22.04 AMIs include AWS CLI v1 by default; to upgrade to v2 follow the [AWS CLI v2 install guide](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html). Authentication is handled automatically by the IAM instance role attached below — no credentials need to be embedded.
+
 On the EC2 instance, add a cron job to sync the backups directory to S3 daily. First, attach an IAM instance profile with S3 write access, then add to crontab:
 
 ```bash
@@ -460,7 +473,7 @@ To restore a backup from S3 to a new or existing instance:
 # Download backups from S3
 aws s3 sync s3://YOUR-BUCKET-NAME/backups/ ~/open-mc-server-infrastructure/backups/
 
-# List available backup folders (e.g., backup-2024-01-01T00-00-00Z)
+# List available backup folders (e.g., backup-20240101-000000)
 ls ~/open-mc-server-infrastructure/backups
 
 # Stop the server before restoring
@@ -478,7 +491,7 @@ docker run --rm \
 cd ~/open-mc-server-infrastructure && ./up.sh
 ```
 
-Replace `<backup-folder>` with the name of the folder you want to restore (e.g., `backup-2024-01-01T00-00-00Z`).
+Replace `<backup-folder>` with the name of the folder you want to restore (e.g., `backup-20240101-000000`).
 
 ## Monitoring and Maintenance
 
