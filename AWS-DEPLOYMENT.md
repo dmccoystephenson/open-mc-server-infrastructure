@@ -73,19 +73,14 @@ chmod 400 omcsi-key.pem
 Create a security group with the required inbound rules. Replace `<YOUR-PUBLIC-IP>` with your local machine's IP address to restrict SSH access. You can find your public IP by running `curl -s https://checkip.amazonaws.com`.
 
 ```bash
-# Create the security group
-aws ec2 create-security-group \
+# Create the security group and capture the GroupId directly from the output
+SG_ID=$(aws ec2 create-security-group \
   --group-name omcsi-sg \
-  --description "Open MC Server Infrastructure security group"
-```
-
-The command outputs a `GroupId`. Store it in a variable for the next commands:
-
-```bash
-SG_ID=$(aws ec2 describe-security-groups \
-  --filters "Name=group-name,Values=omcsi-sg" \
-  --query 'SecurityGroups[0].GroupId' \
+  --description "Open MC Server Infrastructure security group" \
+  --query 'GroupId' \
   --output text)
+
+echo "Security Group ID: $SG_ID"
 ```
 
 Add inbound rules:
@@ -120,7 +115,7 @@ aws ec2 authorize-security-group-ingress \
   --cidr 0.0.0.0/0
 ```
 
-> **Note**: Do **not** open port 25575 (RCON) publicly. It is accessible only through the web dashboard running inside the Docker network.
+> **Note**: Do **not** open port 25575 (RCON) publicly. The default `compose.yml` publishes the RCON port to the EC2 host (e.g. `${HOST_RCON_PORT:-25575}:25575`), so the service listens on the instance network interface even though the security group in this guide does **not** expose it to the internet. For defense in depth, keep port 25575 closed in your security group and consider binding RCON to `localhost` only by setting `HOST_RCON_PORT=127.0.0.1:25575` in your `.env` file.
 
 ## Step 4: Launch an EC2 Instance
 
@@ -192,8 +187,8 @@ Run the following commands **on the EC2 instance** after connecting via SSH:
 # Update package index
 sudo apt-get update
 
-# Install required packages
-sudo apt-get install -y ca-certificates curl gnupg
+# Install required packages (including git and nano for cloning and editing)
+sudo apt-get install -y ca-certificates curl gnupg git nano
 
 # Add Docker's official GPG key
 sudo install -m 0755 -d /etc/apt/keyrings
@@ -395,10 +390,19 @@ The infrastructure saves backups to the local `./backups/` directory inside the 
 
 ```bash
 BUCKET_NAME="omcsi-backups-$(aws sts get-caller-identity --query Account --output text)"
+REGION=$(aws configure get region)
 
-aws s3api create-bucket \
-  --bucket "$BUCKET_NAME" \
-  --region us-east-1
+# us-east-1 does not accept a LocationConstraint; all other regions require one
+if [ "$REGION" = "us-east-1" ]; then
+  aws s3api create-bucket \
+    --bucket "$BUCKET_NAME" \
+    --region "$REGION"
+else
+  aws s3api create-bucket \
+    --bucket "$BUCKET_NAME" \
+    --region "$REGION" \
+    --create-bucket-configuration LocationConstraint="$REGION"
+fi
 
 # Enable versioning for additional protection
 aws s3api put-bucket-versioning \
@@ -414,26 +418,67 @@ On the EC2 instance, add a cron job to sync the backups directory to S3 daily. F
 
 ```bash
 # On the EC2 instance — add to crontab (crontab -e)
-# Sync backups to S3 at 3 AM daily (after the 2 AM automated backup)
-0 3 * * * aws s3 sync ~/open-mc-server-infrastructure/backups/ s3://YOUR-BUCKET-NAME/backups/ --delete
+# Sync backups to S3 at 3 AM daily (after the 2 AM automated backup).
+# NOTE: Without --delete, S3 keeps all uploaded backups even after the local copy is pruned,
+#       giving you a longer-lived offsite history. If you want S3 to mirror the local directory
+#       exactly (and prune S3 when local backups are removed), add --delete to the command.
+0 3 * * * aws s3 sync ~/open-mc-server-infrastructure/backups/ s3://YOUR-BUCKET-NAME/backups/
 ```
 
 Replace `YOUR-BUCKET-NAME` with the value of `$BUCKET_NAME` from the command above.
 
-> **Tip**: Attach an IAM role with the `AmazonS3FullAccess` policy (or a least-privilege custom policy) to your EC2 instance via the AWS console or CLI to allow the instance to access S3 without embedding credentials.
+> **Tip**: Attach an IAM role with a least-privilege S3 policy to your EC2 instance via the AWS console or CLI so it can access only your backups bucket without embedding credentials. Replace `YOUR-BUCKET-NAME` with your actual bucket name:
+>
+> ```json
+> {
+>   "Version": "2012-10-17",
+>   "Statement": [
+>     {
+>       "Effect": "Allow",
+>       "Action": ["s3:ListBucket"],
+>       "Resource": "arn:aws:s3:::YOUR-BUCKET-NAME",
+>       "Condition": {
+>         "StringLike": {
+>           "s3:prefix": ["backups/*"]
+>         }
+>       }
+>     },
+>     {
+>       "Effect": "Allow",
+>       "Action": ["s3:GetObject", "s3:PutObject", "s3:DeleteObject"],
+>       "Resource": "arn:aws:s3:::YOUR-BUCKET-NAME/backups/*"
+>     }
+>   ]
+> }
+> ```
 
 ### Restore from S3
 
 To restore a backup from S3 to a new or existing instance:
 
 ```bash
-# Download a specific backup from S3
+# Download backups from S3
 aws s3 sync s3://YOUR-BUCKET-NAME/backups/ ~/open-mc-server-infrastructure/backups/
 
-# Then restore using Docker
-docker cp ~/open-mc-server-infrastructure/backups/<backup-folder> open-mc-server:/mcserver
-docker compose -f ~/open-mc-server-infrastructure/compose.yml restart
+# List available backup folders (e.g., backup-2024-01-01T00-00-00Z)
+ls ~/open-mc-server-infrastructure/backups
+
+# Stop the server before restoring
+cd ~/open-mc-server-infrastructure && ./down.sh
+
+# Extract the backup archive into the /mcserver volume inside the container.
+# Backups are stored as mcserver-backup.tar.gz inside each timestamped folder.
+docker run --rm \
+  -v mcserver:/mcserver \
+  -v ~/open-mc-server-infrastructure/backups/<backup-folder>:/backup:ro \
+  ubuntu:22.04 \
+  tar -xzf /backup/mcserver-backup.tar.gz -C /mcserver
+
+# Start the server
+cd ~/open-mc-server-infrastructure && ./up.sh
 ```
+
+Replace `<backup-folder>` with the name of the folder you want to restore (e.g., `backup-2024-01-01T00-00-00Z`).
 
 ## Monitoring and Maintenance
 
