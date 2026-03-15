@@ -5,6 +5,7 @@ This guide covers deploying the Open Minecraft Server Infrastructure to AWS usin
 ## Table of Contents
 
 - [Automated Deployment Script](#automated-deployment-script)
+  - [Automated Teardown Script](#automated-teardown-script)
 - [Prerequisites](#prerequisites)
 - [Architecture Overview](#architecture-overview)
 - [Step 1: Configure AWS CLI](#step-1-configure-aws-cli)
@@ -44,6 +45,23 @@ aws configure
 The script is safe to re-run: if an instance tagged `omcsi-server` already exists it is reused rather than reprovisioned. Run `./deploy-aws.sh --help` for all available options.
 
 > **Note**: After the script completes, continue with [Step 8: Configure SSL Certificates](#step-8-configure-ssl-certificates) and optionally [Step 9: Assign an Elastic IP](#step-9-assign-an-elastic-ip-optional) and [Managing Backups with S3](#managing-backups-with-s3-optional) to finish hardening the deployment.
+
+### Automated Teardown Script
+
+`teardown-aws.sh` removes all AWS resources created by `deploy-aws.sh` (EC2 instance, security group, key pair, and local key files) in a single command:
+
+```bash
+# Preview what will be removed (no changes made)
+./teardown-aws.sh --dry-run
+
+# Remove all resources (prompts for confirmation)
+./teardown-aws.sh
+
+# Remove all resources without prompting
+./teardown-aws.sh --yes
+```
+
+> **Warning**: This is irreversible. Back up any world data before running it — see [Managing Backups with S3](#managing-backups-with-s3-optional). S3 buckets and Elastic IPs created manually are **not** removed by this script and must be deleted separately (see [Cleanup](#cleanup)).
 
 The remainder of this guide walks through each step manually, which is useful for customisation or understanding what the script does.
 
@@ -619,7 +637,14 @@ Estimated monthly AWS costs for a typical small server (prices vary by region; s
 
 ## Cleanup
 
-To remove all AWS resources created in this guide:
+If you deployed with `deploy-aws.sh`, the quickest way to remove all resources is the automated teardown script:
+
+```bash
+./teardown-aws.sh --dry-run   # preview first
+./teardown-aws.sh             # remove all resources
+```
+
+To remove resources manually (or to clean up any resources the teardown script does not manage, such as Elastic IPs and S3 buckets):
 
 ```bash
 # 1. Stop and remove the EC2 instance
