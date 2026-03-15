@@ -4,6 +4,7 @@ This guide covers deploying the Open Minecraft Server Infrastructure to AWS usin
 
 ## Table of Contents
 
+- [Automated Deployment Script](#automated-deployment-script)
 - [Prerequisites](#prerequisites)
 - [Architecture Overview](#architecture-overview)
 - [Step 1: Configure AWS CLI](#step-1-configure-aws-cli)
@@ -20,6 +21,31 @@ This guide covers deploying the Open Minecraft Server Infrastructure to AWS usin
 - [Cost Considerations](#cost-considerations)
 - [Cleanup](#cleanup)
 - [Troubleshooting](#troubleshooting)
+
+## Automated Deployment Script
+
+`deploy-aws.sh` automates the full deployment process described in the step-by-step sections below. It provisions an EC2 instance (or reuses an existing one), installs Docker, clones the repository, configures `.env`, and starts the stack — all in a single command.
+
+**Prerequisites**: AWS CLI v2 configured, `ssh`, and `jq` installed locally.
+
+```bash
+# Configure AWS CLI first (if you haven't already)
+aws configure
+
+# Run the deployment script from the repo root
+./deploy-aws.sh \
+  --operator-uuid  "YOUR-MINECRAFT-UUID" \
+  --operator-name  "YourMCUsername" \
+  --rcon-password  "StrongRconPass!" \
+  --admin-username "admin" \
+  --admin-password "StrongAdminPass!"
+```
+
+The script is safe to re-run: if an instance tagged `omcsi-server` already exists it is reused rather than reprovisioned. Run `./deploy-aws.sh --help` for all available options.
+
+> **Note**: After the script completes, continue with [Step 8: Configure SSL Certificates](#step-8-configure-ssl-certificates) and optionally [Step 9: Assign an Elastic IP](#step-9-assign-an-elastic-ip-optional) and [Managing Backups with S3](#managing-backups-with-s3-optional) to finish hardening the deployment.
+
+The remainder of this guide walks through each step manually, which is useful for customisation or understanding what the script does.
 
 ## Prerequisites
 
