@@ -325,6 +325,18 @@ Your browser will show a security warning for the self-signed certificate. This 
 
 Self-signed certificates are included for development. For production, replace them with certificates from [Let's Encrypt](https://letsencrypt.org/).
 
+The AWS CLI commands in this section require `SG_ID` (your security group ID). If you used `deploy-aws.sh`, look it up now:
+
+```bash
+SG_ID=$(aws ec2 describe-security-groups \
+  --filters "Name=group-name,Values=omcsi-sg" \
+  --query 'SecurityGroups[0].GroupId' \
+  --output text)
+echo "Security Group ID: $SG_ID"
+```
+
+If you followed the manual steps, `$SG_ID` is already set from Step 3.
+
 ### Option A: Using a Domain Name with Let's Encrypt (Recommended)
 
 If you have a domain name pointing to your EC2 instance's public IP:
@@ -484,12 +496,14 @@ Replace `YOUR-BUCKET-NAME` with the value of `$BUCKET_NAME` from the command abo
 >     },
 >     {
 >       "Effect": "Allow",
->       "Action": ["s3:GetObject", "s3:PutObject", "s3:DeleteObject"],
+>       "Action": ["s3:GetObject", "s3:PutObject"],
 >       "Resource": "arn:aws:s3:::YOUR-BUCKET-NAME/backups/*"
 >     }
 >   ]
 > }
 > ```
+>
+> `s3:DeleteObject` is intentionally omitted because the recommended cron sync does not use `--delete`. If you opt into mirror mode (`aws s3 sync --delete`), add `"s3:DeleteObject"` to the second statement.
 
 ### Restore from S3
 

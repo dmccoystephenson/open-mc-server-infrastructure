@@ -80,6 +80,7 @@ ${BOLD}Prerequisites:${NC}
   - AWS CLI v2 installed and configured (aws configure)
   - ssh client available locally
   - jq installed (for JSON parsing)
+  - curl available locally (for public IP detection)
 
 ${BOLD}Example:${NC}
   $0 \\
@@ -155,7 +156,7 @@ check_prerequisites() {
 
     local missing=false
 
-    for cmd in aws ssh jq; do
+    for cmd in aws ssh jq curl; do
         if ! command -v "$cmd" &>/dev/null; then
             log_error "Required tool not found: $cmd"
             missing=true
@@ -169,6 +170,7 @@ check_prerequisites() {
         log_error "Install the missing tools and try again."
         echo "  - AWS CLI v2: https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html"
         echo "  - jq:         https://jqlang.github.io/jq/download/"
+        echo "  - curl:       https://curl.se/download.html"
         exit 1
     fi
 
@@ -189,6 +191,19 @@ check_prerequisites() {
 }
 
 # ─── EC2 provisioning helpers ─────────────────────────────────────────────────
+
+# Detects the caller's public IP address.  Returns empty string and logs a
+# warning if both detection services are unreachable.
+get_my_public_ip() {
+    local ip
+    ip=$(curl -sf --max-time 5 https://checkip.amazonaws.com 2>/dev/null \
+        || curl -sf --max-time 5 https://api.ipify.org 2>/dev/null \
+        || true)
+    if [[ -z "$ip" ]]; then
+        log_warning "Could not auto-detect public IP (both checkip.amazonaws.com and api.ipify.org were unreachable)."
+    fi
+    printf '%s' "$ip"
+}
 
 # Returns the InstanceId of an existing OMCSI instance (any non-terminated state),
 # or empty string if none exists.
@@ -253,9 +268,9 @@ ensure_security_group() {
 
     # SSH — restricted to the caller's public IP
     local my_ip
-    my_ip=$(curl -sf https://checkip.amazonaws.com || curl -sf https://api.ipify.org || echo "")
+    my_ip=$(get_my_public_ip)
     if [[ -z "$my_ip" ]]; then
-        log_warning "Could not auto-detect your public IP. SSH rule will allow 0.0.0.0/0 (review this later)."
+        log_warning "SSH rule will allow 0.0.0.0/0 — review the security group and restrict it when your IP is known."
         my_ip="0.0.0.0"
     fi
     local ssh_cidr="${my_ip}/32"
@@ -367,11 +382,28 @@ provision_ec2() {
             exit 1
         fi
 
-        # Retrieve the security group so we can add SSH rule if needed
+        # Retrieve the security group so we can ensure SSH is accessible
         SG_ID=$(aws ec2 describe-instances \
             --instance-ids "$INSTANCE_ID" \
             --query 'Reservations[0].Instances[0].SecurityGroups[0].GroupId' \
             --output text)
+
+        # Ensure the current operator IP has SSH access (the original rule may have
+        # used a different IP; duplicate-rule errors from AWS are silently ignored).
+        local current_ip
+        current_ip=$(get_my_public_ip)
+        if [[ -n "$current_ip" ]]; then
+            local current_cidr="${current_ip}/32"
+            log_info "Ensuring SSH access from $current_cidr..."
+            if aws ec2 authorize-security-group-ingress --group-id "$SG_ID" \
+                    --protocol tcp --port 22 --cidr "$current_cidr" 2>/dev/null; then
+                log_success "SSH ingress rule added for $current_cidr"
+            else
+                log_info "SSH rule for $current_cidr already exists (or could not be added)"
+            fi
+        else
+            log_warning "Could not detect current public IP — ensure port 22 is open in security group $SG_ID before connecting."
+        fi
     else
         ensure_key_pair
         ensure_security_group
@@ -383,7 +415,8 @@ provision_ec2() {
 
 # ─── SSH helpers ──────────────────────────────────────────────────────────────
 
-SSH_OPTS="-i ${KEY_FILE} -o StrictHostKeyChecking=no -o ConnectTimeout=10 -o BatchMode=yes"
+# SSH_OPTS is set in main() after parse_args() so KEY_FILE is final.
+SSH_OPTS=""
 
 remote() {
     # Run a command on the remote instance.
@@ -422,9 +455,9 @@ wait_for_ssh() {
 bootstrap_docker() {
     log_step "Installing Docker on the instance"
 
-    # Check if Docker is already installed
-    if remote "command -v docker &>/dev/null"; then
-        log_success "Docker is already installed — skipping"
+    # Check if Docker and the Compose plugin are already installed
+    if remote "command -v docker &>/dev/null && docker compose version &>/dev/null 2>&1"; then
+        log_success "Docker and Docker Compose plugin are already installed — skipping"
         return
     fi
 
@@ -481,32 +514,46 @@ configure_env() {
     log_info "Creating .env from sample.env..."
     remote "cp ${REMOTE_DIR}/sample.env ${REMOTE_DIR}/.env"
 
-    # Patch mandatory settings using sed.
-    # The heredoc delimiter is unquoted so local variables (e.g. ${OPERATOR_UUID})
-    # are expanded here before being sent over SSH.  The backslashes on \$1, \$2,
-    # \$(…), etc. protect those tokens from local expansion so they are interpreted
-    # as shell variables/command substitutions on the remote machine.
+    log_info "Patching .env with supplied values..."
+    # Base64-encode each value locally so that passwords with special characters
+    # (quotes, backslashes, dollar signs, etc.) are safe to embed in the heredoc and
+    # cross the SSH boundary without any shell-interpretation issues.
+    # Base64 output only contains [A-Za-z0-9+/=], which is safe in any shell context.
+    local b64_uuid b64_name b64_rcon b64_admin_u b64_admin_p
+    b64_uuid=$(printf '%s' "$OPERATOR_UUID" | base64 | tr -d '\n')
+    b64_name=$(printf '%s' "$OPERATOR_NAME" | base64 | tr -d '\n')
+    b64_rcon=$(printf '%s' "$RCON_PASSWORD" | base64 | tr -d '\n')
+    b64_admin_u=$(printf '%s' "$ADMIN_USERNAME" | base64 | tr -d '\n')
+    b64_admin_p=$(printf '%s' "$ADMIN_PASSWORD" | base64 | tr -d '\n')
+
+    # The unquoted heredoc expands ${b64_*} and ${REMOTE_DIR} locally.
+    # All other $ references are escaped with \$ so they are evaluated on the remote.
     remote_script <<ENDSSH
 set -euo pipefail
 ENV_FILE="${REMOTE_DIR}/.env"
 
-sed_replace() {
-    local key="\$1"
-    local value="\$2"
-    # Escape forward slashes and ampersands in the value for sed
-    local escaped
-    escaped=\$(printf '%s' "\$value" | sed 's/[\/&]/\\\\&/g')
-    sed -i "s|^\\(\${key}\\)=.*|\1=\${escaped}|" "\$ENV_FILE"
+# Decode values on the remote (base64 transport handles all special characters)
+V_UUID=\$(printf '%s' "${b64_uuid}" | base64 -d)
+V_NAME=\$(printf '%s' "${b64_name}" | base64 -d)
+V_RCON=\$(printf '%s' "${b64_rcon}" | base64 -d)
+V_ADM_U=\$(printf '%s' "${b64_admin_u}" | base64 -d)
+V_ADM_P=\$(printf '%s' "${b64_admin_p}" | base64 -d)
+
+patch_key() {
+    local key="\$1" value="\$2"
+    # Escape characters that are special in the sed replacement string (pipe delimiter)
+    local esc
+    esc=\$(printf '%s' "\$value" | sed 's/[\\\\&|]/\\\\&/g')
+    sed -i "s|^\${key}=.*|\${key}=\${esc}|" "\$ENV_FILE"
 }
 
-sed_replace "OPERATOR_UUID"   "${OPERATOR_UUID}"
-sed_replace "OPERATOR_NAME"   "${OPERATOR_NAME}"
-sed_replace "RCON_PASSWORD"   "${RCON_PASSWORD}"
-sed_replace "ADMIN_USERNAME"  "${ADMIN_USERNAME}"
-sed_replace "ADMIN_PASSWORD"  "${ADMIN_PASSWORD}"
-sed_replace "ONLINE_MODE"     "true"
-# Bind RCON to localhost only for defence in depth
-sed_replace "HOST_RCON_PORT"  "127.0.0.1:25575"
+patch_key OPERATOR_UUID  "\$V_UUID"
+patch_key OPERATOR_NAME  "\$V_NAME"
+patch_key RCON_PASSWORD  "\$V_RCON"
+patch_key ADMIN_USERNAME "\$V_ADM_U"
+patch_key ADMIN_PASSWORD "\$V_ADM_P"
+patch_key ONLINE_MODE    "true"
+patch_key HOST_RCON_PORT "127.0.0.1:25575"
 ENDSSH
 
     log_success ".env configured"
@@ -541,6 +588,14 @@ main() {
     echo ""
 
     parse_args "$@"
+
+    # Build SSH options now that KEY_FILE is final (may have been overridden via --key-file).
+    # accept-new: automatically accept new host keys on first connection, but reject
+    # changed keys (safer than StrictHostKeyChecking=no which silently accepts anything).
+    # A dedicated known_hosts file per key avoids conflicts when an instance is reprovisioned.
+    KNOWN_HOSTS_FILE="${KEY_FILE}.known_hosts"
+    SSH_OPTS="-i ${KEY_FILE} -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=${KNOWN_HOSTS_FILE} -o ConnectTimeout=10 -o BatchMode=yes"
+
     check_prerequisites
     collect_required_inputs
     provision_ec2
@@ -558,6 +613,7 @@ main() {
     log_info "Instance:       $INSTANCE_ID"
     log_info "Public IP:      $PUBLIC_IP"
     log_info "SSH key:        $KEY_FILE"
+    log_info "Known hosts:    $KNOWN_HOSTS_FILE"
     echo ""
     log_info "Connect via SSH:"
     echo "  ssh -i $KEY_FILE ubuntu@$PUBLIC_IP"
