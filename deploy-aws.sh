@@ -442,7 +442,7 @@ wait_for_ssh() {
             log_success "SSH is ready"
             return
         fi
-        (( attempts++ ))
+        (( ++attempts ))
         log_info "Retrying SSH (${attempts}/${max_attempts})..."
         sleep 10
     done

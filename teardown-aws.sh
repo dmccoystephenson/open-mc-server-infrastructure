@@ -261,7 +261,7 @@ delete_security_group() {
             log_success "Security group $SG_ID deleted"
             return
         fi
-        (( attempts++ ))
+        (( ++attempts ))
         log_info "Security group still in use — retrying in 10 s (${attempts}/${max_attempts})..."
         sleep 10
     done
