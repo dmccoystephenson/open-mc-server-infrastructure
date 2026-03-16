@@ -1,0 +1,75 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "omcsi.fullname" . }}-nginx
+  labels:
+    {{- include "omcsi.labels" . | nindent 4 }}
+    {{- include "omcsi.selectorLabels" (dict "root" . "component" "nginx") | nindent 4 }}
+spec:
+  replicas: {{ .Values.nginx.replicaCount }}
+  strategy:
+    type: RollingUpdate
+  selector:
+    matchLabels:
+      {{- include "omcsi.selectorLabels" (dict "root" . "component" "nginx") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "omcsi.labels" . | nindent 8 }}
+        {{- include "omcsi.selectorLabels" (dict "root" . "component" "nginx") | nindent 8 }}
+    spec:
+      containers:
+        - name: nginx
+          image: "{{ .Values.nginx.image.repository }}:{{ .Values.nginx.image.tag }}"
+          imagePullPolicy: {{ .Values.nginx.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 80
+              protocol: TCP
+            - name: https
+              containerPort: 443
+              protocol: TCP
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            {{- toYaml .Values.nginx.resources | nindent 12 }}
+          volumeMounts:
+            - name: nginx-config
+              mountPath: /etc/nginx/nginx.conf
+              subPath: nginx.conf
+            - name: tls
+              mountPath: /etc/nginx/ssl
+              readOnly: true
+      volumes:
+        - name: nginx-config
+          configMap:
+            name: {{ include "omcsi.fullname" . }}-nginx-config
+        - name: tls
+          secret:
+            secretName: {{ include "omcsi.fullname" . }}-nginx-tls
+            optional: true
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "omcsi.fullname" . }}-nginx
+  labels:
+    {{- include "omcsi.labels" . | nindent 4 }}
+    {{- include "omcsi.selectorLabels" (dict "root" . "component" "nginx") | nindent 4 }}
+spec:
+  type: {{ .Values.nginx.service.type }}
+  ports:
+    - port: {{ .Values.nginx.service.httpPort }}
+      targetPort: http
+      protocol: TCP
+      name: http
+    - port: {{ .Values.nginx.service.httpsPort }}
+      targetPort: https
+      protocol: TCP
+      name: https
+  selector:
+    {{- include "omcsi.selectorLabels" (dict "root" . "component" "nginx") | nindent 4 }}

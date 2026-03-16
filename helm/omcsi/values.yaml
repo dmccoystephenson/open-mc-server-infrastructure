@@ -1,0 +1,248 @@
+# =============================================================================
+# Open Minecraft Server Infrastructure – Helm values
+# =============================================================================
+# Every variable from sample.env has a corresponding entry below.
+# Sensitive values are placed under the `secrets` key and stored in a k8s
+# Secret. Override them via --set or a separate values file.
+# =============================================================================
+
+# ---------------------------------------------------------------------------
+# Global / Shared
+# ---------------------------------------------------------------------------
+global:
+  # Namespace is normally set by --namespace; this is informational only.
+  namespace: ""
+
+# ---------------------------------------------------------------------------
+# Minecraft Server + Wrapper
+# ---------------------------------------------------------------------------
+minecraftWrapper:
+  image:
+    repository: open-mc-server
+    tag: latest
+    pullPolicy: IfNotPresent
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: "2"
+      memory: 4Gi
+    limits:
+      cpu: "4"
+      memory: 8Gi
+  service:
+    type: NodePort
+    minecraftPort: 25565
+    rconPort: 25575
+    bluemapPort: 8100
+    wrapperPort: 8092
+  env:
+    MINECRAFT_VERSION: "1.21.10"
+    OPERATOR_UUID: "YOUR_UUID_HERE"
+    OPERATOR_NAME: "YOUR_USERNAME_HERE"
+    OPERATOR_LEVEL: "4"
+    OVERWRITE_EXISTING_SERVER: "false"
+    SERVER_MOTD: "An Open Minecraft Server"
+    MAX_PLAYERS: "20"
+    DIFFICULTY: "normal"
+    GAMEMODE: "survival"
+    PVP_ENABLED: "true"
+    ONLINE_MODE: "true"
+    JAVA_OPTS: "-Xmx3G -Xms2G"
+    PLUGINS_DIRECTORY: "/mcserver/plugins"
+    # Alert toggles
+    ALERTS_SERVER_START: "true"
+    ALERTS_SERVER_STOP: "true"
+    ALERTS_SERVER_CRASH: "true"
+    ALERTS_CONFIG_WARNING: "false"
+    ALERTS_PLUGIN_DEPLOY: "true"
+    ALERTS_UPGRADE_START: "true"
+    ALERTS_UPGRADE_COMPLETE: "true"
+    ALERTS_UPGRADE_FAILURE: "true"
+    # Diagnostic log access
+    LOGS_DIAGNOSTIC_ENABLED: "false"
+    LOGS_DIAGNOSTIC_MAX_LINES: "100"
+
+# ---------------------------------------------------------------------------
+# Web Application (Dashboard)
+# ---------------------------------------------------------------------------
+webapp:
+  image:
+    repository: open-mc-server-webapp
+    tag: latest
+    pullPolicy: IfNotPresent
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: "500m"
+      memory: 512Mi
+    limits:
+      cpu: "2"
+      memory: 2Gi
+  service:
+    type: ClusterIP
+    port: 8080
+  env:
+    MC_RCON_PORT: "25575"
+    MC_MOTD: "An Open Minecraft Server"
+    MC_MAX_PLAYERS: "20"
+    DYNMAP_URL: ""
+    BLUEMAP_URL: ""
+    WEB_REFRESH_INTERVAL_MS: "1800000"
+    ACTIVITY_TRACKER_URL: ""
+    ACTIVITY_TRACKER_ENABLED: "false"
+    DASHBOARD_TITLE: "Minecraft Server Dashboard"
+    DASHBOARD_SUBTITLE: "Server Management & Information"
+    DASHBOARD_PRIMARY_COLOR: "#667eea"
+    DASHBOARD_SECONDARY_COLOR: "#764ba2"
+    DATA_STORAGE_PATH: "/app/data"
+    ALERT_MANAGER_ENABLED: "true"
+    ACCORDION_CHAT_URL: ""
+
+# ---------------------------------------------------------------------------
+# Nginx Reverse Proxy
+# ---------------------------------------------------------------------------
+nginx:
+  image:
+    repository: open-mc-server-nginx
+    tag: latest
+    pullPolicy: IfNotPresent
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: "100m"
+      memory: 128Mi
+    limits:
+      cpu: "1"
+      memory: 512Mi
+  service:
+    type: LoadBalancer
+    httpPort: 80
+    httpsPort: 443
+  tls:
+    # When true, a self-signed certificate is generated via the nginx
+    # entrypoint script (same behaviour as the Docker Compose setup).
+    # Set to false and supply your own Secret named
+    # <release>-nginx-tls to use real certificates.
+    selfSigned: true
+
+# ---------------------------------------------------------------------------
+# Backup Manager
+# ---------------------------------------------------------------------------
+backupManager:
+  image:
+    repository: open-mc-server-backup-manager
+    tag: latest
+    pullPolicy: IfNotPresent
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: "250m"
+      memory: 512Mi
+    limits:
+      cpu: "1"
+      memory: 1Gi
+  service:
+    type: ClusterIP
+    port: 8091
+  env:
+    BACKUP_DIRECTORY: "/backups"
+    BACKUP_MAX_SIZE_MB: "10240"
+    BACKUP_SCHEDULE: "0 0 2 * * ?"
+    VOLUME_NAME: "mcserver"
+    ALERTS_BACKUP_SUCCESS: "true"
+    ALERTS_BACKUP_FAILURE: "true"
+
+# ---------------------------------------------------------------------------
+# Alert Manager
+# ---------------------------------------------------------------------------
+alertManager:
+  image:
+    repository: open-mc-server-alert-manager
+    tag: latest
+    pullPolicy: IfNotPresent
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: "250m"
+      memory: 512Mi
+    limits:
+      cpu: "1"
+      memory: 1Gi
+  service:
+    type: ClusterIP
+    port: 8090
+  env:
+    DISCORD_ENABLED: "false"
+    MINECRAFT_RCON_PORT: "25575"
+    MINECRAFT_RCON_ENABLED: "true"
+
+# ---------------------------------------------------------------------------
+# Agent Manager (Discord AI bot)
+# ---------------------------------------------------------------------------
+agentManager:
+  enabled: false
+  image:
+    repository: open-mc-server-agent-manager
+    tag: latest
+    pullPolicy: IfNotPresent
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: "250m"
+      memory: 512Mi
+    limits:
+      cpu: "1"
+      memory: 1Gi
+  service:
+    type: ClusterIP
+    port: 8093
+  env:
+    AGENT_ENABLED: "false"
+    AGENT_START_SERVER_REQUIRES_CONFIRMATION: "true"
+    AGENT_STOP_SERVER_REQUIRES_CONFIRMATION: "true"
+    AGENT_RESTART_SERVER_REQUIRES_CONFIRMATION: "true"
+    AGENT_TRIGGER_BACKUP_REQUIRES_CONFIRMATION: "true"
+    DIAGNOSTICS_WEBAPP_ENABLED: "false"
+    DIAGNOSTICS_LOGS_ENABLED: "false"
+    DIAGNOSTICS_LOGS_MAX_LINES: "500"
+    DIAGNOSTICS_LOGS_ANONYMIZE: "true"
+
+# ---------------------------------------------------------------------------
+# Secrets – sensitive values stored in a k8s Secret
+# Override via --set secrets.rconPassword=xxx or a separate values file.
+# ---------------------------------------------------------------------------
+secrets:
+  rconPassword: "minecraft"
+  adminUsername: "admin"
+  adminPassword: "admin"
+  deployAuthToken: ""
+  deploymentAuthToken: ""
+  discordWebhookUrl: ""
+  agentDiscordBotToken: ""
+  agentDiscordChannelId: ""
+  agentAnthropicApiKey: ""
+
+# ---------------------------------------------------------------------------
+# Persistence
+# ---------------------------------------------------------------------------
+persistence:
+  mcserver:
+    enabled: true
+    storageClass: ""
+    accessMode: ReadWriteOnce
+    size: 10Gi
+  webappData:
+    enabled: true
+    storageClass: ""
+    accessMode: ReadWriteOnce
+    size: 1Gi
+  alertManagerData:
+    enabled: true
+    storageClass: ""
+    accessMode: ReadWriteOnce
+    size: 1Gi
+  backups:
+    enabled: true
+    storageClass: ""
+    accessMode: ReadWriteOnce
+    size: 20Gi

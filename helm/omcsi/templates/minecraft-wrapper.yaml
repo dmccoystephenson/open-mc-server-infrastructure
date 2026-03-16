@@ -1,0 +1,138 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "omcsi.fullname" . }}-minecraft-wrapper
+  labels:
+    {{- include "omcsi.labels" . | nindent 4 }}
+    {{- include "omcsi.selectorLabels" (dict "root" . "component" "minecraft-wrapper") | nindent 4 }}
+spec:
+  replicas: {{ .Values.minecraftWrapper.replicaCount }}
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      {{- include "omcsi.selectorLabels" (dict "root" . "component" "minecraft-wrapper") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "omcsi.labels" . | nindent 8 }}
+        {{- include "omcsi.selectorLabels" (dict "root" . "component" "minecraft-wrapper") | nindent 8 }}
+    spec:
+      terminationGracePeriodSeconds: 45
+      containers:
+        - name: minecraft-wrapper
+          image: "{{ .Values.minecraftWrapper.image.repository }}:{{ .Values.minecraftWrapper.image.tag }}"
+          imagePullPolicy: {{ .Values.minecraftWrapper.image.pullPolicy }}
+          ports:
+            - name: minecraft
+              containerPort: 25565
+              protocol: TCP
+            - name: rcon
+              containerPort: 25575
+              protocol: TCP
+            - name: bluemap
+              containerPort: 8100
+              protocol: TCP
+            - name: wrapper
+              containerPort: 8092
+              protocol: TCP
+          env:
+            - name: MINECRAFT_VERSION
+              value: {{ .Values.minecraftWrapper.env.MINECRAFT_VERSION | quote }}
+            - name: OPERATOR_UUID
+              value: {{ .Values.minecraftWrapper.env.OPERATOR_UUID | quote }}
+            - name: OPERATOR_NAME
+              value: {{ .Values.minecraftWrapper.env.OPERATOR_NAME | quote }}
+            - name: OPERATOR_LEVEL
+              value: {{ .Values.minecraftWrapper.env.OPERATOR_LEVEL | quote }}
+            - name: OVERWRITE_EXISTING_SERVER
+              value: {{ .Values.minecraftWrapper.env.OVERWRITE_EXISTING_SERVER | quote }}
+            - name: SERVER_MOTD
+              value: {{ .Values.minecraftWrapper.env.SERVER_MOTD | quote }}
+            - name: MAX_PLAYERS
+              value: {{ .Values.minecraftWrapper.env.MAX_PLAYERS | quote }}
+            - name: DIFFICULTY
+              value: {{ .Values.minecraftWrapper.env.DIFFICULTY | quote }}
+            - name: GAMEMODE
+              value: {{ .Values.minecraftWrapper.env.GAMEMODE | quote }}
+            - name: PVP_ENABLED
+              value: {{ .Values.minecraftWrapper.env.PVP_ENABLED | quote }}
+            - name: ONLINE_MODE
+              value: {{ .Values.minecraftWrapper.env.ONLINE_MODE | quote }}
+            - name: JAVA_OPTS
+              value: {{ .Values.minecraftWrapper.env.JAVA_OPTS | quote }}
+            - name: RCON_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "omcsi.secretName" . }}
+                  key: RCON_PASSWORD
+            - name: ALERT_MANAGER_URL
+              value: "http://{{ include "omcsi.alertManagerHost" . }}:{{ .Values.alertManager.service.port }}/api/alerts"
+            - name: ALERTS_SERVER_START
+              value: {{ .Values.minecraftWrapper.env.ALERTS_SERVER_START | quote }}
+            - name: ALERTS_SERVER_STOP
+              value: {{ .Values.minecraftWrapper.env.ALERTS_SERVER_STOP | quote }}
+            - name: ALERTS_SERVER_CRASH
+              value: {{ .Values.minecraftWrapper.env.ALERTS_SERVER_CRASH | quote }}
+            - name: ALERTS_CONFIG_WARNING
+              value: {{ .Values.minecraftWrapper.env.ALERTS_CONFIG_WARNING | quote }}
+            - name: DEPLOY_AUTH_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "omcsi.secretName" . }}
+                  key: DEPLOY_AUTH_TOKEN
+            - name: PLUGINS_DIRECTORY
+              value: {{ .Values.minecraftWrapper.env.PLUGINS_DIRECTORY | quote }}
+            - name: WEBAPP_URL
+              value: "http://{{ include "omcsi.webappHost" . }}:{{ .Values.webapp.service.port }}"
+            - name: DEPLOYMENT_AUTH_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "omcsi.secretName" . }}
+                  key: DEPLOYMENT_AUTH_TOKEN
+            - name: LOGS_DIAGNOSTIC_ENABLED
+              value: {{ .Values.minecraftWrapper.env.LOGS_DIAGNOSTIC_ENABLED | quote }}
+            - name: LOGS_DIAGNOSTIC_MAX_LINES
+              value: {{ .Values.minecraftWrapper.env.LOGS_DIAGNOSTIC_MAX_LINES | quote }}
+          resources:
+            {{- toYaml .Values.minecraftWrapper.resources | nindent 12 }}
+          volumeMounts:
+            - name: mcserver
+              mountPath: /mcserver
+      volumes:
+        - name: mcserver
+          {{- if .Values.persistence.mcserver.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ include "omcsi.fullname" . }}-mcserver
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "omcsi.minecraftWrapperHost" . }}
+  labels:
+    {{- include "omcsi.labels" . | nindent 4 }}
+    {{- include "omcsi.selectorLabels" (dict "root" . "component" "minecraft-wrapper") | nindent 4 }}
+spec:
+  type: {{ .Values.minecraftWrapper.service.type }}
+  ports:
+    - port: {{ .Values.minecraftWrapper.service.minecraftPort }}
+      targetPort: minecraft
+      protocol: TCP
+      name: minecraft
+    - port: {{ .Values.minecraftWrapper.service.rconPort }}
+      targetPort: rcon
+      protocol: TCP
+      name: rcon
+    - port: {{ .Values.minecraftWrapper.service.bluemapPort }}
+      targetPort: bluemap
+      protocol: TCP
+      name: bluemap
+    - port: {{ .Values.minecraftWrapper.service.wrapperPort }}
+      targetPort: wrapper
+      protocol: TCP
+      name: wrapper
+  selector:
+    {{- include "omcsi.selectorLabels" (dict "root" . "component" "minecraft-wrapper") | nindent 4 }}

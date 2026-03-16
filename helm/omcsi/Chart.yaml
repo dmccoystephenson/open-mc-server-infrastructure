@@ -1,0 +1,16 @@
+apiVersion: v2
+name: omcsi
+description: Open Minecraft Server Infrastructure – Helm chart for Kubernetes deployment
+type: application
+version: 0.1.0
+appVersion: "1.21.10"
+keywords:
+  - minecraft
+  - spigot
+  - gaming
+  - server
+home: https://github.com/dmccoystephenson/open-mc-server-infrastructure
+sources:
+  - https://github.com/dmccoystephenson/open-mc-server-infrastructure
+maintainers:
+  - name: dmccoystephenson

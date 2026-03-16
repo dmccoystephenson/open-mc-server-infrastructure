@@ -22,6 +22,10 @@ An open, community-agnostic, Docker-based Minecraft server infrastructure runnin
 - [Docker Compose](https://docs.docker.com/compose/install/)
 - [Git](https://git-scm.com/downloads)
 
+For Kubernetes deployments, you will also need:
+- A Kubernetes cluster (v1.24+)
+- [Helm](https://helm.sh/docs/intro/install/) 3.x
+
 ## Deployment Options
 
 ### Local Development
@@ -39,6 +43,52 @@ The Self-Hosting Guide covers:
 - SSL certificate setup for public access
 - Monitoring and maintenance
 - Advanced security configurations
+
+### Kubernetes (Helm)
+OMCSI ships with a Helm chart in [`helm/omcsi/`](helm/omcsi/) for deploying to any Kubernetes cluster (k3s, kind, EKS, GKE, etc.).
+
+**Prerequisites**
+- A running Kubernetes cluster (v1.24+)
+- [Helm](https://helm.sh/docs/intro/install/) 3.x
+- Container images built and accessible to the cluster (e.g., loaded into a local registry or a registry the cluster can pull from)
+
+**Quick Start**
+```bash
+# Lint the chart
+helm lint helm/omcsi
+
+# Install with default values (edit values first for your environment)
+helm install omcsi ./helm/omcsi --namespace omcsi --create-namespace
+
+# Override secrets on install
+helm install omcsi ./helm/omcsi --namespace omcsi --create-namespace \
+  --set secrets.rconPassword=changeme \
+  --set secrets.adminUsername=myadmin \
+  --set secrets.adminPassword=strongpassword
+
+# Enable the optional agent-manager
+helm install omcsi ./helm/omcsi --namespace omcsi --create-namespace \
+  --set agentManager.enabled=true \
+  --set secrets.agentDiscordBotToken=BOT_TOKEN \
+  --set secrets.agentDiscordChannelId=CHANNEL_ID \
+  --set secrets.agentAnthropicApiKey=API_KEY
+
+# Upgrade an existing release
+helm upgrade omcsi ./helm/omcsi --namespace omcsi
+
+# Uninstall
+helm uninstall omcsi --namespace omcsi
+```
+
+The chart exposes all `sample.env` variables through `values.yaml`. See [`helm/omcsi/values.yaml`](helm/omcsi/values.yaml) for the full list of configurable values including image tags, replica counts, resource requests/limits, storage classes, service types, and feature flags.
+
+**Key design notes:**
+- World data and service data persist across pod restarts via `PersistentVolumeClaim` resources
+- Sensitive values (passwords, tokens, API keys) are stored in a Kubernetes `Secret`
+- Internal service discovery uses Kubernetes `Service` DNS names (e.g., `omcsi-minecraft-wrapper`, `omcsi-alert-manager`)
+- The nginx config is managed via a `ConfigMap` and points to the webapp service automatically
+- The agent-manager is disabled by default and can be enabled via `agentManager.enabled=true`
+- The backup-manager uses a PVC instead of Docker socket access, avoiding the need for privileged containers
 
 ## Quick Start
 
