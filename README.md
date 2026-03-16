@@ -78,7 +78,7 @@ helm upgrade omcsi ./helm/omcsi --namespace omcsi
 helm uninstall omcsi --namespace omcsi
 ```
 
-The chart exposes all application-level `sample.env` variables through `values.yaml` (Docker Compose-only variables like container names and host port mappings are excluded — Kubernetes manages those natively). See [`helm/omcsi/values.yaml`](helm/omcsi/values.yaml) for the full list of configurable values including image tags, replica counts, resource requests/limits, storage classes, service types, and feature flags.
+The chart exposes most application-level `sample.env` variables through `values.yaml`. Some values are intentionally computed or fixed in the templates (e.g., internal service URLs are derived from Helm helpers, RCON port references are sourced from `minecraftWrapper.internalService.rconPort`, and `DATA_STORAGE_PATH` is hardcoded to match the PVC mount). Docker Compose-only variables like container names and host port mappings are excluded — Kubernetes manages those natively. See [`helm/omcsi/values.yaml`](helm/omcsi/values.yaml) for the full list of configurable values including image tags, replica counts, resource requests/limits, storage classes, service types, and feature flags.
 
 **Key design notes:**
 - `secrets.rconPassword` and `secrets.adminPassword` are **required** — the chart will refuse to install without them

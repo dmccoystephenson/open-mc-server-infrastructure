@@ -31,7 +31,7 @@ spec:
             - name: MC_HOST
               value: "{{ include "omcsi.minecraftWrapperHost" . }}-internal"
             - name: MC_RCON_PORT
-              value: {{ .Values.webapp.env.MC_RCON_PORT | quote }}
+              value: {{ .Values.minecraftWrapper.internalService.rconPort | quote }}
             - name: MC_RCON_PASSWORD
               valueFrom:
                 secretKeyRef:

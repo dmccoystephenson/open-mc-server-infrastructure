@@ -1,10 +1,15 @@
 # =============================================================================
 # Open Minecraft Server Infrastructure – Helm values
 # =============================================================================
-# All application-level variables from sample.env have a corresponding entry
-# below. Docker Compose-only variables (container names, host port mappings,
-# and volume names) are intentionally excluded — Kubernetes manages these
-# natively via Deployment names, Service specs, and PVC names.
+# Most application-level variables from sample.env have a corresponding entry
+# below. Some values are intentionally fixed or computed in the templates
+# (e.g., DATA_STORAGE_PATH is hardcoded to match the PVC mount, internal
+# service URLs like ALERT_MANAGER_URL/WEBAPP_URL/BACKUP_MANAGER_URL are
+# derived from Helm helpers, and RCON port references are sourced from
+# minecraftWrapper.internalService.rconPort). Docker Compose-only variables
+# (container names, host port mappings, and volume names) are also excluded —
+# Kubernetes manages these natively via Deployment names, Service specs, and
+# PVC names.
 #
 # Sensitive values are placed under the `secrets` key and stored in a k8s
 # Secret. Override them via --set or a separate values file.
@@ -89,7 +94,6 @@ webapp:
     type: ClusterIP
     port: 8080
   env:
-    MC_RCON_PORT: "25575"
     MC_MOTD: "An Open Minecraft Server"
     MC_MAX_PLAYERS: "20"
     DYNMAP_URL: ""
@@ -162,10 +166,13 @@ backupManager:
   env:
     BACKUP_DIRECTORY: "/backups"
     BACKUP_MAX_SIZE_MB: "10240"
+    # Disabled by default in Kubernetes — the backup-manager relies on Docker
+    # CLI commands that are not available inside the cluster. Enable only after
+    # adding native filesystem backup support or an external backup strategy.
     BACKUP_SCHEDULE: "0 0 2 * * ?"
     VOLUME_NAME: "mcserver"
-    ALERTS_BACKUP_SUCCESS: "true"
-    ALERTS_BACKUP_FAILURE: "true"
+    ALERTS_BACKUP_SUCCESS: "false"
+    ALERTS_BACKUP_FAILURE: "false"
 
 # ---------------------------------------------------------------------------
 # Alert Manager
@@ -188,7 +195,6 @@ alertManager:
     port: 8090
   env:
     DISCORD_ENABLED: "false"
-    MINECRAFT_RCON_PORT: "25575"
     MINECRAFT_RCON_ENABLED: "true"
 
 # ---------------------------------------------------------------------------
@@ -212,7 +218,10 @@ agentManager:
     type: ClusterIP
     port: 8093
   env:
-    AGENT_ENABLED: "false"
+    # Defaults to true so that enabling the agent-manager Deployment
+    # (agentManager.enabled=true) also activates the bot. Override to "false"
+    # to deploy the pod without starting the agent.
+    AGENT_ENABLED: "true"
     AGENT_START_SERVER_REQUIRES_CONFIRMATION: "true"
     AGENT_STOP_SERVER_REQUIRES_CONFIRMATION: "true"
     AGENT_RESTART_SERVER_REQUIRES_CONFIRMATION: "true"
