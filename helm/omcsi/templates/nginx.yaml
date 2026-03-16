@@ -18,6 +18,24 @@ spec:
         {{- include "omcsi.labels" . | nindent 8 }}
         {{- include "omcsi.selectorLabels" (dict "root" . "component" "nginx") | nindent 8 }}
     spec:
+      {{- if .Values.nginx.tls.selfSigned }}
+      initContainers:
+        - name: generate-tls
+          image: "{{ .Values.nginx.image.repository }}:{{ .Values.nginx.image.tag }}"
+          command:
+            - sh
+            - -c
+            - |
+              if [ ! -f /etc/nginx/ssl/cert.pem ] || [ ! -f /etc/nginx/ssl/key.pem ]; then
+                openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+                  -keyout /etc/nginx/ssl/key.pem \
+                  -out /etc/nginx/ssl/cert.pem \
+                  -subj "/C=US/ST=State/L=City/O=Organization/CN=localhost"
+              fi
+          volumeMounts:
+            - name: tls
+              mountPath: /etc/nginx/ssl
+      {{- end }}
       containers:
         - name: nginx
           image: "{{ .Values.nginx.image.repository }}:{{ .Values.nginx.image.tag }}"
@@ -43,15 +61,21 @@ spec:
               subPath: nginx.conf
             - name: tls
               mountPath: /etc/nginx/ssl
+              {{- if not .Values.nginx.tls.selfSigned }}
               readOnly: true
+              {{- end }}
       volumes:
         - name: nginx-config
           configMap:
             name: {{ include "omcsi.fullname" . }}-nginx-config
+        {{- if .Values.nginx.tls.selfSigned }}
+        - name: tls
+          emptyDir: {}
+        {{- else }}
         - name: tls
           secret:
             secretName: {{ include "omcsi.fullname" . }}-nginx-tls
-            optional: true
+        {{- end }}
 ---
 apiVersion: v1
 kind: Service
