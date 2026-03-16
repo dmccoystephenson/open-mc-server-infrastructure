@@ -455,6 +455,36 @@ wait_for_ssh() {
         sleep 10
     done
     log_error "Timed out waiting for SSH on $PUBLIC_IP"
+    echo ""
+    log_info "──── Diagnostics ────────────────────────────────────────────"
+    log_info "Instance:   $INSTANCE_ID"
+    log_info "Public IP:  $PUBLIC_IP"
+    log_info "Key file:   $KEY_FILE  (permissions: $(stat -c '%a' "$KEY_FILE" 2>/dev/null || stat -f '%Lp' "$KEY_FILE" 2>/dev/null || echo 'unknown'))"
+    log_info "SSH command to test manually:"
+    echo "  ssh -v -i $KEY_FILE ubuntu@$PUBLIC_IP"
+    echo ""
+    log_info "Instance state:"
+    aws ec2 describe-instances \
+        --instance-ids "$INSTANCE_ID" \
+        --query 'Reservations[0].Instances[0].{State:State.Name,StatusChecks:InstanceStatus}' \
+        --output table 2>/dev/null || true
+    echo ""
+    log_info "Security group ($SG_ID) ingress rules for port 22:"
+    aws ec2 describe-security-groups \
+        --group-ids "$SG_ID" \
+        --query 'SecurityGroups[0].IpPermissions[?FromPort==`22`]' \
+        --output table 2>/dev/null || true
+    echo ""
+    local my_ip
+    my_ip=$(get_my_public_ip)
+    if [[ -n "$my_ip" ]]; then
+        log_info "Your current public IP: $my_ip"
+        log_info "To add an SSH rule for your current IP, run:"
+        echo "  aws ec2 authorize-security-group-ingress --group-id $SG_ID --protocol tcp --port 22 --cidr ${my_ip}/32"
+    fi
+    echo ""
+    log_info "If your IP changed since provisioning, re-run deploy-aws.sh to refresh the rule."
+    log_info "See AWS-DEPLOYMENT.md § 'Troubleshooting deploy-aws.sh' for more help."
     exit 1
 }
 

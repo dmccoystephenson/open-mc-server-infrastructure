@@ -21,6 +21,7 @@ This guide covers deploying the Open Minecraft Server Infrastructure to AWS usin
 - [Monitoring and Maintenance](#monitoring-and-maintenance)
 - [Cost Considerations](#cost-considerations)
 - [Cleanup](#cleanup)
+- [Troubleshooting deploy-aws.sh](#troubleshooting-deploy-awssh)
 - [Troubleshooting](#troubleshooting)
 
 ## Automated Deployment Script
@@ -664,6 +665,94 @@ rm -f omcsi-key.pem
 # 5. Remove the S3 bucket (if created) — first empty it
 aws s3 rm s3://"$BUCKET_NAME" --recursive
 aws s3api delete-bucket --bucket "$BUCKET_NAME"
+```
+
+## Troubleshooting deploy-aws.sh
+
+### SSH timeout (`Timed out waiting for SSH on <IP>`)
+
+This is the most common failure. When `deploy-aws.sh` can't reach the instance over SSH it prints a diagnostics block showing the security group rules, instance state, and your current public IP. Work through the checklist below:
+
+**1. Check the security group ingress rule for port 22**
+
+```bash
+INSTANCE_ID=$(aws ec2 describe-instances \
+  --filters "Name=tag:Name,Values=omcsi-server" \
+            "Name=instance-state-name,Values=running" \
+  --query 'Reservations[0].Instances[0].InstanceId' --output text)
+
+SG_ID=$(aws ec2 describe-instances --instance-ids "$INSTANCE_ID" \
+  --query 'Reservations[0].Instances[0].SecurityGroups[0].GroupId' \
+  --output text)
+
+aws ec2 describe-security-groups --group-ids "$SG_ID" \
+  --query 'SecurityGroups[0].IpPermissions[?FromPort==`22`]' \
+  --output table
+```
+
+If port 22 is not listed, or the CIDR doesn't include your current IP, add a rule:
+
+```bash
+MY_IP=$(curl -s https://checkip.amazonaws.com)
+aws ec2 authorize-security-group-ingress \
+  --group-id "$SG_ID" --protocol tcp --port 22 --cidr "${MY_IP}/32"
+```
+
+**2. Your public IP may have changed**
+
+ISPs sometimes reassign your IP between the time the instance is provisioned and when you retry. Re-running `./deploy-aws.sh` (with the same arguments) will detect the new IP and add a fresh ingress rule automatically.
+
+**3. Verify the key file permissions**
+
+SSH refuses connections if the private key file is world-readable:
+
+```bash
+chmod 400 omcsi-key.pem
+```
+
+**4. Remove a stale known_hosts entry**
+
+If the instance was terminated and a new one was assigned the same IP, the script's dedicated `omcsi-key.pem.known_hosts` file will contain the old host key. Delete it so the next connection accepts the new key:
+
+```bash
+rm -f omcsi-key.pem.known_hosts
+```
+
+**5. Test SSH manually with verbose output**
+
+```bash
+PUBLIC_IP=$(aws ec2 describe-instances \
+  --instance-ids "$INSTANCE_ID" \
+  --query 'Reservations[0].Instances[0].PublicIpAddress' \
+  --output text)
+
+ssh -v -i omcsi-key.pem ubuntu@"$PUBLIC_IP"
+```
+
+Look for `Permission denied`, `Connection refused`, or `Connection timed out` in the verbose output:
+
+- **Connection timed out** → port 22 is blocked by the security group or a network ACL
+- **Connection refused** → the instance is up but sshd hasn't started yet — wait a minute and retry
+- **Permission denied (publickey)** → wrong key file, or the key file has wrong permissions
+
+**6. Verify the instance passed AWS health checks**
+
+```bash
+aws ec2 describe-instance-status \
+  --instance-ids "$INSTANCE_ID" \
+  --query 'InstanceStatuses[0].[InstanceStatus.Status,SystemStatus.Status]' \
+  --output table
+```
+
+Both values should read `ok`. If either is `initializing`, wait a few more minutes. If either reads `impaired`, the instance may need to be terminated and re-provisioned.
+
+**7. Re-provision from scratch**
+
+If none of the above resolves the issue, tear down and re-deploy:
+
+```bash
+./teardown-aws.sh --yes
+./deploy-aws.sh   # supply your original arguments
 ```
 
 ## Troubleshooting
