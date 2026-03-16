@@ -77,6 +77,11 @@ spec:
         - name: tls
           secret:
             secretName: {{ include "omcsi.fullname" . }}-nginx-tls
+            items:
+              - key: tls.crt
+                path: cert.pem
+              - key: tls.key
+                path: key.pem
         {{- end }}
 ---
 apiVersion: v1

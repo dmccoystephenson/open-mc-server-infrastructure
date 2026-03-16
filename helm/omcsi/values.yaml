@@ -125,10 +125,13 @@ nginx:
     httpPort: 80
     httpsPort: 443
   tls:
-    # When true, a self-signed certificate is generated via the nginx
-    # entrypoint script (same behaviour as the Docker Compose setup).
-    # Set to false and supply your own Secret named
-    # <release>-nginx-tls to use real certificates.
+    # When true, a self-signed certificate is generated via an init container
+    # (same behaviour as the Docker Compose setup).
+    # Set to false and supply a kubernetes.io/tls Secret named
+    # {{ include "omcsi.fullname" . }}-nginx-tls (typically <release>-nginx-tls
+    # when the release name already contains "omcsi", otherwise
+    # <release>-omcsi-nginx-tls). The Secret's tls.crt / tls.key are mapped
+    # to the cert.pem / key.pem paths that nginx expects.
     selfSigned: true
 
 # ---------------------------------------------------------------------------
