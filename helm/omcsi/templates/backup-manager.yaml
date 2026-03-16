@@ -18,6 +18,7 @@ spec:
         {{- include "omcsi.labels" . | nindent 8 }}
         {{- include "omcsi.selectorLabels" (dict "root" . "component" "backup-manager") | nindent 8 }}
     spec:
+      {{- include "omcsi.mcserverAffinity" . | nindent 6 }}
       containers:
         - name: backup-manager
           image: "{{ .Values.backupManager.image.repository }}:{{ .Values.backupManager.image.tag }}"
@@ -50,7 +51,7 @@ spec:
               mountPath: /mcserver
               readOnly: true
             - name: backups
-              mountPath: /backups
+              mountPath: {{ .Values.backupManager.env.BACKUP_DIRECTORY | quote }}
       volumes:
         - name: mcserver
           {{- if .Values.persistence.mcserver.enabled }}

@@ -121,6 +121,14 @@ jobs:
         test -f README.md
         grep -q "# Open Minecraft Server Infrastructure" README.md  
         test -f LICENSE
+
+    - name: Lint Helm chart
+      run: |
+        echo "⎈ Installing Helm..."
+        curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+        echo "⎈ Linting Helm chart..."
+        helm lint helm/omcsi --set secrets.rconPassword=ci --set secrets.adminPassword=ci
+        echo "✓ Helm chart linted successfully"
         
   security-scan:
     name: Security Scanning

@@ -27,7 +27,6 @@ Common labels
 {{- define "omcsi.labels" -}}
 helm.sh/chart: {{ include "omcsi.name" . }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
-app.kubernetes.io/instance: {{ .Release.Name }}
 app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 {{- end }}
 
@@ -39,6 +38,23 @@ Usage: include "omcsi.selectorLabels" (dict "root" . "component" "minecraft-wrap
 app.kubernetes.io/name: {{ include "omcsi.name" .root }}
 app.kubernetes.io/instance: {{ .root.Release.Name }}
 app.kubernetes.io/component: {{ .component }}
+{{- end }}
+
+{{/*
+Pod affinity rule that co-locates pods mounting the mcserver PVC on the
+same node. Required because the PVC defaults to ReadWriteOnce.
+Usage: include "omcsi.mcserverAffinity" .
+*/}}
+{{- define "omcsi.mcserverAffinity" -}}
+affinity:
+  podAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+      - labelSelector:
+          matchLabels:
+            app.kubernetes.io/name: {{ include "omcsi.name" . }}
+            app.kubernetes.io/instance: {{ .Release.Name }}
+            app.kubernetes.io/component: minecraft-wrapper
+        topologyKey: kubernetes.io/hostname
 {{- end }}
 
 {{/*

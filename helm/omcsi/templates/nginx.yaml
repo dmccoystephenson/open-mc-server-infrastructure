@@ -14,6 +14,8 @@ spec:
       {{- include "omcsi.selectorLabels" (dict "root" . "component" "nginx") | nindent 6 }}
   template:
     metadata:
+      annotations:
+        checksum/nginx-config: {{ include (print $.Template.BasePath "/nginx-configmap.yaml") . | sha256sum }}
       labels:
         {{- include "omcsi.labels" . | nindent 8 }}
         {{- include "omcsi.selectorLabels" (dict "root" . "component" "nginx") | nindent 8 }}

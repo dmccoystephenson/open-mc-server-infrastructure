@@ -18,6 +18,7 @@ spec:
         {{- include "omcsi.labels" . | nindent 8 }}
         {{- include "omcsi.selectorLabels" (dict "root" . "component" "webapp") | nindent 8 }}
     spec:
+      {{- include "omcsi.mcserverAffinity" . | nindent 6 }}
       containers:
         - name: webapp
           image: "{{ .Values.webapp.image.repository }}:{{ .Values.webapp.image.tag }}"
@@ -69,13 +70,13 @@ spec:
             - name: DASHBOARD_SECONDARY_COLOR
               value: {{ .Values.webapp.env.DASHBOARD_SECONDARY_COLOR | quote }}
             - name: DATA_STORAGE_PATH
-              value: {{ .Values.webapp.env.DATA_STORAGE_PATH | quote }}
+              value: "/app/data"
             - name: ALERT_MANAGER_URL
               value: "http://{{ include "omcsi.alertManagerHost" . }}:{{ .Values.alertManager.service.port }}"
             - name: ALERT_MANAGER_ENABLED
               value: {{ .Values.webapp.env.ALERT_MANAGER_ENABLED | quote }}
             - name: MINECRAFT_WRAPPER_URL
-              value: "http://{{ include "omcsi.minecraftWrapperHost" . }}:{{ .Values.minecraftWrapper.service.wrapperPort }}"
+              value: "http://{{ include "omcsi.minecraftWrapperHost" . }}-internal:{{ .Values.minecraftWrapper.internalService.wrapperPort }}"
             - name: ACCORDION_CHAT_URL
               value: {{ .Values.webapp.env.ACCORDION_CHAT_URL | quote }}
             - name: DEPLOYMENT_AUTH_TOKEN

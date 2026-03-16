@@ -55,19 +55,17 @@ OMCSI ships with a Helm chart in [`helm/omcsi/`](helm/omcsi/) for deploying to a
 **Quick Start**
 ```bash
 # Lint the chart
-helm lint helm/omcsi
+helm lint helm/omcsi --set secrets.rconPassword=x --set secrets.adminPassword=x
 
-# Install with default values (edit values first for your environment)
-helm install omcsi ./helm/omcsi --namespace omcsi --create-namespace
-
-# Override secrets on install
+# Install (rconPassword and adminPassword are required)
 helm install omcsi ./helm/omcsi --namespace omcsi --create-namespace \
   --set secrets.rconPassword=changeme \
-  --set secrets.adminUsername=myadmin \
   --set secrets.adminPassword=strongpassword
 
 # Enable the optional agent-manager
 helm install omcsi ./helm/omcsi --namespace omcsi --create-namespace \
+  --set secrets.rconPassword=changeme \
+  --set secrets.adminPassword=strongpassword \
   --set agentManager.enabled=true \
   --set secrets.agentDiscordBotToken=BOT_TOKEN \
   --set secrets.agentDiscordChannelId=CHANNEL_ID \
@@ -80,15 +78,18 @@ helm upgrade omcsi ./helm/omcsi --namespace omcsi
 helm uninstall omcsi --namespace omcsi
 ```
 
-The chart exposes all `sample.env` variables through `values.yaml`. See [`helm/omcsi/values.yaml`](helm/omcsi/values.yaml) for the full list of configurable values including image tags, replica counts, resource requests/limits, storage classes, service types, and feature flags.
+The chart exposes all application-level `sample.env` variables through `values.yaml` (Docker Compose-only variables like container names and host port mappings are excluded — Kubernetes manages those natively). See [`helm/omcsi/values.yaml`](helm/omcsi/values.yaml) for the full list of configurable values including image tags, replica counts, resource requests/limits, storage classes, service types, and feature flags.
 
 **Key design notes:**
+- `secrets.rconPassword` and `secrets.adminPassword` are **required** — the chart will refuse to install without them
 - World data and service data persist across pod restarts via `PersistentVolumeClaim` resources
 - Sensitive values (passwords, tokens, API keys) are stored in a Kubernetes `Secret`
 - Internal service discovery uses Kubernetes `Service` DNS names (e.g., `omcsi-minecraft-wrapper`, `omcsi-alert-manager`)
+- The Minecraft game port is exposed via a configurable Service (default `NodePort`); RCON, BlueMap, and the wrapper API are on a separate internal `ClusterIP` Service
 - The nginx config is managed via a `ConfigMap` and points to the webapp service automatically
 - The agent-manager is disabled by default and can be enabled via `agentManager.enabled=true`
-- The backup-manager uses a PVC instead of Docker socket access, avoiding the need for privileged containers
+- Pods sharing the mcserver PVC use pod affinity to co-locate on the same node (required for `ReadWriteOnce` volumes)
+- The backup-manager currently requires Docker CLI access for tar operations — in Kubernetes, consider using VolumeSnapshots or a sidecar CronJob for backups (see `values.yaml` for details)
 
 ## Quick Start
 

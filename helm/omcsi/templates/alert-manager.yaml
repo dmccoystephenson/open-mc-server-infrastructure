@@ -35,7 +35,7 @@ spec:
             - name: DISCORD_ENABLED
               value: {{ .Values.alertManager.env.DISCORD_ENABLED | quote }}
             - name: MINECRAFT_RCON_HOST
-              value: {{ include "omcsi.minecraftWrapperHost" . | quote }}
+              value: "{{ include "omcsi.minecraftWrapperHost" . }}-internal"
             - name: MINECRAFT_RCON_PORT
               value: {{ .Values.alertManager.env.MINECRAFT_RCON_PORT | quote }}
             - name: MINECRAFT_RCON_PASSWORD

@@ -1,7 +1,11 @@
 # =============================================================================
 # Open Minecraft Server Infrastructure – Helm values
 # =============================================================================
-# Every variable from sample.env has a corresponding entry below.
+# All application-level variables from sample.env have a corresponding entry
+# below. Docker Compose-only variables (container names, host port mappings,
+# and volume names) are intentionally excluded — Kubernetes manages these
+# natively via Deployment names, Service specs, and PVC names.
+#
 # Sensitive values are placed under the `secrets` key and stored in a k8s
 # Secret. Override them via --set or a separate values file.
 # =============================================================================
@@ -30,8 +34,11 @@ minecraftWrapper:
       cpu: "4"
       memory: 8Gi
   service:
+    # External service exposes only the Minecraft game port.
     type: NodePort
     minecraftPort: 25565
+  # Internal ClusterIP service for RCON, BlueMap, and wrapper API.
+  internalService:
     rconPort: 25575
     bluemapPort: 8100
     wrapperPort: 8092
@@ -94,7 +101,6 @@ webapp:
     DASHBOARD_SUBTITLE: "Server Management & Information"
     DASHBOARD_PRIMARY_COLOR: "#667eea"
     DASHBOARD_SECONDARY_COLOR: "#764ba2"
-    DATA_STORAGE_PATH: "/app/data"
     ALERT_MANAGER_ENABLED: "true"
     ACCORDION_CHAT_URL: ""
 
@@ -127,6 +133,12 @@ nginx:
 
 # ---------------------------------------------------------------------------
 # Backup Manager
+# NOTE: The backup-manager application uses Docker CLI commands internally to
+# create tar archives of the mcserver volume. In Kubernetes the mcserver data
+# is mounted directly via PVC so the Docker-based tar step will not function.
+# A future update to backup-manager will add native filesystem backup support.
+# Until then, backups should be handled externally (e.g., via VolumeSnapshot
+# or a CronJob that tars /mcserver).
 # ---------------------------------------------------------------------------
 backupManager:
   image:
@@ -209,12 +221,13 @@ agentManager:
 
 # ---------------------------------------------------------------------------
 # Secrets – sensitive values stored in a k8s Secret
+# rconPassword and adminPassword are required; install will fail if not set.
 # Override via --set secrets.rconPassword=xxx or a separate values file.
 # ---------------------------------------------------------------------------
 secrets:
-  rconPassword: "minecraft"
+  rconPassword: ""
   adminUsername: "admin"
-  adminPassword: "admin"
+  adminPassword: ""
   deployAuthToken: ""
   deploymentAuthToken: ""
   discordWebhookUrl: ""

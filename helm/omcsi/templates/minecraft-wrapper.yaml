@@ -108,6 +108,7 @@ spec:
           emptyDir: {}
           {{- end }}
 ---
+# External Service – exposes only the Minecraft game port
 apiVersion: v1
 kind: Service
 metadata:
@@ -122,15 +123,29 @@ spec:
       targetPort: minecraft
       protocol: TCP
       name: minecraft
-    - port: {{ .Values.minecraftWrapper.service.rconPort }}
+  selector:
+    {{- include "omcsi.selectorLabels" (dict "root" . "component" "minecraft-wrapper") | nindent 4 }}
+---
+# Internal Service – RCON, BlueMap, and wrapper API (ClusterIP only)
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "omcsi.minecraftWrapperHost" . }}-internal
+  labels:
+    {{- include "omcsi.labels" . | nindent 4 }}
+    {{- include "omcsi.selectorLabels" (dict "root" . "component" "minecraft-wrapper") | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+    - port: {{ .Values.minecraftWrapper.internalService.rconPort }}
       targetPort: rcon
       protocol: TCP
       name: rcon
-    - port: {{ .Values.minecraftWrapper.service.bluemapPort }}
+    - port: {{ .Values.minecraftWrapper.internalService.bluemapPort }}
       targetPort: bluemap
       protocol: TCP
       name: bluemap
-    - port: {{ .Values.minecraftWrapper.service.wrapperPort }}
+    - port: {{ .Values.minecraftWrapper.internalService.wrapperPort }}
       targetPort: wrapper
       protocol: TCP
       name: wrapper

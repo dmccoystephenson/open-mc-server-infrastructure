@@ -46,7 +46,7 @@ spec:
             - name: AGENT_ENABLED
               value: {{ .Values.agentManager.env.AGENT_ENABLED | quote }}
             - name: MINECRAFT_WRAPPER_URL
-              value: "http://{{ include "omcsi.minecraftWrapperHost" . }}:{{ .Values.minecraftWrapper.service.wrapperPort }}"
+              value: "http://{{ include "omcsi.minecraftWrapperHost" . }}-internal:{{ .Values.minecraftWrapper.internalService.wrapperPort }}"
             - name: AGENT_START_SERVER_REQUIRES_CONFIRMATION
               value: {{ .Values.agentManager.env.AGENT_START_SERVER_REQUIRES_CONFIRMATION | quote }}
             - name: AGENT_STOP_SERVER_REQUIRES_CONFIRMATION
