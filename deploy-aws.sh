@@ -321,6 +321,10 @@ launch_instance() {
     log_info "Waiting for instance to reach running state..."
     aws ec2 wait instance-running --instance-ids "$INSTANCE_ID"
     log_success "Instance is running"
+
+    log_info "Waiting for instance status checks to pass (this can take 2-3 minutes)..."
+    aws ec2 wait instance-status-ok --instance-ids "$INSTANCE_ID"
+    log_success "Instance status checks passed"
 }
 
 get_public_ip() {
@@ -366,12 +370,16 @@ provision_ec2() {
             log_info "Instance is stopped — starting it..."
             aws ec2 start-instances --instance-ids "$INSTANCE_ID" >/dev/null
             aws ec2 wait instance-running --instance-ids "$INSTANCE_ID"
+            log_info "Waiting for instance status checks to pass..."
+            aws ec2 wait instance-status-ok --instance-ids "$INSTANCE_ID"
             log_success "Instance started"
         elif [[ "$INSTANCE_STATE" == "stopping" ]]; then
             log_info "Waiting for instance to finish stopping before restarting..."
             aws ec2 wait instance-stopped --instance-ids "$INSTANCE_ID"
             aws ec2 start-instances --instance-ids "$INSTANCE_ID" >/dev/null
             aws ec2 wait instance-running --instance-ids "$INSTANCE_ID"
+            log_info "Waiting for instance status checks to pass..."
+            aws ec2 wait instance-status-ok --instance-ids "$INSTANCE_ID"
             log_success "Instance started"
         fi
 
@@ -433,9 +441,9 @@ remote_script() {
 
 wait_for_ssh() {
     log_step "Waiting for SSH"
-    log_info "This may take up to 4 minutes while the instance initialises..."
+    log_info "This may take up to 8 minutes while the instance initialises..."
     local attempts=0
-    local max_attempts=24  # 24 x 10 s = 4 min
+    local max_attempts=48  # 48 x 10 s = 8 min
     while (( attempts < max_attempts )); do
         # shellcheck disable=SC2086
         if ssh $SSH_OPTS "ubuntu@${PUBLIC_IP}" true 2>/dev/null; then
