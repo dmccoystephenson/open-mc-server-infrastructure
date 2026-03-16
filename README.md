@@ -126,7 +126,7 @@ docker build -t open-mc-server-alert-manager ./alert-manager
 docker build -t open-mc-server-agent-manager ./agent-manager
 ```
 
-> **Note:** The minecraft-wrapper image builds Spigot from source, which can take 10–15 minutes on the first run.
+> **Note:** The `open-mc-server` image builds Spigot from source, which can take 10–15 minutes on the first run.
 
 **4. Install the Helm chart**
 
