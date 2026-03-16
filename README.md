@@ -91,6 +91,131 @@ The chart exposes all application-level `sample.env` variables through `values.y
 - Pods sharing the mcserver PVC use pod affinity to co-locate on the same node (required for `ReadWriteOnce` volumes)
 - The backup-manager currently requires Docker CLI access for tar operations — in Kubernetes, consider using VolumeSnapshots or a sidecar CronJob for backups (see `values.yaml` for details)
 
+#### Testing with Minikube
+
+[Minikube](https://minikube.sigs.k8s.io/) provides a single-node Kubernetes cluster on your local machine, ideal for testing the Helm chart before deploying to a production cluster.
+
+**1. Install prerequisites**
+
+- [Minikube](https://minikube.sigs.k8s.io/docs/start/) (v1.30+)
+- [kubectl](https://kubernetes.io/docs/tasks/tools/)
+- [Helm](https://helm.sh/docs/intro/install/) 3.x
+- [Docker](https://docs.docker.com/get-docker/) (used as the minikube driver and for building images)
+
+**2. Start minikube**
+
+```bash
+# Start a minikube cluster with enough resources for OMCSI
+minikube start --cpus=4 --memory=8192 --driver=docker
+```
+
+**3. Build images inside minikube**
+
+Minikube runs its own Docker daemon. To make locally built images available without a registry, point your shell's Docker client at minikube's daemon:
+
+```bash
+# Configure your shell to use minikube's Docker daemon
+eval $(minikube docker-env)
+
+# Build all OMCSI images (these will be available inside the cluster)
+docker build -t open-mc-server .
+docker build -t open-mc-server-webapp ./web-app
+docker build -t open-mc-server-nginx ./nginx
+docker build -t open-mc-server-backup-manager ./backup-manager
+docker build -t open-mc-server-alert-manager ./alert-manager
+docker build -t open-mc-server-agent-manager ./agent-manager
+```
+
+> **Note:** The minecraft-wrapper image builds Spigot from source, which can take 10–15 minutes on the first run.
+
+**4. Install the Helm chart**
+
+```bash
+# Lint the chart first
+helm lint helm/omcsi --set secrets.rconPassword=test --set secrets.adminPassword=test
+
+# Install with imagePullPolicy=Never so Kubernetes uses the local images
+helm install omcsi ./helm/omcsi --namespace omcsi --create-namespace \
+  --set secrets.rconPassword=changeme \
+  --set secrets.adminPassword=strongpassword \
+  --set minecraftWrapper.image.pullPolicy=Never \
+  --set webapp.image.pullPolicy=Never \
+  --set nginx.image.pullPolicy=Never \
+  --set backupManager.image.pullPolicy=Never \
+  --set alertManager.image.pullPolicy=Never
+```
+
+**5. Verify the deployment**
+
+```bash
+# Watch pods come up
+kubectl get pods -n omcsi -w
+
+# Check all services
+kubectl get svc -n omcsi
+
+# View logs for a specific service
+kubectl logs -n omcsi -l app.kubernetes.io/component=minecraft-wrapper -f
+
+# Check PVCs are bound
+kubectl get pvc -n omcsi
+```
+
+**6. Access services**
+
+```bash
+# Minecraft game port – get the NodePort URL
+minikube service omcsi-minecraft-wrapper -n omcsi --url
+
+# Web dashboard via nginx – get the LoadBalancer URL
+# (minikube tunnel is required for LoadBalancer services)
+minikube tunnel &
+kubectl get svc -n omcsi omcsi-nginx
+# Connect to the EXTERNAL-IP shown for the nginx service
+
+# Alternatively, use port-forwarding for quick access
+kubectl port-forward svc/omcsi-nginx -n omcsi 8443:443 &
+# Dashboard at https://localhost:8443
+```
+
+**7. Test persistence**
+
+```bash
+# Verify world data survives a pod restart
+kubectl delete pod -n omcsi -l app.kubernetes.io/component=minecraft-wrapper
+# Wait for the pod to restart, then check that the world data is still present
+kubectl get pods -n omcsi -w
+```
+
+**8. Clean up**
+
+```bash
+# Uninstall the release
+helm uninstall omcsi --namespace omcsi
+
+# Delete PVCs (optional – removes all persistent data)
+kubectl delete pvc --all -n omcsi
+
+# Delete the namespace
+kubectl delete namespace omcsi
+
+# Stop minikube
+minikube stop
+
+# (Optional) Delete the minikube cluster entirely
+minikube delete
+```
+
+**Troubleshooting**
+
+| Symptom | Likely cause | Fix |
+|---|---|---|
+| Pods stuck in `ImagePullBackOff` | Images not built in minikube's Docker | Re-run `eval $(minikube docker-env)` and rebuild images; ensure `imagePullPolicy` is `Never` or `IfNotPresent` |
+| Pods stuck in `Pending` | Insufficient CPU/memory in minikube | Restart minikube with more resources: `minikube start --cpus=4 --memory=8192` |
+| PVC stuck in `Pending` | No default storage class | Minikube ships with a default `StorageClass`; verify with `kubectl get sc` |
+| Cannot reach services | Minikube tunnel not running | Run `minikube tunnel` for `LoadBalancer` services, or use `minikube service <name> -n omcsi` for `NodePort` |
+| Pods `CrashLoopBackOff` | Application startup failure | Check logs with `kubectl logs -n omcsi <pod-name>` |
+
 ## Quick Start
 
 1. **Clone the repository**
