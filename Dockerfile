@@ -1,12 +1,15 @@
 FROM ubuntu as base
 
+# Accept JDK version as build argument
+ARG JDK_VERSION=21
+
 # Install dependencies
 # Update package index and install without recommended packages to minimize dependencies
 RUN apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
         wget \
         git \
-        openjdk-21-jdk \
+        openjdk-${JDK_VERSION}-jdk \
         curl && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*

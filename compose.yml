@@ -4,6 +4,7 @@ services:
       context: .
       args:
         - MINECRAFT_VERSION=${MINECRAFT_VERSION}
+        - JDK_VERSION=${JDK_VERSION:-21}
     image: open-mc-server
     restart: always
     container_name: ${CONTAINER_NAME:-open-mc-server}
