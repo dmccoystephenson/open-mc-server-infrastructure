@@ -216,6 +216,60 @@ minikube delete
 | Cannot reach services | Minikube tunnel not running | Run `minikube tunnel` for `LoadBalancer` services, or use `minikube service <name> -n omcsi` for `NodePort` |
 | Pods `CrashLoopBackOff` | Application startup failure | Check logs with `kubectl logs -n omcsi <pod-name>` |
 
+#### Deploying to Linode with Terraform
+
+The [`terraform/`](terraform/) directory contains Terraform configuration to provision a [Linode Kubernetes Engine (LKE)](https://www.linode.com/products/kubernetes/) cluster and deploy the OMCSI Helm chart in a single `terraform apply`.
+
+**Prerequisites**
+- [Terraform](https://developer.hashicorp.com/terraform/install) >= 1.3
+- A [Linode API token](https://cloud.linode.com/profile/tokens) with read/write access to Kubernetes
+
+**Quick Start**
+
+```bash
+cd terraform
+
+# Copy the example tfvars and fill in your values
+cp terraform.tfvars.example terraform.tfvars
+# Edit terraform.tfvars – set linode_token, rcon_password, admin_password at minimum
+
+terraform init
+terraform plan
+terraform apply
+```
+
+After `apply` completes, a `kubeconfig.yaml` is written to the `terraform/` directory. Use it to interact with the cluster:
+
+```bash
+export KUBECONFIG=$(pwd)/kubeconfig.yaml
+kubectl get pods -n omcsi
+```
+
+**Variables**
+
+| Variable | Description | Default |
+|---|---|---|
+| `linode_token` | Linode API personal access token | *(required)* |
+| `cluster_label` | Label for the LKE cluster | `omcsi` |
+| `region` | Linode region | `us-east` |
+| `k8s_version` | Kubernetes version | `1.31` |
+| `node_type` | Linode instance type for workers | `g6-standard-4` |
+| `node_count` | Number of worker nodes | `3` |
+| `rcon_password` | RCON password for Minecraft server | *(required)* |
+| `admin_password` | Admin password for web dashboard | *(required)* |
+| `agent_manager_enabled` | Enable the Discord AI bot | `false` |
+| `helm_values_file` | Path to additional Helm values file | `""` |
+
+See [`terraform/variables.tf`](terraform/variables.tf) for the full list including autoscaler and agent-manager options.
+
+**Tear Down**
+
+```bash
+terraform destroy
+```
+
+This removes the LKE cluster, all Kubernetes resources, and associated Linode infrastructure.
+
 ## Quick Start
 
 1. **Clone the repository**

@@ -1,0 +1,34 @@
+# =============================================================================
+# Example Terraform variables for OMCSI on Linode Kubernetes Engine (LKE)
+# =============================================================================
+# Copy this file to terraform.tfvars and fill in the values.
+#   cp terraform.tfvars.example terraform.tfvars
+#
+# Alternatively, export LINODE_TOKEN as an environment variable and pass
+# the remaining values via -var flags:
+#   export TF_VAR_linode_token="your-linode-api-token"
+#   terraform apply -var rcon_password=changeme -var admin_password=strongpass
+# =============================================================================
+
+# Linode API token (required) – generate at https://cloud.linode.com/profile/tokens
+linode_token = "your-linode-api-token"
+
+# Cluster settings
+cluster_label = "omcsi"
+region        = "us-east"          # See https://api.linode.com/v4/regions
+k8s_version   = "1.31"
+node_type     = "g6-standard-4"    # 8 GB RAM, 4 CPU – see https://api.linode.com/v4/linode/types
+node_count    = 3
+
+# OMCSI secrets (required)
+rcon_password  = "changeme"
+admin_password = "strongpassword"
+
+# Optional: agent-manager (Discord AI bot)
+# agent_manager_enabled    = true
+# agent_discord_bot_token  = "BOT_TOKEN"
+# agent_discord_channel_id = "CHANNEL_ID"
+# agent_anthropic_api_key  = "API_KEY"
+
+# Optional: custom Helm values file
+# helm_values_file = "my-values.yaml"
