@@ -167,9 +167,10 @@ backupManager:
     BACKUP_DIRECTORY: "/backups"
     BACKUP_MAX_SIZE_MB: "10240"
     # Disabled by default in Kubernetes — the backup-manager relies on Docker
-    # CLI commands that are not available inside the cluster. Enable only after
+    # CLI commands that are not available inside the cluster. To enable scheduled
+    # backups, set this to a valid cron expression (e.g., "0 0 2 * * ?") after
     # adding native filesystem backup support or an external backup strategy.
-    BACKUP_SCHEDULE: "0 0 2 * * ?"
+    BACKUP_SCHEDULE: ""
     VOLUME_NAME: "mcserver"
     ALERTS_BACKUP_SUCCESS: "false"
     ALERTS_BACKUP_FAILURE: "false"

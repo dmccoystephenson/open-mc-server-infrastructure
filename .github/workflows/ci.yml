@@ -235,6 +235,37 @@ jobs:
       run: |
         helm uninstall omcsi --ignore-not-found || true
 
+  terraform-validate:
+    name: Terraform Validate
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Terraform
+      uses: hashicorp/setup-terraform@v3
+      with:
+        terraform_version: '1.9.0'
+
+    - name: Terraform fmt check
+      run: |
+        echo "🔍 Checking Terraform formatting..."
+        terraform -chdir=terraform fmt -check -diff
+        echo "✓ Terraform files are properly formatted"
+
+    - name: Terraform init
+      run: |
+        echo "⚙️ Initializing Terraform..."
+        terraform -chdir=terraform init -backend=false
+        echo "✓ Terraform initialized"
+
+    - name: Terraform validate
+      run: |
+        echo "✅ Validating Terraform configuration..."
+        terraform -chdir=terraform validate
+        echo "✓ Terraform configuration is valid"
+
   security-scan:
     name: Security Scanning
     runs-on: ubuntu-latest

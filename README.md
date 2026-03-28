@@ -62,8 +62,17 @@ helm install omcsi ./helm/omcsi --namespace omcsi --create-namespace \
   --set secrets.rconPassword=changeme \
   --set secrets.adminPassword=strongpassword
 
-# Enable the optional agent-manager
+# Or install with the optional agent-manager enabled
 helm install omcsi ./helm/omcsi --namespace omcsi --create-namespace \
+  --set secrets.rconPassword=changeme \
+  --set secrets.adminPassword=strongpassword \
+  --set agentManager.enabled=true \
+  --set secrets.agentDiscordBotToken=BOT_TOKEN \
+  --set secrets.agentDiscordChannelId=CHANNEL_ID \
+  --set secrets.agentAnthropicApiKey=API_KEY
+
+# Enable agent-manager on an existing release
+helm upgrade omcsi ./helm/omcsi --namespace omcsi \
   --set secrets.rconPassword=changeme \
   --set secrets.adminPassword=strongpassword \
   --set agentManager.enabled=true \

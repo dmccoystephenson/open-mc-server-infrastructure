@@ -27,11 +27,27 @@ resource "kubernetes_namespace" "omcsi" {
 }
 
 resource "helm_release" "omcsi" {
-  name       = var.helm_release_name
-  namespace  = kubernetes_namespace.omcsi.metadata[0].name
-  chart      = "${path.module}/../helm/omcsi"
-  wait       = true
-  timeout    = 600
+  name      = var.helm_release_name
+  namespace = kubernetes_namespace.omcsi.metadata[0].name
+  chart     = "${path.module}/../helm/omcsi"
+  wait      = true
+  timeout   = 600
+
+  # Fail early when agent-manager is enabled but required secrets are missing
+  lifecycle {
+    precondition {
+      condition     = !var.agent_manager_enabled || var.agent_discord_bot_token != ""
+      error_message = "agent_discord_bot_token is required when agent_manager_enabled is true."
+    }
+    precondition {
+      condition     = !var.agent_manager_enabled || var.agent_discord_channel_id != ""
+      error_message = "agent_discord_channel_id is required when agent_manager_enabled is true."
+    }
+    precondition {
+      condition     = !var.agent_manager_enabled || var.agent_anthropic_api_key != ""
+      error_message = "agent_anthropic_api_key is required when agent_manager_enabled is true."
+    }
+  }
 
   # Required secrets
   set_sensitive {

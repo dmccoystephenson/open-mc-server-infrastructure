@@ -3,7 +3,7 @@
 # =============================================================================
 
 variable "linode_token" {
-  description = "Linode API personal access token. Export as LINODE_TOKEN or pass via -var / tfvars."
+  description = "Linode API personal access token. Provide via -var / tfvars, or export as TF_VAR_linode_token."
   type        = string
   sensitive   = true
 }
