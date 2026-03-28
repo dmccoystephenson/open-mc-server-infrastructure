@@ -133,6 +133,108 @@ jobs:
         helm lint helm/omcsi --set secrets.rconPassword=ci --set secrets.adminPassword=ci
         echo "✓ Helm chart linted successfully"
         
+  helm-deploy-test:
+    name: Helm Deploy Smoke Test
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Helm
+      uses: azure/setup-helm@v4
+      with:
+        version: 'v3.17.0'
+
+    - name: Create kind cluster
+      uses: helm/kind-action@v1
+      with:
+        cluster_name: omcsi-ci
+
+    - name: Install Helm chart
+      run: |
+        echo "⎈ Installing OMCSI Helm chart into kind cluster..."
+        helm install omcsi ./helm/omcsi \
+          --set secrets.rconPassword=ci-test-rcon \
+          --set secrets.adminPassword=ci-test-admin \
+          --wait=false \
+          --timeout 60s
+        echo "✓ Helm install completed"
+
+    - name: Verify Deployments
+      run: |
+        echo "🔍 Verifying Deployments..."
+        for dep in minecraft-wrapper webapp nginx backup-manager alert-manager; do
+          kubectl get deployment "omcsi-${dep}" -o name
+          echo "  ✓ Deployment omcsi-${dep} exists"
+        done
+
+    - name: Verify Services
+      run: |
+        echo "🔍 Verifying Services..."
+        for svc in minecraft-wrapper minecraft-wrapper-internal webapp nginx backup-manager alert-manager; do
+          kubectl get service "omcsi-${svc}" -o name
+          echo "  ✓ Service omcsi-${svc} exists"
+        done
+
+    - name: Verify PVCs
+      run: |
+        echo "🔍 Verifying PersistentVolumeClaims..."
+        for pvc in mcserver webapp-data alert-manager-data backups; do
+          kubectl get pvc "omcsi-${pvc}" -o name
+          echo "  ✓ PVC omcsi-${pvc} exists"
+        done
+
+    - name: Verify Secret and ConfigMap
+      run: |
+        echo "🔍 Verifying Secret..."
+        kubectl get secret omcsi-secrets -o name
+        echo "  ✓ Secret omcsi-secrets exists"
+
+        echo "🔍 Verifying ConfigMap..."
+        kubectl get configmap omcsi-nginx-config -o name
+        echo "  ✓ ConfigMap omcsi-nginx-config exists"
+
+    - name: Verify Service types and ports
+      run: |
+        echo "🔍 Verifying Service specs..."
+
+        # Minecraft external service should be NodePort
+        MC_TYPE=$(kubectl get svc omcsi-minecraft-wrapper -o jsonpath='{.spec.type}')
+        echo "  minecraft-wrapper type: ${MC_TYPE}"
+        [ "${MC_TYPE}" = "NodePort" ] || { echo "FAIL: expected NodePort"; exit 1; }
+
+        # Internal service should be ClusterIP
+        INT_TYPE=$(kubectl get svc omcsi-minecraft-wrapper-internal -o jsonpath='{.spec.type}')
+        echo "  minecraft-wrapper-internal type: ${INT_TYPE}"
+        [ "${INT_TYPE}" = "ClusterIP" ] || { echo "FAIL: expected ClusterIP"; exit 1; }
+
+        # Internal service should expose RCON port
+        RCON_PORT=$(kubectl get svc omcsi-minecraft-wrapper-internal -o jsonpath='{.spec.ports[?(@.name=="rcon")].port}')
+        echo "  RCON port: ${RCON_PORT}"
+        [ "${RCON_PORT}" = "25575" ] || { echo "FAIL: expected RCON port 25575"; exit 1; }
+
+        # Nginx service should be LoadBalancer
+        NGINX_TYPE=$(kubectl get svc omcsi-nginx -o jsonpath='{.spec.type}')
+        echo "  nginx type: ${NGINX_TYPE}"
+        [ "${NGINX_TYPE}" = "LoadBalancer" ] || { echo "FAIL: expected LoadBalancer"; exit 1; }
+
+        echo "  ✓ All Service specs verified"
+
+    - name: Verify Helm release status
+      run: |
+        echo "⎈ Checking Helm release status..."
+        helm list
+        STATUS=$(helm status omcsi -o json | jq -r '.info.status')
+        echo "  Release status: ${STATUS}"
+        [ "${STATUS}" = "deployed" ] || { echo "FAIL: expected status 'deployed'"; exit 1; }
+        echo "  ✓ Helm release is in 'deployed' state"
+
+    - name: Cleanup
+      if: always()
+      run: |
+        helm uninstall omcsi --ignore-not-found || true
+
   security-scan:
     name: Security Scanning
     runs-on: ubuntu-latest
