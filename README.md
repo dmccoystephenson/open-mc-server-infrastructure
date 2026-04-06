@@ -227,7 +227,7 @@ minikube delete
 
 #### Deploying to Linode with Terraform
 
-The [`terraform/`](terraform/) directory contains Terraform configuration to provision a [Linode Kubernetes Engine (LKE)](https://www.linode.com/products/kubernetes/) cluster and deploy the OMCSI Helm chart in a single `terraform apply`.
+The [`terraform/linode/`](terraform/linode/) directory contains Terraform configuration to provision a [Linode Kubernetes Engine (LKE)](https://www.linode.com/products/kubernetes/) cluster and deploy the OMCSI Helm chart in a single `terraform apply`.
 
 **Prerequisites**
 - [Terraform](https://developer.hashicorp.com/terraform/install) >= 1.3
@@ -236,7 +236,7 @@ The [`terraform/`](terraform/) directory contains Terraform configuration to pro
 **Quick Start**
 
 ```bash
-cd terraform
+cd terraform/linode
 
 # Copy the example tfvars and fill in your values
 cp terraform.tfvars.example terraform.tfvars
@@ -247,7 +247,7 @@ terraform plan
 terraform apply
 ```
 
-After `apply` completes, a `kubeconfig.yaml` is written to the `terraform/` directory. Use it to interact with the cluster:
+After `apply` completes, a `kubeconfig.yaml` is written to the `terraform/linode/` directory. Use it to interact with the cluster:
 
 ```bash
 export KUBECONFIG=$(pwd)/kubeconfig.yaml
@@ -269,7 +269,7 @@ kubectl get pods -n omcsi
 | `agent_manager_enabled` | Enable the Discord AI bot | `false` |
 | `helm_values_file` | Path to additional Helm values file | `""` |
 
-See [`terraform/variables.tf`](terraform/variables.tf) for the full list including autoscaler and agent-manager options.
+See [`terraform/linode/variables.tf`](terraform/linode/variables.tf) for the full list including autoscaler and agent-manager options.
 
 **Tear Down**
 
@@ -278,6 +278,62 @@ terraform destroy
 ```
 
 This removes the LKE cluster, all Kubernetes resources, and associated Linode infrastructure.
+
+#### Deploying to AWS with Terraform
+
+The [`terraform/aws/`](terraform/aws/) directory contains Terraform configuration to provision an [Amazon EKS](https://aws.amazon.com/eks/) cluster (with VPC, subnets, and managed node group) and deploy the OMCSI Helm chart.
+
+**Prerequisites**
+- [Terraform](https://developer.hashicorp.com/terraform/install) >= 1.3
+- [AWS CLI v2](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html) configured (`aws configure`)
+- An AWS account with permissions to create EKS clusters, VPCs, IAM roles, and EC2 instances
+
+**Quick Start**
+
+```bash
+cd terraform/aws
+
+# Copy the example tfvars and fill in your values
+cp terraform.tfvars.example terraform.tfvars
+# Edit terraform.tfvars – set rcon_password, admin_password at minimum
+
+terraform init
+terraform plan
+terraform apply
+```
+
+After `apply` completes, configure `kubectl` to talk to the new cluster:
+
+```bash
+aws eks update-kubeconfig --region us-east-1 --name omcsi
+kubectl get pods -n omcsi
+```
+
+**Variables**
+
+| Variable | Description | Default |
+|---|---|---|
+| `aws_region` | AWS region for the EKS cluster | `us-east-1` |
+| `cluster_name` | Name for the EKS cluster | `omcsi` |
+| `cluster_version` | Kubernetes version | `1.31` |
+| `node_instance_type` | EC2 instance type for workers | `t3.large` |
+| `node_desired_count` | Desired number of worker nodes | `2` |
+| `node_min_count` | Minimum workers (autoscaling) | `1` |
+| `node_max_count` | Maximum workers (autoscaling) | `4` |
+| `rcon_password` | RCON password for Minecraft server | *(required)* |
+| `admin_password` | Admin password for web dashboard | *(required)* |
+| `agent_manager_enabled` | Enable the Discord AI bot | `false` |
+| `helm_values_file` | Path to additional Helm values file | `""` |
+
+See [`terraform/aws/variables.tf`](terraform/aws/variables.tf) for the full list including agent-manager options.
+
+**Tear Down**
+
+```bash
+terraform destroy
+```
+
+This removes the EKS cluster, node group, VPC, IAM roles, and all Kubernetes resources.
 
 ## Quick Start
 

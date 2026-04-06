@@ -248,23 +248,41 @@ jobs:
       with:
         terraform_version: '1.9.0'
 
-    - name: Terraform fmt check
+    - name: Terraform fmt check (Linode)
       run: |
-        echo "🔍 Checking Terraform formatting..."
-        terraform -chdir=terraform fmt -check -diff
-        echo "✓ Terraform files are properly formatted"
+        echo "🔍 Checking Terraform formatting (Linode)..."
+        terraform -chdir=terraform/linode fmt -check -diff
+        echo "✓ Linode Terraform files are properly formatted"
 
-    - name: Terraform init
+    - name: Terraform fmt check (AWS)
       run: |
-        echo "⚙️ Initializing Terraform..."
-        terraform -chdir=terraform init -backend=false
-        echo "✓ Terraform initialized"
+        echo "🔍 Checking Terraform formatting (AWS)..."
+        terraform -chdir=terraform/aws fmt -check -diff
+        echo "✓ AWS Terraform files are properly formatted"
 
-    - name: Terraform validate
+    - name: Terraform init (Linode)
       run: |
-        echo "✅ Validating Terraform configuration..."
-        terraform -chdir=terraform validate
-        echo "✓ Terraform configuration is valid"
+        echo "⚙️ Initializing Terraform (Linode)..."
+        terraform -chdir=terraform/linode init -backend=false
+        echo "✓ Linode Terraform initialized"
+
+    - name: Terraform validate (Linode)
+      run: |
+        echo "✅ Validating Terraform configuration (Linode)..."
+        terraform -chdir=terraform/linode validate
+        echo "✓ Linode Terraform configuration is valid"
+
+    - name: Terraform init (AWS)
+      run: |
+        echo "⚙️ Initializing Terraform (AWS)..."
+        terraform -chdir=terraform/aws init -backend=false
+        echo "✓ AWS Terraform initialized"
+
+    - name: Terraform validate (AWS)
+      run: |
+        echo "✅ Validating Terraform configuration (AWS)..."
+        terraform -chdir=terraform/aws validate
+        echo "✓ AWS Terraform configuration is valid"
 
   security-scan:
     name: Security Scanning
