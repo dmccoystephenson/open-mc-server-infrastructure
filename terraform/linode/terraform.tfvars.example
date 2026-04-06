@@ -4,7 +4,7 @@
 # Copy this file to terraform.tfvars and fill in the values.
 #   cp terraform.tfvars.example terraform.tfvars
 #
-# Alternatively, export LINODE_TOKEN as an environment variable and pass
+# Alternatively, export TF_VAR_linode_token as an environment variable and pass
 # the remaining values via -var flags:
 #   export TF_VAR_linode_token="your-linode-api-token"
 #   terraform apply -var rcon_password=changeme -var admin_password=strongpass

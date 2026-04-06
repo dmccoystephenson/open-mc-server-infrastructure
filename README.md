@@ -81,7 +81,7 @@ helm upgrade omcsi ./helm/omcsi --namespace omcsi \
   --set secrets.agentAnthropicApiKey=API_KEY
 
 # Upgrade an existing release
-helm upgrade omcsi ./helm/omcsi --namespace omcsi
+helm upgrade omcsi ./helm/omcsi --namespace omcsi --reuse-values
 
 # Uninstall
 helm uninstall omcsi --namespace omcsi

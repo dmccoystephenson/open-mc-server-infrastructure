@@ -37,6 +37,10 @@ resource "helm_release" "omcsi" {
   wait      = true
   timeout   = 600
 
+  depends_on = [
+    aws_eks_node_group.omcsi,
+  ]
+
   # Fail early when agent-manager is enabled but required secrets are missing
   lifecycle {
     precondition {
