@@ -30,14 +30,14 @@ spec:
           env:
             - name: BACKUP_DIRECTORY
               value: {{ .Values.backupManager.env.BACKUP_DIRECTORY | quote }}
-            - name: HOST_BACKUP_DIRECTORY
-              value: {{ .Values.backupManager.env.BACKUP_DIRECTORY | quote }}
             - name: BACKUP_MAX_SIZE_MB
               value: {{ .Values.backupManager.env.BACKUP_MAX_SIZE_MB | quote }}
             {{- if .Values.backupManager.env.BACKUP_SCHEDULE }}
             - name: BACKUP_SCHEDULE
               value: {{ .Values.backupManager.env.BACKUP_SCHEDULE | quote }}
             {{- end }}
+            - name: SPRING_TASK_SCHEDULING_ENABLED
+              value: {{ .Values.backupManager.env.SPRING_TASK_SCHEDULING_ENABLED | default "true" | quote }}
             - name: VOLUME_NAME
               value: {{ .Values.backupManager.env.VOLUME_NAME | quote }}
             - name: ALERTS_BACKUP_SUCCESS

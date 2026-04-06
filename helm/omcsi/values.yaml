@@ -168,11 +168,11 @@ backupManager:
     BACKUP_MAX_SIZE_MB: "10240"
     # NOTE: backup-manager relies on Docker CLI commands that are not available
     # inside the cluster, so scheduled backups will fail in Kubernetes.
-    # The chart omits this env var when empty so the app falls back to its
-    # built-in default. Set to a valid cron expression (e.g., "0 0 2 * * ?")
-    # only after adding native filesystem backup support or an external
-    # backup strategy.
+    # Keep BACKUP_SCHEDULE empty and leave SPRING_TASK_SCHEDULING_ENABLED as
+    # "false" to truly disable scheduling. Only change these after adding
+    # native filesystem backup support or an external backup strategy.
     BACKUP_SCHEDULE: ""
+    SPRING_TASK_SCHEDULING_ENABLED: "false"
     VOLUME_NAME: "mcserver"
     ALERTS_BACKUP_SUCCESS: "false"
     ALERTS_BACKUP_FAILURE: "false"

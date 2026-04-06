@@ -45,7 +45,7 @@ variable "node_max_count" {
 }
 
 variable "eks_public_access_cidrs" {
-  description = "CIDR blocks allowed to reach the EKS API public endpoint. Defaults to your current IP or a restricted range; set to [\"0.0.0.0/0\"] only if you need unrestricted access."
+  description = "CIDR blocks allowed to reach the EKS API public endpoint. Default is unrestricted (0.0.0.0/0). Restrict to your administrator IP range or VPC CIDR in production."
   type        = list(string)
   default     = ["0.0.0.0/0"]
 }
