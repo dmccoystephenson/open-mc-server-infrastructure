@@ -28,7 +28,7 @@ resource "aws_vpc" "omcsi" {
   }
 }
 
-resource "aws_subnet" "omcsi" {
+resource "aws_subnet" "public" {
   count = 2
 
   vpc_id                  = aws_vpc.omcsi.id
@@ -37,10 +37,43 @@ resource "aws_subnet" "omcsi" {
   map_public_ip_on_launch = true
 
   tags = {
-    Name                                        = "${var.cluster_name}-subnet-${count.index}"
+    Name                                        = "${var.cluster_name}-public-${count.index}"
     "kubernetes.io/cluster/${var.cluster_name}" = "shared"
     "kubernetes.io/role/elb"                    = "1"
   }
+}
+
+resource "aws_subnet" "private" {
+  count = 2
+
+  vpc_id            = aws_vpc.omcsi.id
+  cidr_block        = cidrsubnet(aws_vpc.omcsi.cidr_block, 8, count.index + 100)
+  availability_zone = data.aws_availability_zones.available.names[count.index]
+
+  tags = {
+    Name                                        = "${var.cluster_name}-private-${count.index}"
+    "kubernetes.io/cluster/${var.cluster_name}" = "shared"
+    "kubernetes.io/role/internal-elb"           = "1"
+  }
+}
+
+resource "aws_eip" "nat" {
+  domain = "vpc"
+
+  tags = {
+    Name = "${var.cluster_name}-nat-eip"
+  }
+}
+
+resource "aws_nat_gateway" "omcsi" {
+  allocation_id = aws_eip.nat.id
+  subnet_id     = aws_subnet.public[0].id
+
+  tags = {
+    Name = "${var.cluster_name}-nat"
+  }
+
+  depends_on = [aws_internet_gateway.omcsi]
 }
 
 resource "aws_internet_gateway" "omcsi" {
@@ -51,7 +84,7 @@ resource "aws_internet_gateway" "omcsi" {
   }
 }
 
-resource "aws_route_table" "omcsi" {
+resource "aws_route_table" "public" {
   vpc_id = aws_vpc.omcsi.id
 
   route {
@@ -60,15 +93,35 @@ resource "aws_route_table" "omcsi" {
   }
 
   tags = {
-    Name = "${var.cluster_name}-rt"
+    Name = "${var.cluster_name}-public-rt"
   }
 }
 
-resource "aws_route_table_association" "omcsi" {
+resource "aws_route_table_association" "public" {
   count = 2
 
-  subnet_id      = aws_subnet.omcsi[count.index].id
-  route_table_id = aws_route_table.omcsi.id
+  subnet_id      = aws_subnet.public[count.index].id
+  route_table_id = aws_route_table.public.id
+}
+
+resource "aws_route_table" "private" {
+  vpc_id = aws_vpc.omcsi.id
+
+  route {
+    cidr_block     = "0.0.0.0/0"
+    nat_gateway_id = aws_nat_gateway.omcsi.id
+  }
+
+  tags = {
+    Name = "${var.cluster_name}-private-rt"
+  }
+}
+
+resource "aws_route_table_association" "private" {
+  count = 2
+
+  subnet_id      = aws_subnet.private[count.index].id
+  route_table_id = aws_route_table.private.id
 }
 
 # =============================================================================
@@ -135,7 +188,9 @@ resource "aws_eks_cluster" "omcsi" {
   role_arn = aws_iam_role.eks_cluster.arn
 
   vpc_config {
-    subnet_ids = aws_subnet.omcsi[*].id
+    subnet_ids              = concat(aws_subnet.public[*].id, aws_subnet.private[*].id)
+    endpoint_public_access  = true
+    endpoint_private_access = true
   }
 
   depends_on = [
@@ -151,7 +206,7 @@ resource "aws_eks_node_group" "omcsi" {
   cluster_name    = aws_eks_cluster.omcsi.name
   node_group_name = "${var.cluster_name}-nodes"
   node_role_arn   = aws_iam_role.eks_nodes.arn
-  subnet_ids      = aws_subnet.omcsi[*].id
+  subnet_ids      = aws_subnet.private[*].id
   instance_types  = [var.node_instance_type]
 
   scaling_config {
