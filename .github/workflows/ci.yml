@@ -154,6 +154,12 @@ jobs:
     - name: Install Helm chart
       run: |
         echo "⎈ Installing OMCSI Helm chart into kind cluster..."
+        # --wait=false because the container images are not built/loaded into the
+        # kind cluster.  The test validates the chart produces valid Kubernetes
+        # API objects (Deployments, Services, PVCs, etc.) beyond what
+        # `helm lint` checks, not that the applications start.  Using --wait
+        # would require building all images and loading them into kind, which is
+        # out of scope for this smoke test.
         helm install omcsi ./helm/omcsi \
           --set secrets.rconPassword=ci-test-rcon \
           --set secrets.adminPassword=ci-test-admin \

@@ -44,6 +44,12 @@ variable "node_max_count" {
   default     = 4
 }
 
+variable "eks_public_access_cidrs" {
+  description = "CIDR blocks allowed to reach the EKS API public endpoint. Defaults to your current IP or a restricted range; set to [\"0.0.0.0/0\"] only if you need unrestricted access."
+  type        = list(string)
+  default     = ["0.0.0.0/0"]
+}
+
 # =============================================================================
 # OMCSI Helm chart variables
 # =============================================================================
