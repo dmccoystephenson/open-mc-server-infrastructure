@@ -254,23 +254,27 @@ secrets:
 # Persistence
 # ---------------------------------------------------------------------------
 persistence:
+  # Leave storageClass empty to use the cluster default StorageClass.
+  # Override with a provider-specific value (for example via a custom values
+  # file or --set) when required by your environment (e.g., "gp2" on AWS,
+  # "standard" on minikube, "linode-block-storage-retain" on Linode).
   mcserver:
     enabled: true
-    storageClass: "gp2"
+    storageClass: ""
     accessMode: ReadWriteOnce
     size: 10Gi
   webappData:
     enabled: true
-    storageClass: "gp2"
+    storageClass: ""
     accessMode: ReadWriteOnce
     size: 1Gi
   alertManagerData:
     enabled: true
-    storageClass: "gp2"
+    storageClass: ""
     accessMode: ReadWriteOnce
     size: 1Gi
   backups:
     enabled: true
-    storageClass: "gp2"
+    storageClass: ""
     accessMode: ReadWriteOnce
     size: 20Gi

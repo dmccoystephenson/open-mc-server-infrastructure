@@ -57,6 +57,9 @@ resource "aws_subnet" "private" {
   }
 }
 
+# Single NAT Gateway — acceptable for a game-server workload where cross-AZ
+# resilience is not critical. For production HA, create one NAT Gateway per AZ
+# and associate each private route table with the NAT in the same AZ.
 resource "aws_eip" "nat" {
   domain = "vpc"
 

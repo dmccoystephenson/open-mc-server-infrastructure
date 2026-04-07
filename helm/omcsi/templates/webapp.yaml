@@ -6,6 +6,9 @@ metadata:
     {{- include "omcsi.labels" . | nindent 4 }}
     {{- include "omcsi.selectorLabels" (dict "root" . "component" "webapp") | nindent 4 }}
 spec:
+  {{- if and .Values.persistence.mcserver.enabled (gt (int .Values.webapp.replicaCount) 1) }}
+  {{- fail "webapp.replicaCount must be 1 when persistence.mcserver.enabled is true (ReadWriteOnce PVC cannot be shared)" }}
+  {{- end }}
   replicas: {{ .Values.webapp.replicaCount }}
   strategy:
     type: Recreate

@@ -6,6 +6,9 @@ metadata:
     {{- include "omcsi.labels" . | nindent 4 }}
     {{- include "omcsi.selectorLabels" (dict "root" . "component" "backup-manager") | nindent 4 }}
 spec:
+  {{- if and .Values.persistence.mcserver.enabled (gt (int .Values.backupManager.replicaCount) 1) }}
+  {{- fail "backupManager.replicaCount must be 1 when persistence.mcserver.enabled is true (ReadWriteOnce PVC cannot be shared)" }}
+  {{- end }}
   replicas: {{ .Values.backupManager.replicaCount }}
   strategy:
     type: Recreate
