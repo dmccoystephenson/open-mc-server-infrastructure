@@ -256,21 +256,21 @@ secrets:
 persistence:
   mcserver:
     enabled: true
-    storageClass: ""
+    storageClass: "gp2"
     accessMode: ReadWriteOnce
     size: 10Gi
   webappData:
     enabled: true
-    storageClass: ""
+    storageClass: "gp2"
     accessMode: ReadWriteOnce
     size: 1Gi
   alertManagerData:
     enabled: true
-    storageClass: ""
+    storageClass: "gp2"
     accessMode: ReadWriteOnce
     size: 1Gi
   backups:
     enabled: true
-    storageClass: ""
+    storageClass: "gp2"
     accessMode: ReadWriteOnce
     size: 20Gi
