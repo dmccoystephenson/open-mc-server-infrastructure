@@ -21,9 +21,9 @@ variable "region" {
 }
 
 variable "k8s_version" {
-  description = "Kubernetes version for the LKE cluster."
+  description = "Kubernetes version for the LKE cluster. Must be a version currently supported by Linode. Check available versions at https://api.linode.com/v4/lke/versions or via `linode-cli lke versions-list`."
   type        = string
-  default     = "1.31"
+  default     = "1.34"
 }
 
 variable "node_type" {
