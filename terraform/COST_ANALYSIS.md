@@ -1,0 +1,80 @@
+# Kubernetes Cost Analysis: LKE (Linode) vs EKS (AWS)
+
+This document summarizes the monthly cost difference between the two supported Terraform deployment targets: Linode Kubernetes Engine (LKE) and AWS Elastic Kubernetes Service (EKS).
+
+## TL;DR
+
+For equivalent workloads, **LKE is roughly 2–3× cheaper than EKS** at small-to-medium cluster sizes. The primary driver is EKS's mandatory $73/month control plane fee per cluster, which LKE does not charge.
+
+---
+
+## Scenario 1: Small Dev/Staging Cluster (3 nodes)
+
+| Component | LKE (Linode) | EKS (AWS) |
+|---|---|---|
+| Control plane | **$0** (free) | **$73** ($0.10/hr) |
+| 3× worker nodes (4 GB RAM, 2 vCPU) | ~$72 (3× $24/mo shared) | ~$90 (3× t3.medium) |
+| Load balancer | $10 (NodeBalancer) | ~$17 (ALB) |
+| NAT Gateway | — | ~$33 (1× NAT @ $0.045/hr) |
+| **Estimated total** | **~$82/mo** | **~$213/mo** |
+
+## Scenario 2: Small Production Cluster (10 nodes, HA)
+
+| Component | LKE (Linode) | EKS (AWS) |
+|---|---|---|
+| Control plane | **$60** (HA upgrade) | **$73** |
+| 10× worker nodes | ~$240 (10× $24/mo) | ~$560 (10× m5.large) |
+| Load balancer | $10 | ~$17 |
+| NAT Gateways (multi-AZ) | — | ~$99 (3×) |
+| Storage (EBS/block) | ~$20 | ~$30 |
+| **Estimated total** | **~$330/mo** | **~$779/mo** |
+
+---
+
+## Key Cost Differences
+
+### Control Plane Fee
+- **LKE**: Free by default. HA upgrade is $60/month per cluster.
+- **EKS**: $0.10/hour ($73/month) per cluster, regardless of workload. If a cluster falls behind on Kubernetes version upgrades and enters extended support, this jumps to $0.60/hour ($438/month) per cluster.
+
+### Hidden AWS Costs
+AWS clusters accrue several additional costs that have no Linode equivalent:
+
+- **NAT Gateway**: Required for worker nodes in private subnets. Each gateway costs ~$33/month plus $0.045/GB of data processed. Multi-AZ setups multiply this cost.
+- **Data transfer**: AWS charges $0.09/GB for outbound internet traffic (first 100 GB/month free). Linode includes generous transfer pools (e.g., 2 TB/month per node).
+- **EBS volumes**: GP2/GP3 storage is ~$0.08–0.10/GB/month. Linode block storage is $0.10/GB/month but includes more baseline IOPS.
+- **CloudWatch / logging**: Monitoring and log ingestion on AWS incur per-GB charges. Linode does not charge separately for basic monitoring.
+
+### Worker Node Pricing
+Linode shared instances are significantly cheaper than AWS on-demand instances for equivalent specs. AWS Reserved Instances or Spot can close the gap but add commitment or reliability trade-offs.
+
+| Spec | Linode (Shared) | AWS (On-Demand) |
+|---|---|---|
+| 2 vCPU / 4 GB | $24/mo | ~$30/mo (t3.medium) |
+| 4 vCPU / 8 GB | $48/mo | ~$61/mo (t3.large) |
+| 8 vCPU / 16 GB | $96/mo | ~$122/mo (t3.xlarge) |
+
+---
+
+## When to Choose Each Provider
+
+### Choose LKE (Linode) when:
+- Cost is the primary concern
+- Running a single game server or small community deployment
+- You want a simpler networking model (no NAT Gateway management)
+- Predictable monthly billing is important
+
+### Choose EKS (AWS) when:
+- You need deep integration with the AWS ecosystem (IAM, RDS, S3, CloudFront, etc.)
+- Multi-region or multi-AZ high availability is required
+- Your organization already has AWS infrastructure and expertise
+- You need fine-grained IAM policies (IRSA) for workload identity
+
+---
+
+## Notes
+
+- All prices are approximate and based on publicly listed rates as of 2025. Actual costs may vary by region and usage.
+- AWS costs can be reduced with Reserved Instances, Savings Plans, or Spot Instances — but these require upfront commitment or accept interruption risk.
+- Linode pricing is generally flat and predictable; there are no per-GB data processing fees for NAT or load balancers.
+- This analysis covers infrastructure costs only. Operational costs (staff time, tooling) are not included.
