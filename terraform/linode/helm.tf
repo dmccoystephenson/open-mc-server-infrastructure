@@ -60,6 +60,76 @@ resource "helm_release" "omcsi" {
     value = var.admin_password
   }
 
+  # Storage class for all PVCs
+  set {
+    name  = "persistence.mcserver.storageClass"
+    value = var.storage_class
+  }
+
+  set {
+    name  = "persistence.webappData.storageClass"
+    value = var.storage_class
+  }
+
+  set {
+    name  = "persistence.alertManagerData.storageClass"
+    value = var.storage_class
+  }
+
+  set {
+    name  = "persistence.backups.storageClass"
+    value = var.storage_class
+  }
+
+  # Image registry overrides (when image_registry is set)
+  dynamic "set" {
+    for_each = var.image_registry != "" ? [1] : []
+    content {
+      name  = "minecraftWrapper.image.repository"
+      value = "${var.image_registry}/open-mc-server"
+    }
+  }
+
+  dynamic "set" {
+    for_each = var.image_registry != "" ? [1] : []
+    content {
+      name  = "webapp.image.repository"
+      value = "${var.image_registry}/open-mc-server-webapp"
+    }
+  }
+
+  dynamic "set" {
+    for_each = var.image_registry != "" ? [1] : []
+    content {
+      name  = "nginx.image.repository"
+      value = "${var.image_registry}/open-mc-server-nginx"
+    }
+  }
+
+  dynamic "set" {
+    for_each = var.image_registry != "" ? [1] : []
+    content {
+      name  = "backupManager.image.repository"
+      value = "${var.image_registry}/open-mc-server-backup-manager"
+    }
+  }
+
+  dynamic "set" {
+    for_each = var.image_registry != "" ? [1] : []
+    content {
+      name  = "alertManager.image.repository"
+      value = "${var.image_registry}/open-mc-server-alert-manager"
+    }
+  }
+
+  dynamic "set" {
+    for_each = var.image_registry != "" ? [1] : []
+    content {
+      name  = "agentManager.image.repository"
+      value = "${var.image_registry}/open-mc-server-agent-manager"
+    }
+  }
+
   # Agent-manager (optional)
   set {
     name  = "agentManager.enabled"

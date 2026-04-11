@@ -50,7 +50,7 @@ OMCSI ships with a Helm chart in [`helm/omcsi/`](helm/omcsi/) for deploying to a
 **Prerequisites**
 - A running Kubernetes cluster (v1.24+)
 - [Helm](https://helm.sh/docs/intro/install/) 3.x
-- Container images built and accessible to the cluster (e.g., loaded into a local registry or a registry the cluster can pull from)
+- Container images built and pushed to a registry the cluster can pull from (see [Building and Pushing Images](#building-and-pushing-images) below)
 
 **Quick Start**
 ```bash
@@ -58,6 +58,8 @@ OMCSI ships with a Helm chart in [`helm/omcsi/`](helm/omcsi/) for deploying to a
 helm lint helm/omcsi --set secrets.rconPassword=x --set secrets.adminPassword=x
 
 # Install (rconPassword and adminPassword are required)
+# NOTE: For cloud clusters you must also set image repositories and storageClass.
+# See "Building and Pushing Images" and "Storage Classes" sections below.
 helm install omcsi ./helm/omcsi --namespace omcsi --create-namespace \
   --set secrets.rconPassword=changeme \
   --set secrets.adminPassword=strongpassword
@@ -99,6 +101,95 @@ The chart exposes most application-level `sample.env` variables through `values.
 - The agent-manager is disabled by default and can be enabled via `agentManager.enabled=true`
 - Pods sharing the mcserver PVC use pod affinity to co-locate on the same node (required for `ReadWriteOnce` volumes)
 - The backup-manager currently requires Docker CLI access for tar operations — in Kubernetes, consider using VolumeSnapshots or a sidecar CronJob for backups (see `values.yaml` for details)
+
+#### Building and Pushing Images
+
+The default image names in `values.yaml` (e.g., `open-mc-server`, `open-mc-server-webapp`) are local build names and **do not exist on any public registry**. Before deploying to a cloud cluster, you must build the images and push them to a container registry your cluster can pull from.
+
+**1. Build all images**
+
+```bash
+docker build -t open-mc-server .
+docker build -t open-mc-server-webapp ./web-app
+docker build -t open-mc-server-nginx ./nginx
+docker build -t open-mc-server-backup-manager ./backup-manager
+docker build -t open-mc-server-alert-manager ./alert-manager
+docker build -t open-mc-server-agent-manager ./agent-manager
+```
+
+> **Note:** The `open-mc-server` image builds Spigot from source, which can take 10–15 minutes on the first run.
+
+**2. Tag and push to your registry**
+
+Replace `YOUR_REGISTRY` with your Docker Hub username, ECR URI, or other registry:
+
+```bash
+REGISTRY=YOUR_REGISTRY
+
+for img in open-mc-server open-mc-server-webapp open-mc-server-nginx \
+           open-mc-server-backup-manager open-mc-server-alert-manager \
+           open-mc-server-agent-manager; do
+  docker tag "$img:latest" "$REGISTRY/$img:latest"
+  docker push "$REGISTRY/$img:latest"
+done
+```
+
+**3. Override image repositories at install time**
+
+```bash
+REGISTRY=YOUR_REGISTRY
+
+helm install omcsi ./helm/omcsi --namespace omcsi --create-namespace \
+  --set secrets.rconPassword=changeme \
+  --set secrets.adminPassword=strongpassword \
+  --set minecraftWrapper.image.repository=$REGISTRY/open-mc-server \
+  --set webapp.image.repository=$REGISTRY/open-mc-server-webapp \
+  --set nginx.image.repository=$REGISTRY/open-mc-server-nginx \
+  --set backupManager.image.repository=$REGISTRY/open-mc-server-backup-manager \
+  --set alertManager.image.repository=$REGISTRY/open-mc-server-alert-manager
+```
+
+When using Terraform, set the `image_registry` variable instead:
+
+```hcl
+image_registry = "YOUR_REGISTRY"
+```
+
+#### Storage Classes
+
+The Helm chart defaults all PVC `storageClass` values to an empty string, which uses the cluster's default StorageClass. If your cluster does **not** have a default StorageClass configured, PVCs will remain in `Pending` state and pods will fail to schedule.
+
+**Common StorageClass values by provider:**
+
+| Provider | StorageClass | Notes |
+|---|---|---|
+| AWS EKS | `gp2` or `gp3` | EBS volumes; `gp2` is the most common default |
+| Linode LKE | `linode-block-storage-retain` | Linode Block Storage |
+| Minikube | `standard` | Pre-configured as default |
+| GKE | `standard` or `premium-rwo` | Usually configured as default |
+
+**Override at install time:**
+
+```bash
+helm install omcsi ./helm/omcsi --namespace omcsi --create-namespace \
+  --set secrets.rconPassword=changeme \
+  --set secrets.adminPassword=strongpassword \
+  --set persistence.mcserver.storageClass=gp2 \
+  --set persistence.webappData.storageClass=gp2 \
+  --set persistence.alertManagerData.storageClass=gp2 \
+  --set persistence.backups.storageClass=gp2
+```
+
+When using Terraform, the `storage_class` variable is set automatically (defaults to `gp2` on AWS, `linode-block-storage-retain` on Linode).
+
+**Troubleshooting**
+
+| Symptom | Likely cause | Fix |
+|---|---|---|
+| Pods stuck in `ImagePullBackOff` | Images not pushed to a registry the cluster can access | Build and push images to your container registry; set image repository overrides via `--set` or `image_registry` in Terraform (see [Building and Pushing Images](#building-and-pushing-images)) |
+| PVC stuck in `Pending` / "unbound immediate PersistentVolumeClaims" | No default StorageClass on the cluster | Set `persistence.*.storageClass` to a valid StorageClass for your provider (see [Storage Classes](#storage-classes)) |
+| Pods stuck in `Pending` (resources) | Insufficient CPU/memory on cluster nodes | Scale up worker nodes or reduce resource requests in `values.yaml` |
+| Pods `CrashLoopBackOff` | Application startup failure | Check logs with `kubectl logs -n omcsi <pod-name>` |
 
 #### Port Forwarding
 
@@ -289,10 +380,14 @@ kubectl get pods -n omcsi
 | `node_count` | Number of worker nodes | `3` |
 | `rcon_password` | RCON password for Minecraft server | *(required)* |
 | `admin_password` | Admin password for web dashboard | *(required)* |
+| `image_registry` | Container image registry prefix (e.g., `your-dockerhub-user`) | `""` |
+| `storage_class` | Kubernetes StorageClass for PVCs | `linode-block-storage-retain` |
 | `agent_manager_enabled` | Enable the Discord AI bot | `false` |
 | `helm_values_file` | Path to additional Helm values file | `""` |
 
 See [`terraform/linode/variables.tf`](terraform/linode/variables.tf) for the full list including autoscaler and agent-manager options.
+
+> **Important:** You must build and push OMCSI images to a container registry before deploying. Set `image_registry` to your registry prefix (see [Building and Pushing Images](#building-and-pushing-images)).
 
 **Tear Down**
 
@@ -345,10 +440,14 @@ kubectl get pods -n omcsi
 | `node_max_count` | Maximum workers (autoscaling) | `4` |
 | `rcon_password` | RCON password for Minecraft server | *(required)* |
 | `admin_password` | Admin password for web dashboard | *(required)* |
+| `image_registry` | Container image registry prefix (e.g., `your-dockerhub-user`) | `""` |
+| `storage_class` | Kubernetes StorageClass for PVCs | `gp2` |
 | `agent_manager_enabled` | Enable the Discord AI bot | `false` |
 | `helm_values_file` | Path to additional Helm values file | `""` |
 
 See [`terraform/aws/variables.tf`](terraform/aws/variables.tf) for the full list including agent-manager options.
+
+> **Important:** You must build and push OMCSI images to a container registry before deploying. Set `image_registry` to your registry prefix (see [Building and Pushing Images](#building-and-pushing-images)).
 
 **Tear Down**
 

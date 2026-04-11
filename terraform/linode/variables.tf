@@ -80,6 +80,18 @@ variable "admin_password" {
   sensitive   = true
 }
 
+variable "image_registry" {
+  description = "Container image registry/repository prefix for OMCSI images (e.g., 'your-dockerhub-user' or 'registry.example.com/omcsi'). When set, all image repositories are overridden to <registry>/open-mc-server-*. Leave empty to use the default values from the Helm chart."
+  type        = string
+  default     = ""
+}
+
+variable "storage_class" {
+  description = "Kubernetes StorageClass for PVCs. Defaults to 'linode-block-storage-retain'. Set to a different class if your cluster uses a custom StorageClass."
+  type        = string
+  default     = "linode-block-storage-retain"
+}
+
 variable "helm_values_file" {
   description = "Optional path to a custom Helm values file to merge. Leave empty to use defaults."
   type        = string
