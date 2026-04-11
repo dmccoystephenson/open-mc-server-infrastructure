@@ -60,7 +60,7 @@ minecraftWrapper:
     GAMEMODE: "survival"
     PVP_ENABLED: "true"
     ONLINE_MODE: "true"
-    JAVA_OPTS: "-Xmx7G -Xms4G"
+    JAVA_OPTS: "-Xmx6G -Xms4G"
     PLUGINS_DIRECTORY: "/mcserver/plugins"
     # Alert toggles
     ALERTS_SERVER_START: "true"
