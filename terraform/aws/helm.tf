@@ -43,6 +43,7 @@ resource "helm_release" "omcsi" {
 
   depends_on = [
     aws_eks_node_group.omcsi,
+    aws_eks_addon.ebs_csi_driver,
   ]
 
   # Fail early when agent-manager is enabled but required secrets are missing

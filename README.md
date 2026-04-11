@@ -190,6 +190,7 @@ When using Terraform, the `storage_class` variable is set automatically (default
 |---|---|---|
 | Pods stuck in `ImagePullBackOff` | Images not pushed to a registry the cluster can access | Build and push images to your container registry; set image repository overrides via `--set` or `image_registry` in Terraform (see [Building and Pushing Images](#building-and-pushing-images)) |
 | PVC stuck in `Pending` / "unbound immediate PersistentVolumeClaims" | No default StorageClass on the cluster | Set `persistence.*.storageClass` to a valid StorageClass for your provider (see [Storage Classes](#storage-classes)) |
+| `VolumeBinding: context deadline exceeded` | EBS CSI driver add-on not installed (required on EKS 1.23+) | The AWS Terraform module installs the EBS CSI driver automatically; if deploying manually, install the `aws-ebs-csi-driver` EKS add-on |
 | Pods stuck in `Pending` (resources) | Insufficient CPU/memory on cluster nodes | Scale up worker nodes or reduce resource requests in `values.yaml` |
 | Pods `CrashLoopBackOff` | Application startup failure | Check logs with `kubectl logs -n omcsi <pod-name>` |
 
