@@ -81,9 +81,14 @@ variable "admin_password" {
 }
 
 variable "image_registry" {
-  description = "Container image registry/repository prefix for OMCSI images (e.g., 'your-dockerhub-user' or 'registry.example.com/omcsi'). When set, all image repositories are overridden to <registry>/open-mc-server-*. Defaults to 'dmccoystephenson' (Docker Hub)."
+  description = "Container image registry/repository prefix for OMCSI images. Provide only the prefix portion, for example 'your-dockerhub-user' or 'registry.example.com/omcsi'. Do not include a trailing '/', whitespace, or a full image name/tag. When set, all image repositories are overridden to <registry>/open-mc-server-*. Defaults to 'dmccoystephenson' (Docker Hub)."
   type        = string
   default     = "dmccoystephenson"
+
+  validation {
+    condition     = length(regexall("\\s", var.image_registry)) == 0 && !endswith(var.image_registry, "/")
+    error_message = "image_registry must be a registry/repository prefix only, with no whitespace and no trailing '/'. Examples: 'your-dockerhub-user' or 'registry.example.com/omcsi'."
+  }
 }
 
 variable "storage_class" {

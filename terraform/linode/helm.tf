@@ -2,27 +2,28 @@
 # Kubernetes + Helm providers – configured from the LKE kubeconfig
 # =============================================================================
 
+locals {
+  kubeconfig          = yamldecode(base64decode(linode_lke_cluster.omcsi.kubeconfig))
+  use_custom_registry = var.image_registry != "" ? [1] : []
+}
+
 provider "kubernetes" {
-  host                   = yamldecode(base64decode(linode_lke_cluster.omcsi.kubeconfig)).clusters[0].cluster.server
-  token                  = yamldecode(base64decode(linode_lke_cluster.omcsi.kubeconfig)).users[0].user.token
-  cluster_ca_certificate = base64decode(yamldecode(base64decode(linode_lke_cluster.omcsi.kubeconfig)).clusters[0].cluster["certificate-authority-data"])
+  host                   = local.kubeconfig.clusters[0].cluster.server
+  token                  = local.kubeconfig.users[0].user.token
+  cluster_ca_certificate = base64decode(local.kubeconfig.clusters[0].cluster["certificate-authority-data"])
 }
 
 provider "helm" {
   kubernetes {
-    host                   = yamldecode(base64decode(linode_lke_cluster.omcsi.kubeconfig)).clusters[0].cluster.server
-    token                  = yamldecode(base64decode(linode_lke_cluster.omcsi.kubeconfig)).users[0].user.token
-    cluster_ca_certificate = base64decode(yamldecode(base64decode(linode_lke_cluster.omcsi.kubeconfig)).clusters[0].cluster["certificate-authority-data"])
+    host                   = local.kubeconfig.clusters[0].cluster.server
+    token                  = local.kubeconfig.users[0].user.token
+    cluster_ca_certificate = base64decode(local.kubeconfig.clusters[0].cluster["certificate-authority-data"])
   }
 }
 
 # =============================================================================
 # Deploy the OMCSI Helm chart
 # =============================================================================
-
-locals {
-  use_custom_registry = var.image_registry != "" ? [1] : []
-}
 
 resource "kubernetes_namespace" "omcsi" {
   metadata {
