@@ -100,6 +100,26 @@ The chart exposes most application-level `sample.env` variables through `values.
 - Pods sharing the mcserver PVC use pod affinity to co-locate on the same node (required for `ReadWriteOnce` volumes)
 - The backup-manager currently requires Docker CLI access for tar operations — in Kubernetes, consider using VolumeSnapshots or a sidecar CronJob for backups (see `values.yaml` for details)
 
+#### Port Forwarding
+
+Use `kubectl port-forward` to access OMCSI services on `localhost` without exposing them via a `LoadBalancer` or `NodePort`. This is useful for quick local testing or when your cluster doesn't have external access configured.
+
+```bash
+# Minecraft server – forward localhost:25565 to the minecraft-wrapper service
+kubectl port-forward svc/omcsi-minecraft-wrapper -n omcsi 25565:25565
+# Connect your Minecraft client to localhost:25565
+
+# Web dashboard via nginx – forward localhost:8443 to the nginx HTTPS port
+kubectl port-forward svc/omcsi-nginx -n omcsi 8443:443
+# Open https://localhost:8443 in your browser
+
+# Run port-forwards in the background by appending &
+kubectl port-forward svc/omcsi-minecraft-wrapper -n omcsi 25565:25565 &
+kubectl port-forward svc/omcsi-nginx -n omcsi 8443:443 &
+```
+
+> **Tip:** If port 25565 is already in use on your machine, pick a different local port: `kubectl port-forward svc/omcsi-minecraft-wrapper -n omcsi 25566:25565` and connect to `localhost:25566`.
+
 #### Testing with Minikube
 
 [Minikube](https://minikube.sigs.k8s.io/) provides a single-node Kubernetes cluster on your local machine, ideal for testing the Helm chart before deploying to a production cluster.
@@ -183,6 +203,9 @@ kubectl get svc -n omcsi omcsi-nginx
 # Connect to the EXTERNAL-IP shown for the nginx service
 
 # Alternatively, use port-forwarding for quick access
+kubectl port-forward svc/omcsi-minecraft-wrapper -n omcsi 25565:25565 &
+# Connect your Minecraft client to localhost:25565
+
 kubectl port-forward svc/omcsi-nginx -n omcsi 8443:443 &
 # Dashboard at https://localhost:8443
 ```
