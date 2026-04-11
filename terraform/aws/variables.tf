@@ -15,9 +15,9 @@ variable "cluster_name" {
 }
 
 variable "cluster_version" {
-  description = "Kubernetes version for the EKS cluster."
+  description = "Kubernetes version for the EKS cluster. Must be a version currently supported by AWS EKS. Check available versions at https://docs.aws.amazon.com/eks/latest/userguide/kubernetes-versions.html or via `aws eks describe-addon-versions --query 'addons[0].addonVersions[0].compatibilities[*].clusterVersion' --output text`."
   type        = string
-  default     = "1.31"
+  default     = "1.34"
 }
 
 variable "node_instance_type" {
