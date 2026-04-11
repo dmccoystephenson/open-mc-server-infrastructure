@@ -6,8 +6,8 @@ metadata:
     {{- include "omcsi.labels" . | nindent 4 }}
     {{- include "omcsi.selectorLabels" (dict "root" . "component" "backup-manager") | nindent 4 }}
 spec:
-  {{- if and .Values.persistence.mcserver.enabled (gt (int .Values.backupManager.replicaCount) 1) }}
-  {{- fail "backupManager.replicaCount must be 1 when persistence.mcserver.enabled is true (ReadWriteOnce PVC cannot be shared)" }}
+  {{- if and (gt (int .Values.backupManager.replicaCount) 1) (or (and .Values.persistence.mcserver.enabled (eq .Values.persistence.mcserver.accessMode "ReadWriteOnce")) (and .Values.persistence.backups.enabled (eq .Values.persistence.backups.accessMode "ReadWriteOnce"))) }}
+  {{- fail "backupManager.replicaCount must be 1 when a mounted PVC uses ReadWriteOnce access mode (persistence.mcserver or persistence.backups)" }}
   {{- end }}
   replicas: {{ .Values.backupManager.replicaCount }}
   strategy:
