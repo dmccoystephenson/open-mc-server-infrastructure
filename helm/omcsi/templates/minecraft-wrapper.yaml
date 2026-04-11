@@ -6,10 +6,9 @@ metadata:
     {{- include "omcsi.labels" . | nindent 4 }}
     {{- include "omcsi.selectorLabels" (dict "root" . "component" "minecraft-wrapper") | nindent 4 }}
 spec:
-  {{- if and (gt (int .Values.minecraftWrapper.replicaCount) 1) .Values.persistence.mcserver.enabled (eq .Values.persistence.mcserver.accessMode "ReadWriteOnce") }}
-  {{- fail "minecraftWrapper.replicaCount must be 1 when persistence.mcserver uses ReadWriteOnce access mode" }}
-  {{- end }}
-  replicas: {{ .Values.minecraftWrapper.replicaCount }}
+  # Minecraft server must run as a single instance — world data cannot be
+  # shared safely across replicas.
+  replicas: 1
   strategy:
     type: Recreate
   selector:

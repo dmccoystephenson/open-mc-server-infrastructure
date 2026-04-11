@@ -27,17 +27,18 @@ global:
 # ---------------------------------------------------------------------------
 minecraftWrapper:
   image:
-    repository: open-mc-server
+    repository: dmccoystephenson/open-mc-server
     tag: latest
     pullPolicy: IfNotPresent
-  replicaCount: 1
+  # replicaCount is fixed at 1 — a single Minecraft server instance must own
+  # the world data exclusively.  The value is hardcoded in the template.
   resources:
     requests:
+      cpu: "500m"
+      memory: 2Gi
+    limits:
       cpu: "2"
       memory: 4Gi
-    limits:
-      cpu: "4"
-      memory: 8Gi
   service:
     # External service exposes only the Minecraft game port.
     type: NodePort
@@ -79,7 +80,7 @@ minecraftWrapper:
 # ---------------------------------------------------------------------------
 webapp:
   image:
-    repository: open-mc-server-webapp
+    repository: dmccoystephenson/open-mc-server-webapp
     tag: latest
     pullPolicy: IfNotPresent
   replicaCount: 1
@@ -113,7 +114,7 @@ webapp:
 # ---------------------------------------------------------------------------
 nginx:
   image:
-    repository: open-mc-server-nginx
+    repository: dmccoystephenson/open-mc-server-nginx
     tag: latest
     pullPolicy: IfNotPresent
   replicaCount: 1
@@ -149,7 +150,7 @@ nginx:
 # ---------------------------------------------------------------------------
 backupManager:
   image:
-    repository: open-mc-server-backup-manager
+    repository: dmccoystephenson/open-mc-server-backup-manager
     tag: latest
     pullPolicy: IfNotPresent
   replicaCount: 1
@@ -182,7 +183,7 @@ backupManager:
 # ---------------------------------------------------------------------------
 alertManager:
   image:
-    repository: open-mc-server-alert-manager
+    repository: dmccoystephenson/open-mc-server-alert-manager
     tag: latest
     pullPolicy: IfNotPresent
   replicaCount: 1
@@ -206,7 +207,7 @@ alertManager:
 agentManager:
   enabled: false
   image:
-    repository: open-mc-server-agent-manager
+    repository: dmccoystephenson/open-mc-server-agent-manager
     tag: latest
     pullPolicy: IfNotPresent
   replicaCount: 1

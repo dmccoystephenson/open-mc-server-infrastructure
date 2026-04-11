@@ -24,11 +24,9 @@ node_count    = 3
 rcon_password  = "changeme"
 admin_password = "strongpassword"
 
-# Container image registry – set this to your Docker Hub username or registry
-# URI after building and pushing images (see README "Building and Pushing Images").
-# Example: "your-dockerhub-username" → images pulled as
-#   your-dockerhub-username/open-mc-server:latest, etc.
-# image_registry = "your-dockerhub-username"
+# Container image registry – defaults to "dmccoystephenson" (Docker Hub).
+# Override if you host images in a private registry.
+# image_registry = "dmccoystephenson"
 
 # StorageClass for PVCs — defaults to "linode-block-storage-retain". Override
 # if your cluster uses a different StorageClass.

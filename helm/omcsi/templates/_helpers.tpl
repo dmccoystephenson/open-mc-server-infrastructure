@@ -48,13 +48,15 @@ Usage: include "omcsi.mcserverAffinity" .
 {{- define "omcsi.mcserverAffinity" -}}
 affinity:
   podAffinity:
-    requiredDuringSchedulingIgnoredDuringExecution:
-      - labelSelector:
-          matchLabels:
-            app.kubernetes.io/name: {{ include "omcsi.name" . }}
-            app.kubernetes.io/instance: {{ .Release.Name }}
-            app.kubernetes.io/component: minecraft-wrapper
-        topologyKey: kubernetes.io/hostname
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: {{ include "omcsi.name" . }}
+              app.kubernetes.io/instance: {{ .Release.Name }}
+              app.kubernetes.io/component: minecraft-wrapper
+          topologyKey: kubernetes.io/hostname
 {{- end }}
 
 {{/*

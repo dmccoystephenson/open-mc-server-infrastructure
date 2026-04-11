@@ -50,7 +50,7 @@ OMCSI ships with a Helm chart in [`helm/omcsi/`](helm/omcsi/) for deploying to a
 **Prerequisites**
 - A running Kubernetes cluster (v1.24+)
 - [Helm](https://helm.sh/docs/intro/install/) 3.x
-- Container images built and pushed to a registry the cluster can pull from (see [Building and Pushing Images](#building-and-pushing-images) below)
+- Container images available on Docker Hub under `dmccoystephenson` (the default). If using custom images, see [Building and Pushing Images](#building-and-pushing-images) below
 
 **Quick Start**
 ```bash
@@ -58,8 +58,8 @@ OMCSI ships with a Helm chart in [`helm/omcsi/`](helm/omcsi/) for deploying to a
 helm lint helm/omcsi --set secrets.rconPassword=x --set secrets.adminPassword=x
 
 # Install (rconPassword and adminPassword are required)
-# NOTE: For cloud clusters you must also set image repositories and storageClass.
-# See "Building and Pushing Images" and "Storage Classes" sections below.
+# Images default to Docker Hub under 'dmccoystephenson'.
+# See "Storage Classes" section below for cloud deployments.
 helm install omcsi ./helm/omcsi --namespace omcsi --create-namespace \
   --set secrets.rconPassword=changeme \
   --set secrets.adminPassword=strongpassword
@@ -99,12 +99,14 @@ The chart exposes most application-level `sample.env` variables through `values.
 - The Minecraft game port is exposed via a configurable Service (default `NodePort`); RCON, BlueMap, and the wrapper API are on a separate internal `ClusterIP` Service
 - The nginx config is managed via a `ConfigMap` and points to the webapp service automatically
 - The agent-manager is disabled by default and can be enabled via `agentManager.enabled=true`
-- Pods sharing the mcserver PVC use pod affinity to co-locate on the same node (required for `ReadWriteOnce` volumes)
+- Pods sharing the mcserver PVC use pod affinity to prefer co-locating on the same node (recommended for `ReadWriteOnce` volumes)
 - The backup-manager currently requires Docker CLI access for tar operations — in Kubernetes, consider using VolumeSnapshots or a sidecar CronJob for backups (see `values.yaml` for details)
 
 #### Building and Pushing Images
 
-The default image names in `values.yaml` (e.g., `open-mc-server`, `open-mc-server-webapp`) are local build names and **do not exist on any public registry**. Before deploying to a cloud cluster, you must build the images and push them to a container registry your cluster can pull from.
+The default image repositories in `values.yaml` point to `dmccoystephenson/open-mc-server-*` on Docker Hub. If those images are already published, no additional setup is needed.
+
+To use **custom** images (e.g., a private fork or registry), build, tag, push, and override:
 
 **1. Build all images**
 
@@ -380,14 +382,14 @@ kubectl get pods -n omcsi
 | `node_count` | Number of worker nodes | `3` |
 | `rcon_password` | RCON password for Minecraft server | *(required)* |
 | `admin_password` | Admin password for web dashboard | *(required)* |
-| `image_registry` | Container image registry prefix (e.g., `your-dockerhub-user`) | `""` |
+| `image_registry` | Container image registry prefix (e.g., `your-dockerhub-user`) | `dmccoystephenson` |
 | `storage_class` | Kubernetes StorageClass for PVCs | `linode-block-storage-retain` |
 | `agent_manager_enabled` | Enable the Discord AI bot | `false` |
 | `helm_values_file` | Path to additional Helm values file | `""` |
 
 See [`terraform/linode/variables.tf`](terraform/linode/variables.tf) for the full list including autoscaler and agent-manager options.
 
-> **Important:** You must build and push OMCSI images to a container registry before deploying. Set `image_registry` to your registry prefix (see [Building and Pushing Images](#building-and-pushing-images)).
+> **Note:** Images default to Docker Hub under `dmccoystephenson`. Override `image_registry` if using a custom registry (see [Building and Pushing Images](#building-and-pushing-images)).
 
 **Tear Down**
 
@@ -440,14 +442,14 @@ kubectl get pods -n omcsi
 | `node_max_count` | Maximum workers (autoscaling) | `4` |
 | `rcon_password` | RCON password for Minecraft server | *(required)* |
 | `admin_password` | Admin password for web dashboard | *(required)* |
-| `image_registry` | Container image registry prefix (e.g., `your-dockerhub-user`) | `""` |
+| `image_registry` | Container image registry prefix (e.g., `your-dockerhub-user`) | `dmccoystephenson` |
 | `storage_class` | Kubernetes StorageClass for PVCs | `gp2` |
 | `agent_manager_enabled` | Enable the Discord AI bot | `false` |
 | `helm_values_file` | Path to additional Helm values file | `""` |
 
 See [`terraform/aws/variables.tf`](terraform/aws/variables.tf) for the full list including agent-manager options.
 
-> **Important:** You must build and push OMCSI images to a container registry before deploying. Set `image_registry` to your registry prefix (see [Building and Pushing Images](#building-and-pushing-images)).
+> **Note:** Images default to Docker Hub under `dmccoystephenson`. Override `image_registry` if using a custom registry (see [Building and Pushing Images](#building-and-pushing-images)).
 
 **Tear Down**
 

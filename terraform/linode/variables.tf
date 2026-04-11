@@ -81,9 +81,9 @@ variable "admin_password" {
 }
 
 variable "image_registry" {
-  description = "Container image registry/repository prefix for OMCSI images (e.g., 'your-dockerhub-user' or 'registry.example.com/omcsi'). When set, all image repositories are overridden to <registry>/open-mc-server-*. Leave empty to use the default values from the Helm chart."
+  description = "Container image registry/repository prefix for OMCSI images (e.g., 'your-dockerhub-user' or 'registry.example.com/omcsi'). When set, all image repositories are overridden to <registry>/open-mc-server-*. Defaults to 'dmccoystephenson' (Docker Hub)."
   type        = string
-  default     = ""
+  default     = "dmccoystephenson"
 }
 
 variable "storage_class" {
