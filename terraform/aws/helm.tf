@@ -24,6 +24,10 @@ data "aws_eks_cluster_auth" "omcsi" {
 # Deploy the OMCSI Helm chart
 # =============================================================================
 
+locals {
+  use_custom_registry = var.image_registry != "" ? [1] : []
+}
+
 resource "kubernetes_namespace" "omcsi" {
   metadata {
     name = var.helm_namespace
@@ -91,7 +95,7 @@ resource "helm_release" "omcsi" {
 
   # Image registry overrides (when image_registry is set)
   dynamic "set" {
-    for_each = var.image_registry != "" ? [1] : []
+    for_each = local.use_custom_registry
     content {
       name  = "minecraftWrapper.image.repository"
       value = "${var.image_registry}/open-mc-server"
@@ -99,7 +103,7 @@ resource "helm_release" "omcsi" {
   }
 
   dynamic "set" {
-    for_each = var.image_registry != "" ? [1] : []
+    for_each = local.use_custom_registry
     content {
       name  = "webapp.image.repository"
       value = "${var.image_registry}/open-mc-server-webapp"
@@ -107,7 +111,7 @@ resource "helm_release" "omcsi" {
   }
 
   dynamic "set" {
-    for_each = var.image_registry != "" ? [1] : []
+    for_each = local.use_custom_registry
     content {
       name  = "nginx.image.repository"
       value = "${var.image_registry}/open-mc-server-nginx"
@@ -115,7 +119,7 @@ resource "helm_release" "omcsi" {
   }
 
   dynamic "set" {
-    for_each = var.image_registry != "" ? [1] : []
+    for_each = local.use_custom_registry
     content {
       name  = "backupManager.image.repository"
       value = "${var.image_registry}/open-mc-server-backup-manager"
@@ -123,7 +127,7 @@ resource "helm_release" "omcsi" {
   }
 
   dynamic "set" {
-    for_each = var.image_registry != "" ? [1] : []
+    for_each = local.use_custom_registry
     content {
       name  = "alertManager.image.repository"
       value = "${var.image_registry}/open-mc-server-alert-manager"
@@ -131,7 +135,7 @@ resource "helm_release" "omcsi" {
   }
 
   dynamic "set" {
-    for_each = var.image_registry != "" ? [1] : []
+    for_each = local.use_custom_registry
     content {
       name  = "agentManager.image.repository"
       value = "${var.image_registry}/open-mc-server-agent-manager"
