@@ -35,10 +35,10 @@ minecraftWrapper:
   resources:
     requests:
       cpu: "500m"
-      memory: 2Gi
+      memory: 4Gi
     limits:
       cpu: "2"
-      memory: 4Gi
+      memory: 8Gi
   service:
     # External service exposes only the Minecraft game port.
     type: NodePort
@@ -60,7 +60,7 @@ minecraftWrapper:
     GAMEMODE: "survival"
     PVP_ENABLED: "true"
     ONLINE_MODE: "true"
-    JAVA_OPTS: "-Xmx3G -Xms2G"
+    JAVA_OPTS: "-Xmx7G -Xms4G"
     PLUGINS_DIRECTORY: "/mcserver/plugins"
     # Alert toggles
     ALERTS_SERVER_START: "true"
@@ -86,11 +86,11 @@ webapp:
   replicaCount: 1
   resources:
     requests:
+      cpu: "100m"
+      memory: 256Mi
+    limits:
       cpu: "500m"
       memory: 512Mi
-    limits:
-      cpu: "2"
-      memory: 2Gi
   service:
     type: ClusterIP
     port: 8080
@@ -120,11 +120,11 @@ nginx:
   replicaCount: 1
   resources:
     requests:
-      cpu: "100m"
-      memory: 128Mi
+      cpu: "50m"
+      memory: 64Mi
     limits:
-      cpu: "1"
-      memory: 512Mi
+      cpu: "200m"
+      memory: 128Mi
   service:
     type: LoadBalancer
     httpPort: 80
@@ -156,11 +156,11 @@ backupManager:
   replicaCount: 1
   resources:
     requests:
-      cpu: "250m"
-      memory: 512Mi
+      cpu: "100m"
+      memory: 256Mi
     limits:
-      cpu: "1"
-      memory: 1Gi
+      cpu: "500m"
+      memory: 512Mi
   service:
     type: ClusterIP
     port: 8091
@@ -189,11 +189,11 @@ alertManager:
   replicaCount: 1
   resources:
     requests:
-      cpu: "250m"
-      memory: 512Mi
+      cpu: "100m"
+      memory: 256Mi
     limits:
-      cpu: "1"
-      memory: 1Gi
+      cpu: "500m"
+      memory: 512Mi
   service:
     type: ClusterIP
     port: 8090
@@ -213,11 +213,11 @@ agentManager:
   replicaCount: 1
   resources:
     requests:
-      cpu: "250m"
-      memory: 512Mi
+      cpu: "100m"
+      memory: 256Mi
     limits:
-      cpu: "1"
-      memory: 1Gi
+      cpu: "500m"
+      memory: 512Mi
   service:
     type: ClusterIP
     port: 8093

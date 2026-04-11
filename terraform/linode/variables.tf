@@ -35,7 +35,7 @@ variable "node_type" {
 variable "node_count" {
   description = "Number of worker nodes in the default node pool."
   type        = number
-  default     = 3
+  default     = 2
 }
 
 variable "node_pool_autoscaler" {
@@ -47,8 +47,8 @@ variable "node_pool_autoscaler" {
   })
   default = {
     enabled = false
-    min     = 3
-    max     = 5
+    min     = 2
+    max     = 4
   }
 }
 

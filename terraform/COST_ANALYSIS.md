@@ -8,12 +8,27 @@ For equivalent workloads, **LKE is roughly 2–3× cheaper than EKS** at small-t
 
 ---
 
-## Scenario 1: Small Dev/Staging Cluster (3 nodes)
+## OMCSI Default Configuration
+
+The Terraform defaults in this project deploy the following cluster configuration. These are the costs you can expect when running `terraform apply` without overriding `node_type` or `node_count`.
 
 | Component | LKE (Linode) | EKS (AWS) |
 |---|---|---|
 | Control plane | **$0** (free) | **$73** ($0.10/hr) |
-| 3× worker nodes (4 GB RAM, 2 vCPU) | ~$72 (3× $24/mo shared) | ~$90 (3× t3.medium) |
+| Worker nodes | ~$96 (2× g6-standard-4 @ $48/mo — 8 GB, 4 vCPU each) | ~$122 (2× t3.large @ $61/mo — 8 GB, 2 vCPU each) |
+| Load balancer | $10 (NodeBalancer) | ~$17 (ALB) |
+| NAT Gateway | — | ~$33 (1× NAT @ $0.045/hr) |
+| Storage (block) | ~$3 (32 Gi @ $0.10/GB) | ~$3 (32 Gi gp2 @ $0.10/GB) |
+| **Estimated total** | **~$109/mo** | **~$248/mo** |
+
+> **Resource allocation**: The Helm chart allocates 8 Gi memory (limit) to the Minecraft server and reduces supporting services (webapp, nginx, alert-manager, backup-manager) to minimal footprints (64–256 Mi). This allows the game server to use most of the available node capacity.
+
+## Scenario 1: Small Dev/Staging Cluster (3 nodes, smaller instances)
+
+| Component | LKE (Linode) | EKS (AWS) |
+|---|---|---|
+| Control plane | **$0** (free) | **$73** ($0.10/hr) |
+| 3× worker nodes (4 GB RAM, 2 vCPU) | ~$72 (3× g6-standard-2 @ $24/mo) | ~$90 (3× t3.medium @ $30/mo) |
 | Load balancer | $10 (NodeBalancer) | ~$17 (ALB) |
 | NAT Gateway | — | ~$33 (1× NAT @ $0.045/hr) |
 | **Estimated total** | **~$82/mo** | **~$213/mo** |
