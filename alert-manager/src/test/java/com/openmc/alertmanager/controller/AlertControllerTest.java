@@ -14,8 +14,10 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.time.Instant;
 import java.util.List;
 
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(AlertController.class)
@@ -75,5 +77,63 @@ class AlertControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$").isArray())
                 .andExpect(jsonPath("$.length()").value(0));
+    }
+
+    @Test
+    @DisplayName("Should send alert successfully")
+    void shouldSendAlertSuccessfully() throws Exception {
+        mockMvc.perform(post("/api/alerts")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"title\":\"Test Alert\",\"message\":\"Test message\",\"level\":\"INFO\",\"source\":\"test\"}"))
+                .andExpect(status().isOk())
+                .andExpect(content().string("Alert sent successfully"));
+
+        verify(alertService).sendAlert(any());
+    }
+
+    @Test
+    @DisplayName("Should return 400 when alert title is blank")
+    void shouldReturn400WhenAlertTitleIsBlank() throws Exception {
+        mockMvc.perform(post("/api/alerts")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"title\":\"\",\"message\":\"Test message\",\"level\":\"INFO\",\"source\":\"test\"}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("Should return 400 when alert message is blank")
+    void shouldReturn400WhenAlertMessageIsBlank() throws Exception {
+        mockMvc.perform(post("/api/alerts")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"title\":\"Test\",\"message\":\"\",\"level\":\"INFO\",\"source\":\"test\"}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("Should return 400 when alert level is null")
+    void shouldReturn400WhenAlertLevelIsNull() throws Exception {
+        mockMvc.perform(post("/api/alerts")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"title\":\"Test\",\"message\":\"Test message\",\"source\":\"test\"}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("Should return health status")
+    void shouldReturnHealthStatus() throws Exception {
+        mockMvc.perform(get("/api/alerts/health"))
+                .andExpect(status().isOk())
+                .andExpect(content().string("Alert Manager is running"));
+    }
+
+    @Test
+    @DisplayName("Should return 500 when alert service throws exception")
+    void shouldReturn500WhenAlertServiceThrowsException() throws Exception {
+        doThrow(new RuntimeException("Service failure")).when(alertService).sendAlert(any());
+
+        mockMvc.perform(post("/api/alerts")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"title\":\"Test\",\"message\":\"Test message\",\"level\":\"INFO\",\"source\":\"test\"}"))
+                .andExpect(status().isInternalServerError());
     }
 }
