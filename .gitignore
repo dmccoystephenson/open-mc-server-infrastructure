@@ -30,3 +30,11 @@ nginx/ssl/
 
 # Backup directories
 backups/
+
+# Terraform
+terraform/**/.terraform/
+terraform/**/.terraform.lock.hcl
+terraform/**/*.tfstate
+terraform/**/*.tfstate.backup
+terraform/**/terraform.tfvars
+terraform/linode/kubeconfig.yaml

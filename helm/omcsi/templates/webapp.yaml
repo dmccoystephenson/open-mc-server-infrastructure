@@ -1,0 +1,135 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "omcsi.fullname" . }}-webapp
+  labels:
+    {{- include "omcsi.labels" . | nindent 4 }}
+    {{- include "omcsi.selectorLabels" (dict "root" . "component" "webapp") | nindent 4 }}
+spec:
+  {{- if and (gt (int .Values.webapp.replicaCount) 1) (or (and .Values.persistence.mcserver.enabled (eq .Values.persistence.mcserver.accessMode "ReadWriteOnce")) (and .Values.persistence.webappData.enabled (eq .Values.persistence.webappData.accessMode "ReadWriteOnce"))) }}
+  {{- fail "webapp.replicaCount must be 1 when a mounted PVC uses ReadWriteOnce access mode (persistence.mcserver or persistence.webappData)" }}
+  {{- end }}
+  replicas: {{ .Values.webapp.replicaCount }}
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      {{- include "omcsi.selectorLabels" (dict "root" . "component" "webapp") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "omcsi.labels" . | nindent 8 }}
+        {{- include "omcsi.selectorLabels" (dict "root" . "component" "webapp") | nindent 8 }}
+    spec:
+      {{- include "omcsi.mcserverAffinity" . | nindent 6 }}
+      containers:
+        - name: webapp
+          image: "{{ .Values.webapp.image.repository }}:{{ .Values.webapp.image.tag }}"
+          imagePullPolicy: {{ .Values.webapp.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          env:
+            - name: MC_HOST
+              value: "{{ include "omcsi.minecraftWrapperHost" . }}-internal"
+            - name: MC_RCON_PORT
+              value: {{ .Values.minecraftWrapper.internalService.rconPort | quote }}
+            - name: MC_RCON_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "omcsi.secretName" . }}
+                  key: RCON_PASSWORD
+            - name: MC_MOTD
+              value: {{ .Values.webapp.env.MC_MOTD | quote }}
+            - name: MC_MAX_PLAYERS
+              value: {{ .Values.webapp.env.MC_MAX_PLAYERS | quote }}
+            - name: DYNMAP_URL
+              value: {{ .Values.webapp.env.DYNMAP_URL | quote }}
+            - name: BLUEMAP_URL
+              value: {{ .Values.webapp.env.BLUEMAP_URL | quote }}
+            - name: ADMIN_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "omcsi.secretName" . }}
+                  key: ADMIN_USERNAME
+            - name: ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "omcsi.secretName" . }}
+                  key: ADMIN_PASSWORD
+            - name: WEB_REFRESH_INTERVAL_MS
+              value: {{ .Values.webapp.env.WEB_REFRESH_INTERVAL_MS | quote }}
+            - name: ACTIVITY_TRACKER_URL
+              value: {{ .Values.webapp.env.ACTIVITY_TRACKER_URL | quote }}
+            - name: ACTIVITY_TRACKER_ENABLED
+              value: {{ .Values.webapp.env.ACTIVITY_TRACKER_ENABLED | quote }}
+            - name: DASHBOARD_TITLE
+              value: {{ .Values.webapp.env.DASHBOARD_TITLE | quote }}
+            - name: DASHBOARD_SUBTITLE
+              value: {{ .Values.webapp.env.DASHBOARD_SUBTITLE | quote }}
+            - name: DASHBOARD_PRIMARY_COLOR
+              value: {{ .Values.webapp.env.DASHBOARD_PRIMARY_COLOR | quote }}
+            - name: DASHBOARD_SECONDARY_COLOR
+              value: {{ .Values.webapp.env.DASHBOARD_SECONDARY_COLOR | quote }}
+            - name: DATA_STORAGE_PATH
+              value: "/app/data"
+            - name: ALERT_MANAGER_URL
+              value: "http://{{ include "omcsi.alertManagerHost" . }}:{{ .Values.alertManager.service.port }}"
+            - name: ALERT_MANAGER_ENABLED
+              value: {{ .Values.webapp.env.ALERT_MANAGER_ENABLED | quote }}
+            - name: MINECRAFT_WRAPPER_URL
+              value: "http://{{ include "omcsi.minecraftWrapperHost" . }}-internal:{{ .Values.minecraftWrapper.internalService.wrapperPort }}"
+            - name: ACCORDION_CHAT_URL
+              value: {{ .Values.webapp.env.ACCORDION_CHAT_URL | quote }}
+            - name: DEPLOYMENT_AUTH_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "omcsi.secretName" . }}
+                  key: DEPLOYMENT_AUTH_TOKEN
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+          resources:
+            {{- toYaml .Values.webapp.resources | nindent 12 }}
+          volumeMounts:
+            - name: webapp-data
+              mountPath: /app/data
+            - name: mcserver
+              mountPath: /mcserver
+      volumes:
+        - name: webapp-data
+          {{- if .Values.persistence.webappData.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ include "omcsi.fullname" . }}-webapp-data
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+        - name: mcserver
+          {{- if .Values.persistence.mcserver.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ include "omcsi.fullname" . }}-mcserver
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "omcsi.webappHost" . }}
+  labels:
+    {{- include "omcsi.labels" . | nindent 4 }}
+    {{- include "omcsi.selectorLabels" (dict "root" . "component" "webapp") | nindent 4 }}
+spec:
+  type: {{ .Values.webapp.service.type }}
+  ports:
+    - port: {{ .Values.webapp.service.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "omcsi.selectorLabels" (dict "root" . "component" "webapp") | nindent 4 }}

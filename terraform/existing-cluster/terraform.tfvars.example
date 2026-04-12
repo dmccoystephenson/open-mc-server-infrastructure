@@ -1,0 +1,36 @@
+# =============================================================================
+# Example Terraform variables for OMCSI on an existing Kubernetes cluster
+# =============================================================================
+# Copy this file to terraform.tfvars and fill in the values.
+#   cp terraform.tfvars.example terraform.tfvars
+#
+# Alternatively, pass values via -var flags:
+#   terraform apply -var rcon_password=changeme -var admin_password=strongpass
+# =============================================================================
+
+# Path to your kubeconfig file (default: ~/.kube/config)
+# kubeconfig_path = "~/.kube/config"
+
+# Context to use from the kubeconfig (default: current-context)
+# kubeconfig_context = "my-cluster-context"
+
+# OMCSI secrets (required)
+rcon_password  = "changeme"
+admin_password = "strongpassword"
+
+# Container image registry – defaults to "dmccoystephenson" (Docker Hub).
+# Override if you host images in a private registry.
+# image_registry = "dmccoystephenson"
+
+# StorageClass for PVCs — leave empty to use the cluster default. Override
+# if your cluster requires a specific class.
+# storage_class = ""
+
+# Optional: agent-manager (Discord AI bot)
+# agent_manager_enabled    = true
+# agent_discord_bot_token  = "BOT_TOKEN"
+# agent_discord_channel_id = "CHANNEL_ID"
+# agent_anthropic_api_key  = "API_KEY"
+
+# Optional: custom Helm values file
+# helm_values_file = "my-values.yaml"

@@ -1,0 +1,281 @@
+# =============================================================================
+# AWS Provider
+# =============================================================================
+
+provider "aws" {
+  region = var.aws_region
+}
+
+# =============================================================================
+# Data sources
+# =============================================================================
+
+data "aws_availability_zones" "available" {
+  state = "available"
+}
+
+# =============================================================================
+# VPC for EKS
+# =============================================================================
+
+resource "aws_vpc" "omcsi" {
+  cidr_block           = "10.0.0.0/16"
+  enable_dns_hostnames = true
+  enable_dns_support   = true
+
+  tags = {
+    Name = "${var.cluster_name}-vpc"
+  }
+}
+
+resource "aws_subnet" "public" {
+  count = 2
+
+  vpc_id                  = aws_vpc.omcsi.id
+  cidr_block              = cidrsubnet(aws_vpc.omcsi.cidr_block, 8, count.index)
+  availability_zone       = data.aws_availability_zones.available.names[count.index]
+  map_public_ip_on_launch = true
+
+  tags = {
+    Name                                        = "${var.cluster_name}-public-${count.index}"
+    "kubernetes.io/cluster/${var.cluster_name}" = "shared"
+    "kubernetes.io/role/elb"                    = "1"
+  }
+}
+
+resource "aws_subnet" "private" {
+  count = 2
+
+  vpc_id            = aws_vpc.omcsi.id
+  cidr_block        = cidrsubnet(aws_vpc.omcsi.cidr_block, 8, count.index + 100)
+  availability_zone = data.aws_availability_zones.available.names[count.index]
+
+  tags = {
+    Name                                        = "${var.cluster_name}-private-${count.index}"
+    "kubernetes.io/cluster/${var.cluster_name}" = "shared"
+    "kubernetes.io/role/internal-elb"           = "1"
+  }
+}
+
+# Single NAT Gateway — acceptable for a game-server workload where cross-AZ
+# resilience is not critical. For production HA, create one NAT Gateway per AZ
+# and associate each private route table with the NAT in the same AZ.
+resource "aws_eip" "nat" {
+  domain = "vpc"
+
+  tags = {
+    Name = "${var.cluster_name}-nat-eip"
+  }
+}
+
+resource "aws_nat_gateway" "omcsi" {
+  allocation_id = aws_eip.nat.id
+  subnet_id     = aws_subnet.public[0].id
+
+  tags = {
+    Name = "${var.cluster_name}-nat"
+  }
+
+  depends_on = [aws_internet_gateway.omcsi]
+}
+
+resource "aws_internet_gateway" "omcsi" {
+  vpc_id = aws_vpc.omcsi.id
+
+  tags = {
+    Name = "${var.cluster_name}-igw"
+  }
+}
+
+resource "aws_route_table" "public" {
+  vpc_id = aws_vpc.omcsi.id
+
+  route {
+    cidr_block = "0.0.0.0/0"
+    gateway_id = aws_internet_gateway.omcsi.id
+  }
+
+  tags = {
+    Name = "${var.cluster_name}-public-rt"
+  }
+}
+
+resource "aws_route_table_association" "public" {
+  count = 2
+
+  subnet_id      = aws_subnet.public[count.index].id
+  route_table_id = aws_route_table.public.id
+}
+
+resource "aws_route_table" "private" {
+  vpc_id = aws_vpc.omcsi.id
+
+  route {
+    cidr_block     = "0.0.0.0/0"
+    nat_gateway_id = aws_nat_gateway.omcsi.id
+  }
+
+  tags = {
+    Name = "${var.cluster_name}-private-rt"
+  }
+}
+
+resource "aws_route_table_association" "private" {
+  count = 2
+
+  subnet_id      = aws_subnet.private[count.index].id
+  route_table_id = aws_route_table.private.id
+}
+
+# =============================================================================
+# IAM roles for EKS
+# =============================================================================
+
+resource "aws_iam_role" "eks_cluster" {
+  name = "${var.cluster_name}-eks-cluster-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Action = "sts:AssumeRole"
+      Effect = "Allow"
+      Principal = {
+        Service = "eks.amazonaws.com"
+      }
+    }]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "eks_cluster_policy" {
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy"
+  role       = aws_iam_role.eks_cluster.name
+}
+
+resource "aws_iam_role" "eks_nodes" {
+  name = "${var.cluster_name}-eks-node-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Action = "sts:AssumeRole"
+      Effect = "Allow"
+      Principal = {
+        Service = "ec2.amazonaws.com"
+      }
+    }]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "eks_worker_node_policy" {
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"
+  role       = aws_iam_role.eks_nodes.name
+}
+
+resource "aws_iam_role_policy_attachment" "eks_cni_policy" {
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy"
+  role       = aws_iam_role.eks_nodes.name
+}
+
+resource "aws_iam_role_policy_attachment" "eks_ecr_read" {
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
+  role       = aws_iam_role.eks_nodes.name
+}
+
+# =============================================================================
+# EKS Cluster
+# =============================================================================
+
+resource "aws_eks_cluster" "omcsi" {
+  name     = var.cluster_name
+  version  = var.cluster_version
+  role_arn = aws_iam_role.eks_cluster.arn
+
+  vpc_config {
+    subnet_ids              = concat(aws_subnet.public[*].id, aws_subnet.private[*].id)
+    endpoint_public_access  = true
+    endpoint_private_access = true
+    public_access_cidrs     = var.eks_public_access_cidrs
+  }
+
+  depends_on = [
+    aws_iam_role_policy_attachment.eks_cluster_policy,
+  ]
+}
+
+# =============================================================================
+# EKS Managed Node Group
+# =============================================================================
+
+resource "aws_eks_node_group" "omcsi" {
+  cluster_name    = aws_eks_cluster.omcsi.name
+  node_group_name = "${var.cluster_name}-nodes"
+  node_role_arn   = aws_iam_role.eks_nodes.arn
+  subnet_ids      = aws_subnet.private[*].id
+  instance_types  = [var.node_instance_type]
+
+  scaling_config {
+    desired_size = var.node_desired_count
+    min_size     = var.node_min_count
+    max_size     = var.node_max_count
+  }
+
+  depends_on = [
+    aws_iam_role_policy_attachment.eks_worker_node_policy,
+    aws_iam_role_policy_attachment.eks_cni_policy,
+    aws_iam_role_policy_attachment.eks_ecr_read,
+  ]
+}
+
+# =============================================================================
+# OIDC provider for IRSA (IAM Roles for Service Accounts)
+# =============================================================================
+
+data "tls_certificate" "eks" {
+  url = aws_eks_cluster.omcsi.identity[0].oidc[0].issuer
+}
+
+resource "aws_iam_openid_connect_provider" "eks" {
+  client_id_list  = ["sts.amazonaws.com"]
+  thumbprint_list = [data.tls_certificate.eks.certificates[0].sha1_fingerprint]
+  url             = aws_eks_cluster.omcsi.identity[0].oidc[0].issuer
+}
+
+# =============================================================================
+# EBS CSI Driver — required for EBS volume provisioning on EKS 1.23+
+# =============================================================================
+
+resource "aws_iam_role" "ebs_csi_driver" {
+  name = "${var.cluster_name}-ebs-csi-driver-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Action = "sts:AssumeRoleWithWebIdentity"
+      Effect = "Allow"
+      Principal = {
+        Federated = aws_iam_openid_connect_provider.eks.arn
+      }
+      Condition = {
+        StringEquals = {
+          "${replace(aws_eks_cluster.omcsi.identity[0].oidc[0].issuer, "https://", "")}:sub" = "system:serviceaccount:kube-system:ebs-csi-controller-sa"
+          "${replace(aws_eks_cluster.omcsi.identity[0].oidc[0].issuer, "https://", "")}:aud" = "sts.amazonaws.com"
+        }
+      }
+    }]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "ebs_csi_driver" {
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy"
+  role       = aws_iam_role.ebs_csi_driver.name
+}
+
+resource "aws_eks_addon" "ebs_csi_driver" {
+  cluster_name             = aws_eks_cluster.omcsi.name
+  addon_name               = "aws-ebs-csi-driver"
+  service_account_role_arn = aws_iam_role.ebs_csi_driver.arn
+
+  depends_on = [
+    aws_eks_node_group.omcsi,
+  ]
+}

@@ -1,0 +1,91 @@
+{{- if .Values.agentManager.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "omcsi.fullname" . }}-agent-manager
+  labels:
+    {{- include "omcsi.labels" . | nindent 4 }}
+    {{- include "omcsi.selectorLabels" (dict "root" . "component" "agent-manager") | nindent 4 }}
+spec:
+  replicas: {{ .Values.agentManager.replicaCount }}
+  strategy:
+    type: RollingUpdate
+  selector:
+    matchLabels:
+      {{- include "omcsi.selectorLabels" (dict "root" . "component" "agent-manager") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "omcsi.labels" . | nindent 8 }}
+        {{- include "omcsi.selectorLabels" (dict "root" . "component" "agent-manager") | nindent 8 }}
+    spec:
+      containers:
+        - name: agent-manager
+          image: "{{ .Values.agentManager.image.repository }}:{{ .Values.agentManager.image.tag }}"
+          imagePullPolicy: {{ .Values.agentManager.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 8093
+              protocol: TCP
+          env:
+            - name: AGENT_DISCORD_BOT_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "omcsi.secretName" . }}
+                  key: AGENT_DISCORD_BOT_TOKEN
+            - name: AGENT_DISCORD_CHANNEL_ID
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "omcsi.secretName" . }}
+                  key: AGENT_DISCORD_CHANNEL_ID
+            - name: AGENT_ANTHROPIC_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "omcsi.secretName" . }}
+                  key: AGENT_ANTHROPIC_API_KEY
+            - name: AGENT_ENABLED
+              value: {{ .Values.agentManager.env.AGENT_ENABLED | quote }}
+            - name: MINECRAFT_WRAPPER_URL
+              value: "http://{{ include "omcsi.minecraftWrapperHost" . }}-internal:{{ .Values.minecraftWrapper.internalService.wrapperPort }}"
+            - name: AGENT_START_SERVER_REQUIRES_CONFIRMATION
+              value: {{ .Values.agentManager.env.AGENT_START_SERVER_REQUIRES_CONFIRMATION | quote }}
+            - name: AGENT_STOP_SERVER_REQUIRES_CONFIRMATION
+              value: {{ .Values.agentManager.env.AGENT_STOP_SERVER_REQUIRES_CONFIRMATION | quote }}
+            - name: AGENT_RESTART_SERVER_REQUIRES_CONFIRMATION
+              value: {{ .Values.agentManager.env.AGENT_RESTART_SERVER_REQUIRES_CONFIRMATION | quote }}
+            - name: AGENT_TRIGGER_BACKUP_REQUIRES_CONFIRMATION
+              value: {{ .Values.agentManager.env.AGENT_TRIGGER_BACKUP_REQUIRES_CONFIRMATION | quote }}
+            - name: ALERT_MANAGER_URL
+              value: "http://{{ include "omcsi.alertManagerHost" . }}:{{ .Values.alertManager.service.port }}/api/alerts"
+            - name: BACKUP_MANAGER_URL
+              value: "http://{{ include "omcsi.backupManagerHost" . }}:{{ .Values.backupManager.service.port }}"
+            - name: DIAGNOSTICS_WEBAPP_ENABLED
+              value: {{ .Values.agentManager.env.DIAGNOSTICS_WEBAPP_ENABLED | quote }}
+            - name: WEBAPP_URL
+              value: "http://{{ include "omcsi.webappHost" . }}:{{ .Values.webapp.service.port }}"
+            - name: DIAGNOSTICS_LOGS_ENABLED
+              value: {{ .Values.agentManager.env.DIAGNOSTICS_LOGS_ENABLED | quote }}
+            - name: DIAGNOSTICS_LOGS_MAX_LINES
+              value: {{ .Values.agentManager.env.DIAGNOSTICS_LOGS_MAX_LINES | quote }}
+            - name: DIAGNOSTICS_LOGS_ANONYMIZE
+              value: {{ .Values.agentManager.env.DIAGNOSTICS_LOGS_ANONYMIZE | quote }}
+          resources:
+            {{- toYaml .Values.agentManager.resources | nindent 12 }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "omcsi.agentManagerHost" . }}
+  labels:
+    {{- include "omcsi.labels" . | nindent 4 }}
+    {{- include "omcsi.selectorLabels" (dict "root" . "component" "agent-manager") | nindent 4 }}
+spec:
+  type: {{ .Values.agentManager.service.type }}
+  ports:
+    - port: {{ .Values.agentManager.service.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "omcsi.selectorLabels" (dict "root" . "component" "agent-manager") | nindent 4 }}
+{{- end }}

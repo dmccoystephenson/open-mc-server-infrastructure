@@ -1,0 +1,71 @@
+{{- if .Values.persistence.mcserver.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "omcsi.fullname" . }}-mcserver
+  labels:
+    {{- include "omcsi.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    - {{ .Values.persistence.mcserver.accessMode }}
+  {{- if .Values.persistence.mcserver.storageClass }}
+  storageClassName: {{ .Values.persistence.mcserver.storageClass | quote }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.persistence.mcserver.size }}
+{{- end }}
+---
+{{- if .Values.persistence.webappData.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "omcsi.fullname" . }}-webapp-data
+  labels:
+    {{- include "omcsi.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    - {{ .Values.persistence.webappData.accessMode }}
+  {{- if .Values.persistence.webappData.storageClass }}
+  storageClassName: {{ .Values.persistence.webappData.storageClass | quote }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.persistence.webappData.size }}
+{{- end }}
+---
+{{- if .Values.persistence.alertManagerData.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "omcsi.fullname" . }}-alert-manager-data
+  labels:
+    {{- include "omcsi.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    - {{ .Values.persistence.alertManagerData.accessMode }}
+  {{- if .Values.persistence.alertManagerData.storageClass }}
+  storageClassName: {{ .Values.persistence.alertManagerData.storageClass | quote }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.persistence.alertManagerData.size }}
+{{- end }}
+---
+{{- if .Values.persistence.backups.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "omcsi.fullname" . }}-backups
+  labels:
+    {{- include "omcsi.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    - {{ .Values.persistence.backups.accessMode }}
+  {{- if .Values.persistence.backups.storageClass }}
+  storageClassName: {{ .Values.persistence.backups.storageClass | quote }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.persistence.backups.size }}
+{{- end }}

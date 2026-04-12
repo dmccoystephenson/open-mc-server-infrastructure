@@ -22,6 +22,10 @@ An open, community-agnostic, Docker-based Minecraft server infrastructure runnin
 - [Docker Compose](https://docs.docker.com/compose/install/)
 - [Git](https://git-scm.com/downloads)
 
+For Kubernetes deployments, you will also need:
+- A Kubernetes cluster (v1.24+)
+- [Helm](https://helm.sh/docs/intro/install/) 3.x
+
 ## Deployment Options
 
 ### Local Development
@@ -39,6 +43,485 @@ The Self-Hosting Guide covers:
 - SSL certificate setup for public access
 - Monitoring and maintenance
 - Advanced security configurations
+
+### Kubernetes (Helm)
+OMCSI ships with a Helm chart in [`helm/omcsi/`](helm/omcsi/) for deploying to any Kubernetes cluster (k3s, kind, EKS, GKE, etc.).
+
+**Prerequisites**
+- A running Kubernetes cluster (v1.24+)
+- [Helm](https://helm.sh/docs/intro/install/) 3.x
+- Container images available on Docker Hub under `dmccoystephenson` (the default). If using custom images, see [Building and Pushing Images](#building-and-pushing-images) below
+
+**Quick Start**
+```bash
+# Lint the chart
+helm lint helm/omcsi --set secrets.rconPassword=x --set secrets.adminPassword=x
+
+# Install (rconPassword and adminPassword are required)
+# Images default to Docker Hub under 'dmccoystephenson'.
+# See "Storage Classes" section below for cloud deployments.
+helm install omcsi ./helm/omcsi --namespace omcsi --create-namespace \
+  --set secrets.rconPassword=changeme \
+  --set secrets.adminPassword=strongpassword
+
+# Or install with the optional agent-manager enabled
+helm install omcsi ./helm/omcsi --namespace omcsi --create-namespace \
+  --set secrets.rconPassword=changeme \
+  --set secrets.adminPassword=strongpassword \
+  --set agentManager.enabled=true \
+  --set secrets.agentDiscordBotToken=BOT_TOKEN \
+  --set secrets.agentDiscordChannelId=CHANNEL_ID \
+  --set secrets.agentAnthropicApiKey=API_KEY
+
+# Enable agent-manager on an existing release
+helm upgrade omcsi ./helm/omcsi --namespace omcsi \
+  --set secrets.rconPassword=changeme \
+  --set secrets.adminPassword=strongpassword \
+  --set agentManager.enabled=true \
+  --set secrets.agentDiscordBotToken=BOT_TOKEN \
+  --set secrets.agentDiscordChannelId=CHANNEL_ID \
+  --set secrets.agentAnthropicApiKey=API_KEY
+
+# Upgrade an existing release
+helm upgrade omcsi ./helm/omcsi --namespace omcsi --reuse-values
+
+# Uninstall
+helm uninstall omcsi --namespace omcsi
+```
+
+The chart exposes most application-level `sample.env` variables through `values.yaml`. Some values are intentionally computed or fixed in the templates (e.g., internal service URLs are derived from Helm helpers, RCON port references are sourced from `minecraftWrapper.internalService.rconPort`, and `DATA_STORAGE_PATH` is hardcoded to match the PVC mount). Docker Compose-only variables like container names and host port mappings are excluded — Kubernetes manages those natively. See [`helm/omcsi/values.yaml`](helm/omcsi/values.yaml) for the full list of configurable values including image tags, replica counts, resource requests/limits, storage classes, service types, and feature flags.
+
+**Key design notes:**
+- `secrets.rconPassword` and `secrets.adminPassword` are **required** — the chart will refuse to install without them
+- World data and service data persist across pod restarts via `PersistentVolumeClaim` resources
+- Sensitive values (passwords, tokens, API keys) are stored in a Kubernetes `Secret`
+- Internal service discovery uses Kubernetes `Service` DNS names (e.g., `omcsi-minecraft-wrapper`, `omcsi-alert-manager`)
+- The Minecraft game port is exposed via a configurable Service (default `NodePort`); RCON, BlueMap, and the wrapper API are on a separate internal `ClusterIP` Service
+- The nginx config is managed via a `ConfigMap` and points to the webapp service automatically
+- The agent-manager is disabled by default and can be enabled via `agentManager.enabled=true`
+- Pods sharing the mcserver PVC use pod affinity to prefer co-locating on the same node (recommended for `ReadWriteOnce` volumes)
+- The backup-manager currently requires Docker CLI access for tar operations — in Kubernetes, consider using VolumeSnapshots or a sidecar CronJob for backups (see `values.yaml` for details)
+
+#### Building and Pushing Images
+
+The default image repositories in `values.yaml` point to `dmccoystephenson/open-mc-server-*` on Docker Hub. If those images are already published, no additional setup is needed.
+
+To use **custom** images (e.g., a private fork or registry), build, tag, push, and override:
+
+**1. Build all images**
+
+```bash
+docker build -t open-mc-server .
+docker build -t open-mc-server-webapp ./web-app
+docker build -t open-mc-server-nginx ./nginx
+docker build -t open-mc-server-backup-manager ./backup-manager
+docker build -t open-mc-server-alert-manager ./alert-manager
+docker build -t open-mc-server-agent-manager ./agent-manager
+```
+
+> **Note:** The `open-mc-server` image builds Spigot from source, which can take 10–15 minutes on the first run.
+
+**2. Tag and push to your registry**
+
+Replace `YOUR_REGISTRY` with your Docker Hub username, ECR URI, or other registry:
+
+```bash
+REGISTRY=YOUR_REGISTRY
+
+for img in open-mc-server open-mc-server-webapp open-mc-server-nginx \
+           open-mc-server-backup-manager open-mc-server-alert-manager \
+           open-mc-server-agent-manager; do
+  docker tag "$img:latest" "$REGISTRY/$img:latest"
+  docker push "$REGISTRY/$img:latest"
+done
+```
+
+**3. Override image repositories at install time**
+
+```bash
+REGISTRY=YOUR_REGISTRY
+
+helm install omcsi ./helm/omcsi --namespace omcsi --create-namespace \
+  --set secrets.rconPassword=changeme \
+  --set secrets.adminPassword=strongpassword \
+  --set minecraftWrapper.image.repository=$REGISTRY/open-mc-server \
+  --set webapp.image.repository=$REGISTRY/open-mc-server-webapp \
+  --set nginx.image.repository=$REGISTRY/open-mc-server-nginx \
+  --set backupManager.image.repository=$REGISTRY/open-mc-server-backup-manager \
+  --set alertManager.image.repository=$REGISTRY/open-mc-server-alert-manager
+```
+
+When using Terraform, set the `image_registry` variable instead:
+
+```hcl
+image_registry = "YOUR_REGISTRY"
+```
+
+#### Storage Classes
+
+The Helm chart defaults all PVC `storageClass` values to an empty string, which uses the cluster's default StorageClass. If your cluster does **not** have a default StorageClass configured, PVCs will remain in `Pending` state and pods will fail to schedule.
+
+**Common StorageClass values by provider:**
+
+| Provider | StorageClass | Notes |
+|---|---|---|
+| AWS EKS | `gp2` or `gp3` | EBS volumes; `gp2` is the most common default |
+| Linode LKE | `linode-block-storage-retain` | Linode Block Storage |
+| Minikube | `standard` | Pre-configured as default |
+| GKE | `standard` or `premium-rwo` | Usually configured as default |
+
+**Override at install time:**
+
+```bash
+helm install omcsi ./helm/omcsi --namespace omcsi --create-namespace \
+  --set secrets.rconPassword=changeme \
+  --set secrets.adminPassword=strongpassword \
+  --set persistence.mcserver.storageClass=gp2 \
+  --set persistence.webappData.storageClass=gp2 \
+  --set persistence.alertManagerData.storageClass=gp2 \
+  --set persistence.backups.storageClass=gp2
+```
+
+When using Terraform, the `storage_class` variable is set automatically (defaults to `gp2` on AWS, `linode-block-storage-retain` on Linode).
+
+**Troubleshooting**
+
+| Symptom | Likely cause | Fix |
+|---|---|---|
+| Pods stuck in `ImagePullBackOff` | Images not pushed to a registry the cluster can access | Build and push images to your container registry; set image repository overrides via `--set` or `image_registry` in Terraform (see [Building and Pushing Images](#building-and-pushing-images)) |
+| PVC stuck in `Pending` / "unbound immediate PersistentVolumeClaims" | No default StorageClass on the cluster | Set `persistence.*.storageClass` to a valid StorageClass for your provider (see [Storage Classes](#storage-classes)) |
+| `VolumeBinding: context deadline exceeded` | EBS CSI driver add-on not installed (required on EKS 1.23+) | The AWS Terraform module installs the EBS CSI driver automatically; if deploying manually, install the `aws-ebs-csi-driver` EKS add-on |
+| Pods stuck in `Pending` (resources) | Insufficient CPU/memory on cluster nodes | Scale up worker nodes or reduce resource requests in `values.yaml` |
+| Pods `CrashLoopBackOff` | Application startup failure | Check logs with `kubectl logs -n omcsi <pod-name>` |
+
+#### Port Forwarding
+
+Use `kubectl port-forward` to access OMCSI services on `localhost` without exposing them via a `LoadBalancer` or `NodePort`. This is useful for quick local testing or when your cluster doesn't have external access configured.
+
+```bash
+# Minecraft server – forward localhost:25565 to the minecraft-wrapper service
+kubectl port-forward svc/omcsi-minecraft-wrapper -n omcsi 25565:25565
+# Connect your Minecraft client to localhost:25565
+
+# Web dashboard via nginx – forward localhost:8443 to the nginx HTTPS port
+kubectl port-forward svc/omcsi-nginx -n omcsi 8443:443
+# Open https://localhost:8443 in your browser
+
+# Run port-forwards in the background by appending &
+kubectl port-forward svc/omcsi-minecraft-wrapper -n omcsi 25565:25565 &
+kubectl port-forward svc/omcsi-nginx -n omcsi 8443:443 &
+```
+
+> **Tip:** If port 25565 is already in use on your machine, pick a different local port: `kubectl port-forward svc/omcsi-minecraft-wrapper -n omcsi 25566:25565` and connect to `localhost:25566`.
+
+#### Testing with Minikube
+
+[Minikube](https://minikube.sigs.k8s.io/) provides a single-node Kubernetes cluster on your local machine, ideal for testing the Helm chart before deploying to a production cluster.
+
+**1. Install prerequisites**
+
+- [Minikube](https://minikube.sigs.k8s.io/docs/start/) (v1.30+)
+- [kubectl](https://kubernetes.io/docs/tasks/tools/)
+- [Helm](https://helm.sh/docs/intro/install/) 3.x
+- [Docker](https://docs.docker.com/get-docker/) (used as the minikube driver and for building images)
+
+**2. Start minikube**
+
+```bash
+# Start a minikube cluster with enough resources for OMCSI
+minikube start --cpus=4 --memory=8192 --driver=docker
+```
+
+**3. Build images inside minikube**
+
+Minikube runs its own Docker daemon. To make locally built images available without a registry, point your shell's Docker client at minikube's daemon:
+
+```bash
+# Configure your shell to use minikube's Docker daemon
+eval $(minikube docker-env)
+
+# Build all OMCSI images (these will be available inside the cluster)
+docker build -t open-mc-server .
+docker build -t open-mc-server-webapp ./web-app
+docker build -t open-mc-server-nginx ./nginx
+docker build -t open-mc-server-backup-manager ./backup-manager
+docker build -t open-mc-server-alert-manager ./alert-manager
+docker build -t open-mc-server-agent-manager ./agent-manager
+```
+
+> **Note:** The `open-mc-server` image builds Spigot from source, which can take 10–15 minutes on the first run.
+
+**4. Install the Helm chart**
+
+```bash
+# Lint the chart first
+helm lint helm/omcsi --set secrets.rconPassword=test --set secrets.adminPassword=test
+
+# Install with imagePullPolicy=Never so Kubernetes uses the local images
+helm install omcsi ./helm/omcsi --namespace omcsi --create-namespace \
+  --set secrets.rconPassword=changeme \
+  --set secrets.adminPassword=strongpassword \
+  --set minecraftWrapper.image.pullPolicy=Never \
+  --set webapp.image.pullPolicy=Never \
+  --set nginx.image.pullPolicy=Never \
+  --set backupManager.image.pullPolicy=Never \
+  --set alertManager.image.pullPolicy=Never
+```
+
+**5. Verify the deployment**
+
+```bash
+# Watch pods come up
+kubectl get pods -n omcsi -w
+
+# Check all services
+kubectl get svc -n omcsi
+
+# View logs for a specific service
+kubectl logs -n omcsi -l app.kubernetes.io/component=minecraft-wrapper -f
+
+# Check PVCs are bound
+kubectl get pvc -n omcsi
+```
+
+**6. Access services**
+
+```bash
+# Minecraft game port – get the NodePort URL
+minikube service omcsi-minecraft-wrapper -n omcsi --url
+
+# Web dashboard via nginx – get the LoadBalancer URL
+# (minikube tunnel is required for LoadBalancer services)
+minikube tunnel &
+kubectl get svc -n omcsi omcsi-nginx
+# Connect to the EXTERNAL-IP shown for the nginx service
+
+# Alternatively, use port-forwarding for quick access
+kubectl port-forward svc/omcsi-minecraft-wrapper -n omcsi 25565:25565 &
+# Connect your Minecraft client to localhost:25565
+
+kubectl port-forward svc/omcsi-nginx -n omcsi 8443:443 &
+# Dashboard at https://localhost:8443
+```
+
+**7. Test persistence**
+
+```bash
+# Verify world data survives a pod restart
+kubectl delete pod -n omcsi -l app.kubernetes.io/component=minecraft-wrapper
+# Wait for the pod to restart, then check that the world data is still present
+kubectl get pods -n omcsi -w
+```
+
+**8. Clean up**
+
+```bash
+# Uninstall the release
+helm uninstall omcsi --namespace omcsi
+
+# Delete PVCs (optional – removes all persistent data)
+kubectl delete pvc --all -n omcsi
+
+# Delete the namespace
+kubectl delete namespace omcsi
+
+# Stop minikube
+minikube stop
+
+# (Optional) Delete the minikube cluster entirely
+minikube delete
+```
+
+**Troubleshooting**
+
+| Symptom | Likely cause | Fix |
+|---|---|---|
+| Pods stuck in `ImagePullBackOff` | Images not built in minikube's Docker | Re-run `eval $(minikube docker-env)` and rebuild images; ensure `imagePullPolicy` is `Never` or `IfNotPresent` |
+| Pods stuck in `Pending` | Insufficient CPU/memory in minikube | Restart minikube with more resources: `minikube start --cpus=4 --memory=8192` |
+| PVC stuck in `Pending` | No default storage class | Minikube ships with a default `StorageClass`; verify with `kubectl get sc` |
+| Cannot reach services | Minikube tunnel not running | Run `minikube tunnel` for `LoadBalancer` services, or use `minikube service <name> -n omcsi` for `NodePort` |
+| Pods `CrashLoopBackOff` | Application startup failure | Check logs with `kubectl logs -n omcsi <pod-name>` |
+
+#### Deploying to Linode with Terraform
+
+The [`terraform/linode/`](terraform/linode/) directory contains Terraform configuration to provision a [Linode Kubernetes Engine (LKE)](https://www.linode.com/products/kubernetes/) cluster and deploy the OMCSI Helm chart in a single `terraform apply`.
+
+**Prerequisites**
+- [Terraform](https://developer.hashicorp.com/terraform/install) >= 1.3
+- A [Linode API token](https://cloud.linode.com/profile/tokens) with read/write access to Kubernetes
+
+**Quick Start**
+
+```bash
+cd terraform/linode
+
+# Copy the example tfvars and fill in your values
+cp terraform.tfvars.example terraform.tfvars
+# Edit terraform.tfvars – set linode_token, rcon_password, admin_password at minimum
+
+terraform init
+terraform plan
+terraform apply
+```
+
+After `apply` completes, a `kubeconfig.yaml` is written to the `terraform/linode/` directory. Use it to interact with the cluster:
+
+```bash
+export KUBECONFIG=$(pwd)/kubeconfig.yaml
+kubectl get pods -n omcsi
+```
+
+**Variables**
+
+| Variable | Description | Default |
+|---|---|---|
+| `linode_token` | Linode API personal access token | *(required)* |
+| `cluster_label` | Label for the LKE cluster | `omcsi` |
+| `region` | Linode region | `us-east` |
+| `k8s_version` | Kubernetes version | `1.34` |
+| `node_type` | Linode instance type for workers | `g6-standard-4` |
+| `node_count` | Number of worker nodes | `2` |
+| `rcon_password` | RCON password for Minecraft server | *(required)* |
+| `admin_password` | Admin password for web dashboard | *(required)* |
+| `image_registry` | Container image registry prefix (e.g., `your-dockerhub-user`) | `dmccoystephenson` |
+| `storage_class` | Kubernetes StorageClass for PVCs | `linode-block-storage-retain` |
+| `agent_manager_enabled` | Enable the Discord AI bot | `false` |
+| `helm_values_file` | Path to additional Helm values file | `""` |
+
+See [`terraform/linode/variables.tf`](terraform/linode/variables.tf) for the full list including autoscaler and agent-manager options.
+
+> **Note:** Images default to Docker Hub under `dmccoystephenson`. Override `image_registry` if using a custom registry (see [Building and Pushing Images](#building-and-pushing-images)).
+
+**Tear Down**
+
+```bash
+terraform destroy
+```
+
+This removes the LKE cluster, all Kubernetes resources, and associated Linode infrastructure.
+
+#### Deploying to AWS with Terraform
+
+The [`terraform/aws/`](terraform/aws/) directory contains Terraform configuration to provision an [Amazon EKS](https://aws.amazon.com/eks/) cluster (with VPC, subnets, and managed node group) and deploy the OMCSI Helm chart.
+
+**Prerequisites**
+- [Terraform](https://developer.hashicorp.com/terraform/install) >= 1.3
+- [AWS CLI v2](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html) configured (`aws configure`)
+- An AWS account with permissions to create EKS clusters, VPCs, IAM roles, and EC2 instances
+
+**Quick Start**
+
+```bash
+cd terraform/aws
+
+# Copy the example tfvars and fill in your values
+cp terraform.tfvars.example terraform.tfvars
+# Edit terraform.tfvars – set rcon_password, admin_password at minimum
+
+terraform init
+terraform plan
+terraform apply
+```
+
+After `apply` completes, configure `kubectl` to talk to the new cluster:
+
+```bash
+aws eks update-kubeconfig --region us-east-1 --name omcsi
+kubectl get pods -n omcsi
+```
+
+**Variables**
+
+| Variable | Description | Default |
+|---|---|---|
+| `aws_region` | AWS region for the EKS cluster | `us-east-1` |
+| `cluster_name` | Name for the EKS cluster | `omcsi` |
+| `cluster_version` | Kubernetes version | `1.34` |
+| `node_instance_type` | EC2 instance type for workers | `t3.large` |
+| `node_desired_count` | Desired number of worker nodes | `2` |
+| `node_min_count` | Minimum workers (autoscaling) | `1` |
+| `node_max_count` | Maximum workers (autoscaling) | `4` |
+| `rcon_password` | RCON password for Minecraft server | *(required)* |
+| `admin_password` | Admin password for web dashboard | *(required)* |
+| `image_registry` | Container image registry prefix (e.g., `your-dockerhub-user`) | `dmccoystephenson` |
+| `storage_class` | Kubernetes StorageClass for PVCs | `gp2` |
+| `agent_manager_enabled` | Enable the Discord AI bot | `false` |
+| `helm_values_file` | Path to additional Helm values file | `""` |
+
+See [`terraform/aws/variables.tf`](terraform/aws/variables.tf) for the full list including agent-manager options.
+
+> **Note:** Images default to Docker Hub under `dmccoystephenson`. Override `image_registry` if using a custom registry (see [Building and Pushing Images](#building-and-pushing-images)).
+
+**Tear Down**
+
+```bash
+terraform destroy
+```
+
+This removes the EKS cluster, node group, VPC, IAM roles, and all Kubernetes resources.
+
+#### Deploying to an Existing Cluster with Terraform
+
+The [`terraform/existing-cluster/`](terraform/existing-cluster/) directory contains Terraform configuration to deploy the OMCSI Helm chart to **any existing Kubernetes cluster** — no cluster provisioning required. This is useful when you already have a cluster (e.g., k3s, minikube, GKE, on-premise) and just want to deploy the application.
+
+**Prerequisites**
+- [Terraform](https://developer.hashicorp.com/terraform/install) >= 1.3
+- A kubeconfig file with access to the target cluster (default: `~/.kube/config`)
+
+**Quick Start**
+
+```bash
+cd terraform/existing-cluster
+
+# Copy the example tfvars and fill in your values
+cp terraform.tfvars.example terraform.tfvars
+# Edit terraform.tfvars – set rcon_password, admin_password at minimum
+
+terraform init
+terraform plan
+terraform apply
+```
+
+By default the module uses `~/.kube/config` with the current context. To target a specific kubeconfig or context:
+
+```bash
+terraform apply \
+  -var kubeconfig_path="/path/to/kubeconfig.yaml" \
+  -var kubeconfig_context="my-cluster-context" \
+  -var rcon_password=changeme \
+  -var admin_password=strongpass
+```
+
+After `apply` completes, verify the deployment:
+
+```bash
+kubectl get pods -n omcsi
+```
+
+**Variables**
+
+| Variable | Description | Default |
+|---|---|---|
+| `kubeconfig_path` | Path to the kubeconfig file | `~/.kube/config` |
+| `kubeconfig_context` | Context to use (empty = current-context) | `""` |
+| `rcon_password` | RCON password for Minecraft server | *(required)* |
+| `admin_password` | Admin password for web dashboard | *(required)* |
+| `image_registry` | Container image registry prefix (e.g., `your-dockerhub-user`) | `dmccoystephenson` |
+| `storage_class` | Kubernetes StorageClass for PVCs (empty = cluster default) | `""` |
+| `agent_manager_enabled` | Enable the Discord AI bot | `false` |
+| `helm_values_file` | Path to additional Helm values file | `""` |
+
+See [`terraform/existing-cluster/variables.tf`](terraform/existing-cluster/variables.tf) for the full list including agent-manager options.
+
+> **Note:** The `storage_class` variable defaults to empty (cluster default). If your cluster doesn't have a default StorageClass, set it explicitly (e.g., `local-path`, `gp2`, `standard`).
+
+**Tear Down**
+
+```bash
+terraform destroy
+```
+
+This removes only the OMCSI Helm release and namespace — the cluster itself is not affected.
 
 ## Quick Start
 
