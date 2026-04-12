@@ -290,6 +290,24 @@ jobs:
         terraform -chdir=terraform/aws validate
         echo "✓ AWS Terraform configuration is valid"
 
+    - name: Terraform fmt check (Existing Cluster)
+      run: |
+        echo "🔍 Checking Terraform formatting (Existing Cluster)..."
+        terraform -chdir=terraform/existing-cluster fmt -check -diff
+        echo "✓ Existing Cluster Terraform files are properly formatted"
+
+    - name: Terraform init (Existing Cluster)
+      run: |
+        echo "⚙️ Initializing Terraform (Existing Cluster)..."
+        terraform -chdir=terraform/existing-cluster init -backend=false
+        echo "✓ Existing Cluster Terraform initialized"
+
+    - name: Terraform validate (Existing Cluster)
+      run: |
+        echo "✅ Validating Terraform configuration (Existing Cluster)..."
+        terraform -chdir=terraform/existing-cluster validate
+        echo "✓ Existing Cluster Terraform configuration is valid"
+
   security-scan:
     name: Security Scanning
     runs-on: ubuntu-latest

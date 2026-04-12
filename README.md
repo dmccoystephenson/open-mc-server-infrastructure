@@ -460,6 +460,69 @@ terraform destroy
 
 This removes the EKS cluster, node group, VPC, IAM roles, and all Kubernetes resources.
 
+#### Deploying to an Existing Cluster with Terraform
+
+The [`terraform/existing-cluster/`](terraform/existing-cluster/) directory contains Terraform configuration to deploy the OMCSI Helm chart to **any existing Kubernetes cluster** — no cluster provisioning required. This is useful when you already have a cluster (e.g., k3s, minikube, GKE, on-premise) and just want to deploy the application.
+
+**Prerequisites**
+- [Terraform](https://developer.hashicorp.com/terraform/install) >= 1.3
+- A kubeconfig file with access to the target cluster (default: `~/.kube/config`)
+
+**Quick Start**
+
+```bash
+cd terraform/existing-cluster
+
+# Copy the example tfvars and fill in your values
+cp terraform.tfvars.example terraform.tfvars
+# Edit terraform.tfvars – set rcon_password, admin_password at minimum
+
+terraform init
+terraform plan
+terraform apply
+```
+
+By default the module uses `~/.kube/config` with the current context. To target a specific kubeconfig or context:
+
+```bash
+terraform apply \
+  -var kubeconfig_path="/path/to/kubeconfig.yaml" \
+  -var kubeconfig_context="my-cluster-context" \
+  -var rcon_password=changeme \
+  -var admin_password=strongpass
+```
+
+After `apply` completes, verify the deployment:
+
+```bash
+kubectl get pods -n omcsi
+```
+
+**Variables**
+
+| Variable | Description | Default |
+|---|---|---|
+| `kubeconfig_path` | Path to the kubeconfig file | `~/.kube/config` |
+| `kubeconfig_context` | Context to use (empty = current-context) | `""` |
+| `rcon_password` | RCON password for Minecraft server | *(required)* |
+| `admin_password` | Admin password for web dashboard | *(required)* |
+| `image_registry` | Container image registry prefix (e.g., `your-dockerhub-user`) | `dmccoystephenson` |
+| `storage_class` | Kubernetes StorageClass for PVCs (empty = cluster default) | `""` |
+| `agent_manager_enabled` | Enable the Discord AI bot | `false` |
+| `helm_values_file` | Path to additional Helm values file | `""` |
+
+See [`terraform/existing-cluster/variables.tf`](terraform/existing-cluster/variables.tf) for the full list including agent-manager options.
+
+> **Note:** The `storage_class` variable defaults to empty (cluster default). If your cluster doesn't have a default StorageClass, set it explicitly (e.g., `local-path`, `gp2`, `standard`).
+
+**Tear Down**
+
+```bash
+terraform destroy
+```
+
+This removes only the OMCSI Helm release and namespace — the cluster itself is not affected.
+
 ## Quick Start
 
 1. **Clone the repository**
