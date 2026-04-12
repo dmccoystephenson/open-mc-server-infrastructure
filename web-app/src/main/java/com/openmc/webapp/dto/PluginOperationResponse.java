@@ -1,11 +1,16 @@
 package com.openmc.webapp.dto;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
 /**
  * Response DTO for plugin operations (upload and delete)
  */
 public class PluginOperationResponse {
+    @Schema(description = "Whether the operation was successful")
     private boolean success;
+    @Schema(description = "Success message")
     private String message;
+    @Schema(description = "Error message if operation failed")
     private String error;
     
     public PluginOperationResponse() {

@@ -7,6 +7,7 @@ import com.openmc.webapp.repository.InMemoryRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.DisplayName;
+import org.springframework.web.client.RestTemplate;
 
 import java.util.List;
 
@@ -21,7 +22,7 @@ class ActivityTrackerServiceTest {
     @BeforeEach
     void setUp() {
         serverConfig = new ServerConfig();
-        activityTrackerService = new ActivityTrackerService(serverConfig, new InMemoryRepository<>());
+        activityTrackerService = new ActivityTrackerService(serverConfig, new InMemoryRepository<>(), new RestTemplate(), null);
     }
 
     @Test

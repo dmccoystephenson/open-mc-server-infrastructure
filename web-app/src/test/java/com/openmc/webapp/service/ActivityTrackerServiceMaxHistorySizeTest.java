@@ -5,6 +5,7 @@ import com.openmc.webapp.repository.InMemoryRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.DisplayName;
+import org.springframework.web.client.RestTemplate;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -18,7 +19,7 @@ class ActivityTrackerServiceMaxHistorySizeTest {
     void setUp() {
         serverConfig = new ServerConfig();
         serverConfig.setActivityTrackerEnabled(false); // Disable to prevent actual API calls
-        activityTrackerService = new ActivityTrackerService(serverConfig, new InMemoryRepository<>());
+        activityTrackerService = new ActivityTrackerService(serverConfig, new InMemoryRepository<>(), new RestTemplate(), null);
     }
 
     @Test

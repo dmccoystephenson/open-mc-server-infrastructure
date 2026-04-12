@@ -1,10 +1,14 @@
 package com.openmc.webapp.model;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
 /**
  * Represents server-wide activity statistics from the Activity Tracker plugin
  */
 public class ActivityTrackerStats {
+    @Schema(description = "Number of unique player logins")
     private int uniqueLogins;
+    @Schema(description = "Total number of logins")
     private int totalLogins;
     
     public ActivityTrackerStats() {

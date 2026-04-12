@@ -1,11 +1,16 @@
 package com.openmc.webapp.dto;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
 /**
  * Request DTO for plugin delete endpoint
  */
 public class PluginDeleteRequest {
+    @Schema(description = "Admin username for authentication")
     private String username;
+    @Schema(description = "Admin password for authentication")
     private String password;
+    @Schema(description = "Name of the plugin JAR file to delete")
     private String filename;
     
     public PluginDeleteRequest() {
