@@ -378,9 +378,9 @@ kubectl get pods -n omcsi
 | `linode_token` | Linode API personal access token | *(required)* |
 | `cluster_label` | Label for the LKE cluster | `omcsi` |
 | `region` | Linode region | `us-east` |
-| `k8s_version` | Kubernetes version | `1.31` |
+| `k8s_version` | Kubernetes version | `1.34` |
 | `node_type` | Linode instance type for workers | `g6-standard-4` |
-| `node_count` | Number of worker nodes | `3` |
+| `node_count` | Number of worker nodes | `2` |
 | `rcon_password` | RCON password for Minecraft server | *(required)* |
 | `admin_password` | Admin password for web dashboard | *(required)* |
 | `image_registry` | Container image registry prefix (e.g., `your-dockerhub-user`) | `dmccoystephenson` |
@@ -436,7 +436,7 @@ kubectl get pods -n omcsi
 |---|---|---|
 | `aws_region` | AWS region for the EKS cluster | `us-east-1` |
 | `cluster_name` | Name for the EKS cluster | `omcsi` |
-| `cluster_version` | Kubernetes version | `1.31` |
+| `cluster_version` | Kubernetes version | `1.34` |
 | `node_instance_type` | EC2 instance type for workers | `t3.large` |
 | `node_desired_count` | Desired number of worker nodes | `2` |
 | `node_min_count` | Minimum workers (autoscaling) | `1` |
