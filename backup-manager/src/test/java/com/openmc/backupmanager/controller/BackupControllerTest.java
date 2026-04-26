@@ -1,6 +1,8 @@
 package com.openmc.backupmanager.controller;
 
+import com.openmc.backupmanager.dto.LatestBackupResponse;
 import com.openmc.backupmanager.exception.BackupException;
+import com.openmc.backupmanager.mapper.BackupMapper;
 import com.openmc.backupmanager.service.BackupService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -25,15 +27,16 @@ class BackupControllerTest {
     @MockBean
     private BackupService backupService;
 
+    @MockBean
+    private BackupMapper backupMapper;
+
     @Test
     @DisplayName("Should trigger backup successfully")
     void shouldTriggerBackupSuccessfully() throws Exception {
-        // Given
         String expectedBackupPath = "/backups/backup-20241211-120000";
         when(backupService.createBackup()).thenReturn(expectedBackupPath);
         doNothing().when(backupService).cleanupOldBackups();
 
-        // When & Then
         mockMvc.perform(post("/api/backups/trigger")
                 .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
@@ -49,17 +52,13 @@ class BackupControllerTest {
     @Test
     @DisplayName("Should return error when backup fails")
     void shouldReturnErrorWhenBackupFails() throws Exception {
-        // Given
         String errorMessage = "Backup volume not found";
         when(backupService.createBackup()).thenThrow(new BackupException(errorMessage));
 
-        // When & Then
         mockMvc.perform(post("/api/backups/trigger")
                 .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isInternalServerError())
-                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.success").value(false))
-                .andExpect(jsonPath("$.message").value("Backup failed: " + errorMessage));
+                .andExpect(jsonPath("$.message").value(errorMessage));
 
         verify(backupService, times(1)).createBackup();
         verify(backupService, never()).cleanupOldBackups();
@@ -83,7 +82,17 @@ class BackupControllerTest {
         BackupService.LatestBackupStatus status = new BackupService.LatestBackupStatus(
                 true, "2024-01-01T02:00:00", "/backups/backup-20240101-020000",
                 "Minecraft server backup created successfully.");
+
+        LatestBackupResponse response = LatestBackupResponse.builder()
+                .available(true)
+                .success(true)
+                .timestamp("2024-01-01T02:00:00")
+                .backupPath("/backups/backup-20240101-020000")
+                .message("Minecraft server backup created successfully.")
+                .build();
+
         when(backupService.getLatestBackupStatus()).thenReturn(status);
+        when(backupMapper.toLatestBackupResponse(status)).thenReturn(response);
 
         mockMvc.perform(get("/api/backups/latest")
                 .contentType(MediaType.APPLICATION_JSON))
@@ -99,7 +108,16 @@ class BackupControllerTest {
     void shouldReturnLatestFailedBackupStatus() throws Exception {
         BackupService.LatestBackupStatus status = new BackupService.LatestBackupStatus(
                 false, "2024-01-01T02:05:00", null, "Backup failed: volume not found");
+
+        LatestBackupResponse response = LatestBackupResponse.builder()
+                .available(true)
+                .success(false)
+                .timestamp("2024-01-01T02:05:00")
+                .message("Backup failed: volume not found")
+                .build();
+
         when(backupService.getLatestBackupStatus()).thenReturn(status);
+        when(backupMapper.toLatestBackupResponse(status)).thenReturn(response);
 
         mockMvc.perform(get("/api/backups/latest")
                 .contentType(MediaType.APPLICATION_JSON))

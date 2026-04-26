@@ -1,9 +1,11 @@
 package com.openmc.webapp.service;
 
 import com.openmc.webapp.config.ServerConfig;
+import com.openmc.webapp.mapper.PlayerProfileMapper;
 import com.openmc.webapp.model.ActivityTrackerSnapshot;
 import com.openmc.webapp.model.ActivityTrackerStats;
 import com.openmc.webapp.model.LeaderboardEntry;
+import com.openmc.webapp.model.PlayerProfile;
 import com.openmc.webapp.repository.Repository;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -17,6 +19,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * Service for fetching data from the Activity Tracker plugin API
@@ -31,6 +34,7 @@ public class ActivityTrackerService {
     private final ServerConfig serverConfig;
     private final RestTemplate restTemplate;
     private final Repository<ActivityTrackerSnapshot> repository;
+    private final PlayerProfileMapper playerProfileMapper;
     private final LinkedList<ActivityTrackerSnapshot> snapshotHistory = new LinkedList<>();
     private int maxHistorySize = DEFAULT_MAX_HISTORY_SIZE;
     
@@ -38,10 +42,12 @@ public class ActivityTrackerService {
     private List<LeaderboardEntry> cachedLeaderboard;
     private Instant lastFetchTime;
     
-    public ActivityTrackerService(ServerConfig serverConfig, Repository<ActivityTrackerSnapshot> repository) {
-        this.serverConfig = serverConfig;
-        this.restTemplate = new RestTemplate();
-        this.repository = repository;
+    public ActivityTrackerService(ServerConfig serverConfig, Repository<ActivityTrackerSnapshot> repository,
+                                  RestTemplate restTemplate, PlayerProfileMapper playerProfileMapper) {
+        this.serverConfig = Objects.requireNonNull(serverConfig, "serverConfig must not be null");
+        this.restTemplate = Objects.requireNonNull(restTemplate, "restTemplate must not be null");
+        this.repository = Objects.requireNonNull(repository, "repository must not be null");
+        this.playerProfileMapper = Objects.requireNonNull(playerProfileMapper, "playerProfileMapper must not be null");
         loadHistoricalData();
         logConfiguration();
     }
@@ -294,7 +300,7 @@ public class ActivityTrackerService {
      * @param playerName The name of the player
      * @return PlayerProfile with player data, or null if not found
      */
-    public com.openmc.webapp.model.PlayerProfile getPlayerProfile(String playerName) {
+    public PlayerProfile getPlayerProfile(String playerName) {
         if (!isEnabled() || playerName == null || playerName.trim().isEmpty()) {
             return null;
         }
@@ -305,14 +311,9 @@ public class ActivityTrackerService {
         for (int i = 0; i < leaderboard.size(); i++) {
             LeaderboardEntry entry = leaderboard.get(i);
             if (entry.getPlayerName() != null && entry.getPlayerName().equalsIgnoreCase(playerName)) {
-                // Create player profile with rank
-                return new com.openmc.webapp.model.PlayerProfile(
-                    entry.getPlayerUuid(),
-                    entry.getPlayerName(),
-                    entry.getHoursPlayed(),
-                    entry.getTotalLogins(),
-                    i + 1  // Rank is index + 1
-                );
+                PlayerProfile profile = playerProfileMapper.toPlayerProfile(entry);
+                profile.setLeaderboardRank(i + 1);
+                return profile;
             }
         }
         

@@ -3,6 +3,7 @@ package com.openmc.alertmanager.controller;
 import com.openmc.alertmanager.model.Alert;
 import com.openmc.alertmanager.model.AlertRecord;
 import com.openmc.alertmanager.service.AlertService;
+import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -30,16 +31,10 @@ public class AlertController {
      * @return Response indicating success or failure
      */
     @PostMapping
-    public ResponseEntity<String> sendAlert(@RequestBody Alert alert) {
+    public ResponseEntity<String> sendAlert(@Valid @RequestBody Alert alert) {
         log.info("Received alert via API: {} from source: {}", alert.getTitle(), alert.getSource());
-        
-        try {
-            alertService.sendAlert(alert);
-            return ResponseEntity.ok("Alert sent successfully");
-        } catch (Exception e) {
-            log.error("Failed to send alert", e);
-            return ResponseEntity.internalServerError().body("Failed to send alert");
-        }
+        alertService.sendAlert(alert);
+        return ResponseEntity.ok("Alert sent successfully");
     }
 
     /**

@@ -1,13 +1,18 @@
 package com.openmc.webapp.dto;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
 import java.util.List;
 
 /**
  * Response DTO for plugin list endpoint
  */
 public class PluginListResponse {
+    @Schema(description = "Whether the operation was successful")
     private boolean success;
+    @Schema(description = "List of plugin filenames")
     private List<String> plugins;
+    @Schema(description = "Error message if operation failed")
     private String error;
     
     public PluginListResponse() {

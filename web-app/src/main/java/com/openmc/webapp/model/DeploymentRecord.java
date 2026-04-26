@@ -2,15 +2,23 @@ package com.openmc.webapp.model;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.Instant;
 
 public class DeploymentRecord {
+    @Schema(description = "When the deployment occurred")
     private final Instant timestamp;
+    @Schema(description = "Name of the deployed plugin")
     private final String pluginName;
+    @Schema(description = "Deployment status (SUCCESS or FAILURE)")
     private final String status;
+    @Schema(description = "Source of the deployment")
     private final String source;
+    @Schema(description = "Git branch name")
     private final String branch;
+    @Schema(description = "Repository URL")
     private final String repoUrl;
+    @Schema(description = "Additional deployment message")
     private final String message;
 
     @JsonCreator
