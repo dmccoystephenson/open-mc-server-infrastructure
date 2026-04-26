@@ -3,6 +3,7 @@ package com.openmc.backupmanager.exception;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -19,7 +20,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(BackupException.class)
     public ResponseEntity<Map<String, Object>> handleBackupException(BackupException ex) {
-        log.error("Backup operation failed: {}", ex.getMessage());
+        log.error("Backup operation failed: {}", ex.getMessage(), ex);
         Map<String, Object> body = buildErrorBody(HttpStatus.INTERNAL_SERVER_ERROR, ex.getMessage());
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(body);
     }
@@ -42,6 +43,13 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, Object>> handleHandlerMethodValidation(HandlerMethodValidationException ex) {
         log.warn("Handler method validation failed: {}", ex.getMessage());
         Map<String, Object> body = buildErrorBody(HttpStatus.BAD_REQUEST, "Validation failed");
+        return ResponseEntity.badRequest().body(body);
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<Map<String, Object>> handleHttpMessageNotReadable(HttpMessageNotReadableException ex) {
+        log.warn("Malformed request body: {}", ex.getMessage());
+        Map<String, Object> body = buildErrorBody(HttpStatus.BAD_REQUEST, "Malformed request body");
         return ResponseEntity.badRequest().body(body);
     }
 

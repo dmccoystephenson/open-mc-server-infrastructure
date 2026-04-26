@@ -62,7 +62,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(java.io.IOException.class)
     public ResponseEntity<Map<String, Object>> handleIOException(java.io.IOException ex) {
-        log.error("I/O error: {}", ex.getMessage());
+        log.error("I/O error: {}", ex.getMessage(), ex);
         Map<String, Object> body = buildErrorBody(HttpStatus.INTERNAL_SERVER_ERROR, "An I/O error occurred");
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(body);
     }
