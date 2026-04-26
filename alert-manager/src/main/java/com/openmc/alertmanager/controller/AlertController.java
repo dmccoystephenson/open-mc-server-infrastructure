@@ -4,11 +4,8 @@ import com.openmc.alertmanager.model.Alert;
 import com.openmc.alertmanager.model.AlertRecord;
 import com.openmc.alertmanager.service.AlertService;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.Max;
-import jakarta.validation.constraints.Min;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
-import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -19,7 +16,6 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/alerts")
 @Slf4j
-@Validated
 public class AlertController {
 
     private final AlertService alertService;
@@ -49,9 +45,10 @@ public class AlertController {
      */
     @GetMapping
     public ResponseEntity<List<AlertRecord>> getRecentAlerts(
-            @RequestParam(value = "limit", defaultValue = "10") @Min(1) @Max(100) int limit) {
-        log.info("Fetching recent alerts with limit: {}", limit);
-        List<AlertRecord> alerts = alertService.getRecentAlerts(limit);
+            @RequestParam(value = "limit", defaultValue = "10") int limit) {
+        int safeLimit = Math.max(1, Math.min(limit, 100));
+        log.info("Fetching recent alerts with requested limit: {}, using effective limit: {}", limit, safeLimit);
+        List<AlertRecord> alerts = alertService.getRecentAlerts(safeLimit);
         return ResponseEntity.ok(alerts);
     }
 
