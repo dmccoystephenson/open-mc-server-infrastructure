@@ -43,7 +43,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<Map<String, Object>> handleHttpMessageNotReadable(HttpMessageNotReadableException ex) {
-        logger.warn("Malformed request body: {}", ex.getMessage());
+        logger.warn("Malformed request body: {}", ex.getMessage(), ex);
         Map<String, Object> body = buildErrorBody(HttpStatus.BAD_REQUEST, "Malformed request body");
         return ResponseEntity.badRequest().body(body);
     }
