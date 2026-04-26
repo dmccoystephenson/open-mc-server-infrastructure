@@ -19,6 +19,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * Service for fetching data from the Activity Tracker plugin API
@@ -43,10 +44,10 @@ public class ActivityTrackerService {
     
     public ActivityTrackerService(ServerConfig serverConfig, Repository<ActivityTrackerSnapshot> repository,
                                   RestTemplate restTemplate, PlayerProfileMapper playerProfileMapper) {
-        this.serverConfig = serverConfig;
-        this.restTemplate = restTemplate;
-        this.repository = repository;
-        this.playerProfileMapper = playerProfileMapper;
+        this.serverConfig = Objects.requireNonNull(serverConfig, "serverConfig must not be null");
+        this.restTemplate = Objects.requireNonNull(restTemplate, "restTemplate must not be null");
+        this.repository = Objects.requireNonNull(repository, "repository must not be null");
+        this.playerProfileMapper = Objects.requireNonNull(playerProfileMapper, "playerProfileMapper must not be null");
         loadHistoricalData();
         logConfiguration();
     }

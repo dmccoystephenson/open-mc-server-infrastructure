@@ -2,7 +2,6 @@ package com.openmc.backupmanager.controller;
 
 import com.openmc.backupmanager.dto.LatestBackupResponse;
 import com.openmc.backupmanager.exception.BackupException;
-import com.openmc.backupmanager.exception.GlobalExceptionHandler;
 import com.openmc.backupmanager.mapper.BackupMapper;
 import com.openmc.backupmanager.service.BackupService;
 import org.junit.jupiter.api.DisplayName;

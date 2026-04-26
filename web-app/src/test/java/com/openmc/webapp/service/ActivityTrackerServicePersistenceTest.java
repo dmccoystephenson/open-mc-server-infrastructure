@@ -2,14 +2,17 @@ package com.openmc.webapp.service;
 
 import com.openmc.webapp.config.ServerConfig;
 import com.openmc.webapp.config.TestDataStorageConfig;
+import com.openmc.webapp.mapper.PlayerProfileMapper;
 import com.openmc.webapp.model.ActivityTrackerSnapshot;
 import com.openmc.webapp.repository.ActivityTrackerSnapshotRepository;
 import org.junit.jupiter.api.*;
+import org.springframework.web.client.RestTemplate;
 
 import java.io.File;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.mock;
 
 @DisplayName("ActivityTrackerService Persistence Tests")
 class ActivityTrackerServicePersistenceTest {
@@ -47,7 +50,7 @@ class ActivityTrackerServicePersistenceTest {
     @Test
     @DisplayName("Should start with empty history when no persisted data exists")
     void shouldStartWithEmptyHistoryWhenNoPersistedDataExists() {
-        ActivityTrackerService service = new ActivityTrackerService(serverConfig, repository, new org.springframework.web.client.RestTemplate(), null);
+        ActivityTrackerService service = new ActivityTrackerService(serverConfig, repository, mock(RestTemplate.class), mock(PlayerProfileMapper.class));
         
         List<ActivityTrackerSnapshot> history = service.getSnapshotHistory();
         assertTrue(history.isEmpty());
@@ -58,7 +61,7 @@ class ActivityTrackerServicePersistenceTest {
     void shouldInitializeCacheWithMostRecentSnapshotOnLoad() {
         // This test verifies that when snapshots are loaded,
         // the service initializes its cache with the most recent successful snapshot
-        ActivityTrackerService service = new ActivityTrackerService(serverConfig, repository, new org.springframework.web.client.RestTemplate(), null);
+        ActivityTrackerService service = new ActivityTrackerService(serverConfig, repository, mock(RestTemplate.class), mock(PlayerProfileMapper.class));
         
         // Since no data exists, last fetch time should be null
         assertNull(service.getLastFetchTime());
@@ -67,7 +70,7 @@ class ActivityTrackerServicePersistenceTest {
     @Test
     @DisplayName("Should return unmodifiable list for snapshot history")
     void shouldReturnUnmodifiableListForSnapshotHistory() {
-        ActivityTrackerService service = new ActivityTrackerService(serverConfig, repository, new org.springframework.web.client.RestTemplate(), null);
+        ActivityTrackerService service = new ActivityTrackerService(serverConfig, repository, mock(RestTemplate.class), mock(PlayerProfileMapper.class));
         
         List<ActivityTrackerSnapshot> history = service.getSnapshotHistory();
         

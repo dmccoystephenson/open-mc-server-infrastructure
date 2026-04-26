@@ -1,25 +1,36 @@
 package com.openmc.webapp.service;
 
 import com.openmc.webapp.config.ServerConfig;
+import com.openmc.webapp.mapper.PlayerProfileMapper;
 import com.openmc.webapp.repository.InMemoryRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.web.client.RestTemplate;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+@ExtendWith(MockitoExtension.class)
 @DisplayName("ActivityTrackerService Max History Size Tests")
 class ActivityTrackerServiceMaxHistorySizeTest {
 
     private ServerConfig serverConfig;
     private ActivityTrackerService activityTrackerService;
 
+    @Mock
+    private RestTemplate restTemplate;
+
+    @Mock
+    private PlayerProfileMapper playerProfileMapper;
+
     @BeforeEach
     void setUp() {
         serverConfig = new ServerConfig();
         serverConfig.setActivityTrackerEnabled(false); // Disable to prevent actual API calls
-        activityTrackerService = new ActivityTrackerService(serverConfig, new InMemoryRepository<>(), new RestTemplate(), null);
+        activityTrackerService = new ActivityTrackerService(serverConfig, new InMemoryRepository<>(), restTemplate, playerProfileMapper);
     }
 
     @Test
