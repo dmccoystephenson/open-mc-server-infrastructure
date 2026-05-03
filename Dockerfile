@@ -24,9 +24,9 @@ RUN apt-get update && \
 
 FROM eclipse-temurin:25.0.3_9-jdk-noble as java25-runtime
 
-# Install runtime tools and Java 21 JRE for running the Spring Boot wrapper.
-# Spring Boot 3.2.0 was compiled for and is compatible with Java 21.
-# Java 25 (the default 'java' in PATH from temurin) is used by the Spigot server subprocess.
+# Intentionally using the JDK image: Eclipse Temurin 25 does not publish a separate JRE
+# image for this tag, and the full JDK is required to run Spigot 26.1 at runtime.
+# openjdk-21-jre-headless is added for the Spring Boot 3.2.0 wrapper (compiled for Java 21).
 RUN apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
         openjdk-21-jre-headless \
@@ -45,11 +45,16 @@ RUN wget -O BuildTools.jar https://hub.spigotmc.org/jenkins/job/BuildTools/lastS
 RUN git config --global --unset core.autocrlf || :
 RUN java -jar BuildTools.jar --rev ${MINECRAFT_VERSION} && \
     if [ ! -f "spigot-${MINECRAFT_VERSION}.jar" ]; then \
-        actual_jar=$(find . -maxdepth 1 -type f -newer BuildTools.jar -name "spigot-*.jar" | head -1); \
-        if [ -z "$actual_jar" ]; then \
+        jar_count=$(find . -maxdepth 1 -type f -newer BuildTools.jar -name "spigot-*.jar" | wc -l); \
+        if [ "$jar_count" -eq 0 ]; then \
             echo "ERROR: BuildTools did not produce any spigot-*.jar in $(pwd)" >&2; \
             exit 1; \
         fi; \
+        if [ "$jar_count" -gt 1 ]; then \
+            echo "ERROR: BuildTools produced multiple spigot-*.jar candidates; cannot determine which to use" >&2; \
+            exit 1; \
+        fi; \
+        actual_jar=$(find . -maxdepth 1 -type f -newer BuildTools.jar -name "spigot-*.jar"); \
         cp "$actual_jar" "spigot-${MINECRAFT_VERSION}.jar"; \
     fi
 

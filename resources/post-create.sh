@@ -233,7 +233,7 @@ start_server() {
     # The Spigot server subprocess spawned by the wrapper will inherit PATH and use
     # 'java' from /opt/java/openjdk/bin (Java 25, set by the temurin base image).
     local java21_bin
-    java21_bin=$(update-alternatives --list java 2>/dev/null | grep "java-21-openjdk" | head -1)
+    java21_bin=$(update-alternatives --list java 2>/dev/null | grep "java-21-openjdk" | head -1 || true)
     if [ -z "$java21_bin" ] || [ ! -x "$java21_bin" ]; then
         log "ERROR: Java 21 executable not found via update-alternatives. The image requires openjdk-21-jre-headless to run the Spring Boot wrapper."
         exit 1
