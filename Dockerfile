@@ -25,7 +25,7 @@ RUN apt-get update && \
 FROM java25-base as builder
 
 # Accept Minecraft version as build argument
-ARG MINECRAFT_VERSION=1.21.10
+ARG MINECRAFT_VERSION=26.1
 
 # Build server
 WORKDIR /mcserver-build
@@ -43,7 +43,7 @@ RUN ./gradlew build --no-daemon
 FROM java25-base as final
 
 # Accept Minecraft version as build argument
-ARG MINECRAFT_VERSION=1.21.10
+ARG MINECRAFT_VERSION=26.1
 
 # Copy built server from builder stage
 COPY --from=builder /mcserver-build/spigot-${MINECRAFT_VERSION}.jar /mcserver-build/spigot-${MINECRAFT_VERSION}.jar
