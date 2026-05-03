@@ -26,7 +26,8 @@ FROM eclipse-temurin:25.0.3_9-jdk-noble as java25-runtime
 
 # Intentionally using the JDK image: Eclipse Temurin 25 does not publish a separate JRE
 # image for this tag, and the full JDK is required to run Spigot 26.1 at runtime.
-# openjdk-21-jre-headless is added for the Spring Boot 3.2.0 wrapper (compiled for Java 21).
+# openjdk-21-jre-headless is added because Spring Boot 3.2.0 has runtime compatibility issues
+# with Java 25 (embedded Tomcat and Spring internals rely on APIs removed/restricted in Java 25).
 RUN apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
         openjdk-21-jre-headless \
