@@ -11,7 +11,18 @@ RUN apt-get update && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-FROM base as builder
+FROM eclipse-temurin:25-jdk as java25-base
+
+# Install additional tools needed for Spigot build and runtime
+RUN apt-get update && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+        wget \
+        git \
+        curl && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+FROM java25-base as builder
 
 # Accept Minecraft version as build argument
 ARG MINECRAFT_VERSION=1.21.10
@@ -29,7 +40,7 @@ COPY minecraft-wrapper/ .
 # Build with tests - ensures code quality before creating Docker image
 RUN ./gradlew build --no-daemon
 
-FROM base as final
+FROM java25-base as final
 
 # Accept Minecraft version as build argument
 ARG MINECRAFT_VERSION=1.21.10
