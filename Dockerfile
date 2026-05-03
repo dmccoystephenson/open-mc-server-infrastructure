@@ -31,7 +31,15 @@ ARG MINECRAFT_VERSION=26.1
 WORKDIR /mcserver-build
 RUN wget -O BuildTools.jar https://hub.spigotmc.org/jenkins/job/BuildTools/lastSuccessfulBuild/artifact/target/BuildTools.jar
 RUN git config --global --unset core.autocrlf || :
-RUN java -jar BuildTools.jar --rev ${MINECRAFT_VERSION}
+RUN java -jar BuildTools.jar --rev ${MINECRAFT_VERSION} && \
+    if [ ! -f "spigot-${MINECRAFT_VERSION}.jar" ]; then \
+        actual_jar=$(find . -maxdepth 1 -type f -newer BuildTools.jar -name "spigot-*.jar" | head -1); \
+        if [ -z "$actual_jar" ]; then \
+            echo "ERROR: BuildTools did not produce any spigot-*.jar in $(pwd)" >&2; \
+            exit 1; \
+        fi; \
+        cp "$actual_jar" "spigot-${MINECRAFT_VERSION}.jar"; \
+    fi
 
 # Build minecraft-wrapper Spring Boot application
 FROM base as wrapper-builder
