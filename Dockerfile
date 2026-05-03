@@ -11,13 +11,22 @@ RUN apt-get update && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-FROM eclipse-temurin:25-jdk as java25-base
+FROM eclipse-temurin:25.0.3_9-jdk-noble as java25-base
 
-# Install additional tools needed for Spigot build and runtime
+# Install tools needed for Spigot build (wget, git) and general use (curl)
 RUN apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
         wget \
         git \
+        curl && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+FROM eclipse-temurin:25.0.3_9-jdk-noble as java25-runtime
+
+# Install runtime tools only — no build-time tools (wget/git) in the final image
+RUN apt-get update && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
         curl && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
@@ -48,7 +57,7 @@ COPY minecraft-wrapper/ .
 # Build with tests - ensures code quality before creating Docker image
 RUN ./gradlew build --no-daemon
 
-FROM java25-base as final
+FROM java25-runtime as final
 
 # Accept Minecraft version as build argument
 ARG MINECRAFT_VERSION=26.1
