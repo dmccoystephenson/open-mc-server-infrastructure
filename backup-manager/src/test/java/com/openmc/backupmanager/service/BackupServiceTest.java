@@ -22,7 +22,7 @@ import static org.junit.jupiter.api.Assertions.*;
 @TestPropertySource(properties = {
     "backup.directory=/tmp/test-backups",
     "backup.max.size.mb=1",
-    "volume.name=test-volume",
+    "source.directory=/tmp/test-mcserver",
     "alerts.backup.success=false",
     "alerts.backup.failure=false"
 })
@@ -122,6 +122,81 @@ class BackupServiceTest {
         assertEquals("2.0M", ReflectionTestUtils.invokeMethod(backupService, "formatFileSize", 2L * 1024 * 1024));
         assertEquals("1.5G", ReflectionTestUtils.invokeMethod(backupService, "formatFileSize", 
             (long)(1.5 * 1024 * 1024 * 1024)));
+    }
+
+    @Test
+    @DisplayName("createBackup should create a tar.gz archive from the source directory")
+    void shouldCreateBackupFromSourceDirectory() throws IOException, BackupException {
+        // Create a source directory with some content
+        Path sourceDir = tempDir.resolve("mcserver");
+        Files.createDirectories(sourceDir);
+        Files.writeString(sourceDir.resolve("world.dat"), "fake world data");
+        Files.writeString(sourceDir.resolve("server.properties"), "server-port=25565");
+
+        // Point the service at our temp dirs
+        ReflectionTestUtils.setField(backupService, "sourceDirectory", sourceDir.toString());
+
+        String backupPath = backupService.createBackup();
+
+        assertNotNull(backupPath, "Backup path should not be null");
+        Path archive = Path.of(backupPath).resolve("mcserver-backup.tar.gz");
+        assertTrue(Files.exists(archive), "Backup archive should exist at " + archive);
+        assertTrue(Files.size(archive) > 0, "Backup archive should not be empty");
+    }
+
+    @Test
+    @DisplayName("createBackup should throw BackupException when source directory is missing")
+    void shouldThrowWhenSourceDirectoryMissing() {
+        Path nonExistentSource = tempDir.resolve("no-mcserver");
+        ReflectionTestUtils.setField(backupService, "sourceDirectory", nonExistentSource.toString());
+
+        assertThrows(BackupException.class, () -> backupService.createBackup());
+    }
+
+    @Test
+    @DisplayName("createBackup should throw BackupException when source directory is empty")
+    void shouldThrowWhenSourceDirectoryEmpty() throws IOException {
+        Path emptySource = tempDir.resolve("empty-mcserver");
+        Files.createDirectories(emptySource);
+        ReflectionTestUtils.setField(backupService, "sourceDirectory", emptySource.toString());
+
+        assertThrows(BackupException.class, () -> backupService.createBackup());
+    }
+
+    @Test
+    @DisplayName("checkSourceDirectoryAvailable returns false for non-existent directory")
+    void shouldReturnFalseForNonExistentSourceDirectory() {
+        Path nonExistent = tempDir.resolve("no-such-src");
+        ReflectionTestUtils.setField(backupService, "sourceDirectory", nonExistent.toString());
+
+        boolean available = (boolean) ReflectionTestUtils.invokeMethod(
+                backupService, "checkSourceDirectoryAvailable");
+        assertFalse(available);
+    }
+
+    @Test
+    @DisplayName("checkSourceDirectoryAvailable returns false for empty directory")
+    void shouldReturnFalseForEmptySourceDirectory() throws IOException {
+        Path emptyDir = tempDir.resolve("empty-src");
+        Files.createDirectories(emptyDir);
+        ReflectionTestUtils.setField(backupService, "sourceDirectory", emptyDir.toString());
+
+        boolean available = (boolean) ReflectionTestUtils.invokeMethod(
+                backupService, "checkSourceDirectoryAvailable");
+        assertFalse(available);
+    }
+
+    @Test
+    @DisplayName("checkSourceDirectoryAvailable returns true for directory with content")
+    void shouldReturnTrueForNonEmptySourceDirectory() throws IOException {
+        Path srcDir = tempDir.resolve("nonempty-src");
+        Files.createDirectories(srcDir);
+        Files.writeString(srcDir.resolve("file.txt"), "data");
+        ReflectionTestUtils.setField(backupService, "sourceDirectory", srcDir.toString());
+
+        boolean available = (boolean) ReflectionTestUtils.invokeMethod(
+                backupService, "checkSourceDirectoryAvailable");
+        assertTrue(available);
     }
 
     @Test

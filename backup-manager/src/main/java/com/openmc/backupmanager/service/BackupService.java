@@ -25,6 +25,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
+import java.util.stream.Stream;
 
 @Service
 @Slf4j
@@ -50,14 +51,11 @@ public class BackupService {
     @Value("${backup.max.size.mb:10240}")
     private long maxBackupSizeMb;
 
-    @Value("${volume.name:mcserver}")
-    private String volumeName;
+    @Value("${source.directory:/mcserver}")
+    private String sourceDirectory;
 
     @Value("${alert.manager.url:http://alert-manager:8090/api/alerts}")
     private String alertManagerUrl;
-
-    @Value("${host.backup.directory:#{null}}")
-    private String hostBackupDirectory;
 
     @Value("${alerts.backup.success:true}")
     private boolean alertsBackupSuccess;
@@ -141,7 +139,7 @@ public class BackupService {
     }
 
     /**
-     * Create a backup of the Minecraft server volume using Docker
+     * Create a backup of the Minecraft server volume using the filesystem.
      */
     public String createBackup() throws BackupException {
         return doCreateBackup();
@@ -149,11 +147,13 @@ public class BackupService {
 
     private String doCreateBackup() throws BackupException {
         log.info("Creating backup...");
-        
+        log.info("Backup configuration: sourceDirectory={}, backupDirectory={}, maxSizeMb={}",
+                sourceDirectory, backupDirectory, maxBackupSizeMb);
+
         // Create backup directory with timestamp
         String backupSubdir = "backup-" + LocalDateTime.now().format(BACKUP_DIR_FORMAT);
         Path backupDir = Paths.get(backupDirectory, backupSubdir);
-        
+
         try {
             Files.createDirectories(backupDir);
             log.info("Created backup directory: {}", backupDir);
@@ -162,47 +162,36 @@ public class BackupService {
             throw new BackupException("Failed to create backup directory", e);
         }
 
-        // Check if volume exists
-        if (!checkVolumeExists()) {
-            String errorMsg = String.format("Volume '%s' does not exist! Please ensure the server has been started at least once.", volumeName);
+        // Check if source directory is available
+        if (!checkSourceDirectoryAvailable()) {
+            String errorMsg = String.format(
+                    "Source directory '%s' does not exist or is empty. Please ensure the server has been started at least once.",
+                    sourceDirectory);
             log.error(errorMsg);
             sendAlert("Backup Failed", errorMsg, "ERROR", alertsBackupFailure);
             throw new BackupException(errorMsg);
         }
-        log.info("Volume '{}' found", volumeName);
+        log.info("Source directory '{}' found", sourceDirectory);
 
-        // Pull ubuntu image if needed
-        ensureUbuntuImageAvailable();
-
-        // Determine which path to use for docker run mount
-        String dockerMountPath = (hostBackupDirectory != null) ? hostBackupDirectory : backupDirectory;
-        
-        // Create backup using docker run
+        // Create backup using tar directly on the mounted filesystem
         log.info("Creating compressed backup archive (this may take a while)...");
-        
-        List<String> dockerCommand = new ArrayList<>();
-        dockerCommand.add("docker");
-        dockerCommand.add("run");
-        dockerCommand.add("--rm");
-        dockerCommand.add("-v");
-        dockerCommand.add(volumeName + ":/mcserver:ro");
-        dockerCommand.add("-v");
-        dockerCommand.add(dockerMountPath + ":/backups");
-        dockerCommand.add("ubuntu:latest");
-        dockerCommand.add("tar");
-        dockerCommand.add("czf");
-        dockerCommand.add("/backups/" + backupSubdir + "/mcserver-backup.tar.gz");
-        dockerCommand.add("-C");
-        dockerCommand.add("/mcserver");
-        dockerCommand.add(".");
 
-        ProcessBuilder pb = new ProcessBuilder(dockerCommand);
+        Path backupFile = backupDir.resolve(BACKUP_FILE_NAME);
+        List<String> tarCommand = new ArrayList<>();
+        tarCommand.add("tar");
+        tarCommand.add("czf");
+        tarCommand.add(backupFile.toString());
+        tarCommand.add("-C");
+        tarCommand.add(sourceDirectory);
+        tarCommand.add(".");
+
+        ProcessBuilder pb = new ProcessBuilder(tarCommand);
         pb.redirectErrorStream(true);
-        
+
         int exitCode;
         try {
             Process process = pb.start();
-            
+
             // Capture output
             try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
                 String line;
@@ -212,7 +201,7 @@ public class BackupService {
                     }
                 }
             }
-            
+
             exitCode = process.waitFor();
         } catch (IOException | InterruptedException e) {
             String errorMsg = "Failed to execute backup command: " + e.getMessage();
@@ -221,7 +210,6 @@ public class BackupService {
             throw new BackupException(errorMsg, e);
         }
 
-        // Check exit code
         // Exit code 1 from tar means "some files changed during backup" which is acceptable
         if (exitCode == 0) {
             log.info("Backup archive created successfully");
@@ -236,7 +224,6 @@ public class BackupService {
         }
 
         // Verify backup was created
-        Path backupFile = backupDir.resolve("mcserver-backup.tar.gz");
         if (!Files.exists(backupFile)) {
             String errorMsg = "Backup verification failed! File not created.";
             log.error(errorMsg);
@@ -250,73 +237,30 @@ public class BackupService {
         } catch (IOException e) {
             backupSize = 0;
         }
-        
+
         String backupSizeStr = formatFileSize(backupSize);
         log.info("Backup created successfully: {} ({})", backupFile, backupSizeStr);
-        
-        String successMsg = String.format("Minecraft server backup created successfully. Size: %s, Location: %s", 
+
+        String successMsg = String.format("Minecraft server backup created successfully. Size: %s, Location: %s",
                                          backupSizeStr, backupDir);
         sendAlert("Backup Completed", successMsg, "INFO", alertsBackupSuccess);
         return backupDir.toString();
     }
 
     /**
-     * Check if the Docker volume exists
+     * Check if the source directory is available and contains data.
      */
-    private boolean checkVolumeExists() {
-        log.info("Checking if volume '{}' exists...", volumeName);
-        
-        ProcessBuilder pb = new ProcessBuilder("docker", "volume", "inspect", volumeName);
-        pb.redirectErrorStream(true);
-        
-        try {
-            Process process = pb.start();
-            int exitCode = process.waitFor();
-            return exitCode == 0;
-        } catch (IOException | InterruptedException e) {
-            log.error("Failed to check volume existence", e);
+    private boolean checkSourceDirectoryAvailable() {
+        Path src = Paths.get(sourceDirectory);
+        if (!Files.isDirectory(src)) {
+            log.warn("Source directory '{}' does not exist or is not a directory", sourceDirectory);
             return false;
         }
-    }
-
-    /**
-     * Ensure the ubuntu Docker image is available
-     */
-    private void ensureUbuntuImageAvailable() throws BackupException {
-        log.info("Checking for ubuntu Docker image...");
-        
-        ProcessBuilder pb = new ProcessBuilder("docker", "image", "inspect", "ubuntu:latest");
-        pb.redirectErrorStream(true);
-        
-        try {
-            Process process = pb.start();
-            int exitCode = process.waitFor();
-            
-            if (exitCode != 0) {
-                log.info("Ubuntu image not found locally. Pulling from Docker Hub...");
-                log.info("This may take a few minutes on first run...");
-                
-                ProcessBuilder pullPb = new ProcessBuilder("docker", "pull", "ubuntu:latest");
-                pullPb.redirectErrorStream(true);
-                Process pullProcess = pullPb.start();
-                
-                try (BufferedReader reader = new BufferedReader(new InputStreamReader(pullProcess.getInputStream()))) {
-                    String line;
-                    while ((line = reader.readLine()) != null) {
-                        log.debug("docker pull: {}", line);
-                    }
-                }
-                
-                int pullExitCode = pullProcess.waitFor();
-                if (pullExitCode != 0) {
-                    throw new BackupException("Failed to pull ubuntu image");
-                }
-                log.info("Ubuntu image pulled successfully");
-            } else {
-                log.info("Ubuntu image found");
-            }
-        } catch (IOException | InterruptedException e) {
-            throw new BackupException("Failed to check/pull ubuntu image", e);
+        try (Stream<Path> entries = Files.list(src)) {
+            return entries.findAny().isPresent();
+        } catch (IOException e) {
+            log.error("Failed to read source directory '{}': {}", sourceDirectory, e.getMessage());
+            return false;
         }
     }
 

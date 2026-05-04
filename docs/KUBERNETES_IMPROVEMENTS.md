@@ -4,18 +4,19 @@ This document captures issues, limitations, and improvement opportunities surfac
 
 ---
 
-## 1. Backup Manager — Docker CLI Dependency
+## 1. Backup Manager — Docker CLI Dependency ✅ Resolved
 
-**Problem:** The `backup-manager` creates backups by shelling out to `docker run` to spin up an Ubuntu container that tars the mcserver volume ([BackupService.java](../backup-manager/src/main/java/com/openmc/backupmanager/service/BackupService.java)). In Kubernetes, there is no Docker daemon on the nodes (or the pod doesn't have access to it), so this backup mechanism silently fails.
+**Problem:** The `backup-manager` created backups by shelling out to `docker run` to spin up an Ubuntu container that tars the mcserver volume. In Kubernetes, there is no Docker daemon on the nodes (or the pod doesn't have access to it), so this backup mechanism silently failed.
 
-**Current workaround:** Backups are disabled by default in the Helm chart (`SPRING_TASK_SCHEDULING_ENABLED: "false"`, `BACKUP_SCHEDULE: ""`). The `values.yaml` notes this limitation.
+**Resolution:** The backup-manager now uses `tar` directly on the mounted filesystem. The mcserver PVC is already mounted at `/mcserver` inside the pod (in both Docker Compose and Kubernetes), so the service runs `tar czf` against that directory without requiring Docker CLI. The Docker socket mount has been removed from `compose.yml`, `docker.io` has been removed from the `Dockerfile`, and the Helm chart backup-manager is now fully enabled by default.
 
-**Suggested improvements:**
-- Add a native filesystem backup mode to `BackupService` that tars the PVC mount directly (no Docker CLI required). The mcserver data is already mounted at `/mcserver` inside the pod.
-- Alternatively, implement backups as a Kubernetes `CronJob` with a shared PVC mount, or use the CSI VolumeSnapshot API for point-in-time backups.
-- Remove the `docker volume inspect` pre-check and `docker pull ubuntu` steps when running in a non-Docker environment.
-
-**Priority:** High — backups are a critical operational feature and are currently non-functional in Kubernetes.
+**Changes made:**
+- `BackupService.java`: replaced `checkVolumeExists()` / `ensureUbuntuImageAvailable()` / `docker run` with a direct `tar` invocation on the `source.directory` mount point.
+- `application.properties`: replaced `volume.name` and `host.backup.directory` with `source.directory`.
+- `Dockerfile`: removed `docker.io` dependency.
+- `compose.yml`: removed Docker socket mount, `HOST_BACKUP_DIRECTORY`, and `VOLUME_NAME` env vars.
+- `helm/omcsi/values.yaml`: enabled scheduled backups (`SPRING_TASK_SCHEDULING_ENABLED: "true"`, `BACKUP_SCHEDULE: "0 0 2 * * ?"`), enabled alerts, replaced `VOLUME_NAME` with `SOURCE_DIRECTORY`.
+- `helm/omcsi/templates/backup-manager.yaml`: replaced `VOLUME_NAME` env entry with `SOURCE_DIRECTORY`.
 
 ---
 
@@ -155,7 +156,7 @@ This document captures issues, limitations, and improvement opportunities surfac
 
 | # | Improvement | Priority | Effort |
 |---|---|---|---|
-| 1 | Backup manager — native filesystem mode | High | Medium |
+| 1 | ~~Backup manager — native filesystem mode~~ ✅ Resolved | ~~High~~ | ~~Medium~~ |
 | 2 | Health probes for all services | Medium | Low |
 | 3 | Security contexts | Medium | Low |
 | 4 | Ingress controller support | Medium | Medium |
