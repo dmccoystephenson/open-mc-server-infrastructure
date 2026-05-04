@@ -6,10 +6,10 @@ An automated backup management system for the Minecraft server infrastructure. T
 
 - **Scheduled Backups**: Automatically creates backups of the Minecraft server once a day (default: 2 AM)
 - **Size Management**: Monitors backup directory size and removes oldest backups when exceeding limit
-- **Docker Integration**: Uses Docker commands to create compressed tar.gz backups from the server volume
+- **Filesystem Integration**: Uses `tar` directly on the mounted `/mcserver` directory to create compressed tar.gz backups — no Docker CLI or Docker socket required
 - **Alert Integration**: Sends notifications to the alert-manager for backup success and failures
 - **Configurable**: Customize backup schedule, size limits, and paths via environment variables
-- **Containerized**: Runs in its own Docker container with access to Docker socket for backup operations
+- **Containerized**: Runs in its own Docker container; the Minecraft server data is mounted read-only at `/mcserver`
 
 ## Configuration
 
@@ -20,7 +20,7 @@ The following environment variables can be configured in `.env`:
 - `BACKUP_CONTAINER_NAME`: Container name (default: `open-mc-backup-manager`)
 - `BACKUP_MAX_SIZE_MB`: Maximum size of backups directory in MB (default: `10240` = 10GB)
 - `BACKUP_SCHEDULE`: Cron expression for backup schedule (default: `0 0 2 * * ?` = 2 AM daily)
-- `VOLUME_NAME`: Name of the Docker volume containing Minecraft server data (default: `mcserver`)
+- `SOURCE_DIRECTORY`: Path to the mounted Minecraft server data directory (default: `/mcserver`)
 - `ALERTS_BACKUP_SUCCESS`: Enable alerts for successful backups (default: `true`)
 - `ALERTS_BACKUP_FAILURE`: Enable alerts for failed backups (default: `true`)
 
@@ -40,7 +40,7 @@ Examples:
 ## How It Works
 
 1. **Scheduled Execution**: The backup manager uses Spring's `@Scheduled` annotation to trigger backups
-2. **Docker Backup**: Executes Docker commands to create compressed tar.gz backups from the Minecraft server volume
+2. **Filesystem Backup**: Runs `tar czf` directly on the mounted source directory (`/mcserver`) to create a compressed tar.gz backup
 3. **Size Monitoring**: After each backup, checks the total size of the backups directory
 4. **Cleanup**: If the directory exceeds the size limit, removes oldest backups first until under limit
 5. **Alerts**: Sends notifications to the alert-manager for both successful and failed backup operations
@@ -118,7 +118,7 @@ curl -X POST http://localhost:8091/api/backups/trigger
 ```json
 {
   "success": false,
-  "message": "Backup failed: Volume 'mcserver' does not exist!"
+  "message": "Backup failed: Source directory '/mcserver' is unavailable (missing, empty, or unreadable)."
 }
 ```
 
@@ -145,17 +145,13 @@ The backup-manager exposes a REST API on port 8091 (configurable via `BACKUP_POR
 
 The backup-manager container has access to:
 
-- `/mcserver` - Read-only access to the Minecraft server volume
+- `/mcserver` - Read-only access to the Minecraft server data (mounted from the mcserver PVC or named volume)
 - `/backups` - Read-write access to the backups directory on the host
-- `/.env` - Read-only access to environment configuration
-- `/var/run/docker.sock` - Docker socket for executing backup operations
 
 ## Security Notes
 
-- The container requires access to the Docker socket to run backup commands
 - The Minecraft server volume is mounted read-only for safety
 - The REST API is exposed on localhost by default (port 8091)
-- Backups are created using temporary Docker containers with the ubuntu image
 
 ## Troubleshooting
 
@@ -173,8 +169,7 @@ The backup-manager container has access to:
 
 ### Backup Creation Fails
 
-1. Ensure Docker is accessible from within the container
-2. Verify the Minecraft server volume exists and is accessible
-3. Check that the ubuntu Docker image is available
-4. Ensure sufficient disk space for backups
+1. Verify the Minecraft server volume/PVC is mounted at `/mcserver` and contains data
+2. Ensure the container has read access to `/mcserver` (check volume mount permissions)
+3. Ensure sufficient disk space for backups
 
