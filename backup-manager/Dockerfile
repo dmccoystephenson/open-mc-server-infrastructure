@@ -22,9 +22,9 @@ RUN gradle clean build -x test --no-daemon
 # Alpine had network issues with apk in the build environment
 FROM eclipse-temurin:21-jre
 
-# Install curl for alert notifications
+# Install tar, gzip, and curl
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends curl && \
+    apt-get install -y --no-install-recommends tar gzip curl && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 

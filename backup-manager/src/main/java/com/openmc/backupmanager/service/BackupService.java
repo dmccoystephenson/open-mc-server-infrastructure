@@ -165,7 +165,8 @@ public class BackupService {
         // Check if source directory is available
         if (!checkSourceDirectoryAvailable()) {
             String errorMsg = String.format(
-                    "Source directory '%s' does not exist or is empty. Please ensure the server has been started at least once.",
+                    "Source directory '%s' is unavailable (missing, empty, or unreadable). " +
+                    "Please ensure the server has been started at least once and check the logs for details.",
                     sourceDirectory);
             log.error(errorMsg);
             sendAlert("Backup Failed", errorMsg, "ERROR", alertsBackupFailure);
@@ -203,7 +204,13 @@ public class BackupService {
             }
 
             exitCode = process.waitFor();
-        } catch (IOException | InterruptedException e) {
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            String errorMsg = "Backup interrupted: " + e.getMessage();
+            log.error(errorMsg, e);
+            sendAlert("Backup Failed", errorMsg, "ERROR", alertsBackupFailure);
+            throw new BackupException(errorMsg, e);
+        } catch (IOException e) {
             String errorMsg = "Failed to execute backup command: " + e.getMessage();
             log.error(errorMsg, e);
             sendAlert("Backup Failed", errorMsg, "ERROR", alertsBackupFailure);
@@ -248,18 +255,29 @@ public class BackupService {
     }
 
     /**
-     * Check if the source directory is available and contains data.
+     * Check if the source directory is available and contains at least one regular file.
+     * Returns {@code false} (with a specific log message) if the configured path is blank,
+     * the path is not an existing directory, no regular files are found, or the directory
+     * cannot be read due to a permissions error.
      */
     private boolean checkSourceDirectoryAvailable() {
+        if (sourceDirectory == null || sourceDirectory.isBlank()) {
+            log.error("source.directory is not configured (blank or empty)");
+            return false;
+        }
         Path src = Paths.get(sourceDirectory);
+        if (!src.isAbsolute()) {
+            log.error("source.directory '{}' is not an absolute path — refusing to proceed to avoid archiving unintended paths", sourceDirectory);
+            return false;
+        }
         if (!Files.isDirectory(src)) {
             log.warn("Source directory '{}' does not exist or is not a directory", sourceDirectory);
             return false;
         }
-        try (Stream<Path> entries = Files.list(src)) {
-            return entries.findFirst().isPresent();
+        try (Stream<Path> entries = Files.walk(src)) {
+            return entries.anyMatch(Files::isRegularFile);
         } catch (IOException e) {
-            log.error("Failed to read source directory '{}': {}", sourceDirectory, e.getMessage());
+            log.error("Cannot read source directory '{}' (permissions or I/O error): {}", sourceDirectory, e.getMessage());
             return false;
         }
     }

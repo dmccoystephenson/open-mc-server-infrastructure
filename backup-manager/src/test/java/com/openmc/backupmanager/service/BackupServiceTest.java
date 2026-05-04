@@ -164,6 +164,53 @@ class BackupServiceTest {
     }
 
     @Test
+    @DisplayName("checkSourceDirectoryAvailable returns false for blank source directory")
+    void shouldReturnFalseForBlankSourceDirectory() {
+        ReflectionTestUtils.setField(backupService, "sourceDirectory", "   ");
+
+        boolean available = (boolean) ReflectionTestUtils.invokeMethod(
+                backupService, "checkSourceDirectoryAvailable");
+        assertFalse(available);
+    }
+
+    @Test
+    @DisplayName("checkSourceDirectoryAvailable returns false for relative source directory path")
+    void shouldReturnFalseForRelativeSourceDirectory() {
+        ReflectionTestUtils.setField(backupService, "sourceDirectory", "relative/path");
+
+        boolean available = (boolean) ReflectionTestUtils.invokeMethod(
+                backupService, "checkSourceDirectoryAvailable");
+        assertFalse(available);
+    }
+
+    @Test
+    @DisplayName("checkSourceDirectoryAvailable returns false for directory containing only subdirectories")
+    void shouldReturnFalseForDirectoryWithOnlySubdirectories() throws IOException {
+        Path dirWithSubdirs = tempDir.resolve("only-subdirs");
+        Files.createDirectories(dirWithSubdirs.resolve("subdir1"));
+        Files.createDirectories(dirWithSubdirs.resolve("subdir2"));
+        ReflectionTestUtils.setField(backupService, "sourceDirectory", dirWithSubdirs.toString());
+
+        boolean available = (boolean) ReflectionTestUtils.invokeMethod(
+                backupService, "checkSourceDirectoryAvailable");
+        assertFalse(available);
+    }
+
+    @Test
+    @DisplayName("checkSourceDirectoryAvailable returns true for directory with file in subdirectory")
+    void shouldReturnTrueForDirectoryWithFileInSubdirectory() throws IOException {
+        Path nestedSrc = tempDir.resolve("nested-src");
+        Path subDir = nestedSrc.resolve("world");
+        Files.createDirectories(subDir);
+        Files.writeString(subDir.resolve("level.dat"), "fake level data");
+        ReflectionTestUtils.setField(backupService, "sourceDirectory", nestedSrc.toString());
+
+        boolean available = (boolean) ReflectionTestUtils.invokeMethod(
+                backupService, "checkSourceDirectoryAvailable");
+        assertTrue(available);
+    }
+
+    @Test
     @DisplayName("checkSourceDirectoryAvailable returns false for non-existent directory")
     void shouldReturnFalseForNonExistentSourceDirectory() {
         Path nonExistent = tempDir.resolve("no-such-src");
