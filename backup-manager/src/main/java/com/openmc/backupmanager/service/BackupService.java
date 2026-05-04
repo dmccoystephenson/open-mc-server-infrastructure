@@ -257,7 +257,7 @@ public class BackupService {
             return false;
         }
         try (Stream<Path> entries = Files.list(src)) {
-            return entries.findAny().isPresent();
+            return entries.findFirst().isPresent();
         } catch (IOException e) {
             log.error("Failed to read source directory '{}': {}", sourceDirectory, e.getMessage());
             return false;

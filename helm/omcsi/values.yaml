@@ -161,6 +161,8 @@ backupManager:
   env:
     BACKUP_DIRECTORY: "/backups"
     BACKUP_MAX_SIZE_MB: "10240"
+    # Cron expression: seconds minutes hours day-of-month month day-of-week
+    # Default: 2:00 AM every day (server/container local time)
     BACKUP_SCHEDULE: "0 0 2 * * ?"
     SPRING_TASK_SCHEDULING_ENABLED: "true"
     SOURCE_DIRECTORY: "/mcserver"
