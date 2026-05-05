@@ -229,7 +229,19 @@ start_server() {
     export JAVA_OPTS="${JAVA_OPTS:--Xmx2G -Xms1G}"
     export MINECRAFT_AUTO_START=true
     
-    exec java -jar "$wrapper_jar"
+    # Spring Boot 3.2.0 has runtime compatibility issues with Java 25: embedded Tomcat
+    # and Spring framework internals rely on APIs that were removed or restricted in
+    # Java 25, causing request processing failures. Run the wrapper explicitly under
+    # Java 21.  The Spigot server subprocess spawned by the wrapper will inherit PATH
+    # and use 'java' from /opt/java/openjdk/bin (Java 25, set by the temurin base image).
+    local java21_bin
+    java21_bin=$(find /usr/lib/jvm -path '*/java-21-openjdk-*/bin/java' -print -quit 2>/dev/null || true)
+    if [ -z "$java21_bin" ] || [ ! -x "$java21_bin" ]; then
+        log "ERROR: Java 21 executable not found at /usr/lib/jvm/java-21-openjdk-*/bin/java. The image requires openjdk-21-jre-headless to run the Spring Boot wrapper."
+        exit 1
+    fi
+    log "Using Java 21 for Spring Boot wrapper: $java21_bin"
+    exec "$java21_bin" -jar "$wrapper_jar"
 }
 
 # Main Process

@@ -49,7 +49,7 @@ minecraftWrapper:
     bluemapPort: 8100
     wrapperPort: 8092
   env:
-    MINECRAFT_VERSION: "1.21.10"
+    MINECRAFT_VERSION: "26.1"
     OPERATOR_UUID: "YOUR_UUID_HERE"
     OPERATOR_NAME: "YOUR_USERNAME_HERE"
     OPERATOR_LEVEL: "4"

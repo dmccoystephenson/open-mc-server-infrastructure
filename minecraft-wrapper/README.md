@@ -31,7 +31,7 @@ The Spring Boot wrapper is built as part of the main Minecraft server Docker ima
   {
     "running": true,
     "pid": 12345,
-    "serverJar": "spigot-1.21.10.jar",
+    "serverJar": "spigot-26.1.jar",
     "serverDirectory": "/mcserver"
   }
   ```
@@ -81,7 +81,7 @@ The service is configured via environment variables or `application.properties`:
 server.port=8092
 
 # Minecraft server configuration
-minecraft.server.jar=/mcserver/spigot-1.21.10.jar
+minecraft.server.jar=/mcserver/spigot-26.1.jar
 minecraft.server.directory=/mcserver
 minecraft.java.opts=-Xmx2G -Xms1G
 minecraft.auto.start=true
@@ -96,7 +96,7 @@ alerts.server.crash=true
 
 ### Environment Variables
 
-- `MINECRAFT_SERVER_JAR`: Path to the Minecraft server JAR file (default: `/mcserver/spigot-1.21.10.jar`)
+- `MINECRAFT_SERVER_JAR`: Path to the Minecraft server JAR file (default: `/mcserver/spigot-26.1.jar`)
 - `MINECRAFT_SERVER_DIRECTORY`: Directory where the server runs (default: `/mcserver`)
 - `JAVA_OPTS`: Java options for the server (default: `-Xmx2G -Xms1G`)
 - `MINECRAFT_AUTO_START`: Auto-start server on wrapper startup (default: `true`)

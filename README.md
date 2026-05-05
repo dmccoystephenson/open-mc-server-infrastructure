@@ -2,11 +2,11 @@
 
 [![CI Pipeline](https://github.com/dmccoystephenson/private-mc-server/workflows/CI%20Pipeline/badge.svg?branch=main)](https://github.com/dmccoystephenson/private-mc-server/actions)
 
-An open, community-agnostic, Docker-based Minecraft server infrastructure running the latest version of Minecraft (1.21.10) with Spigot for enhanced plugin support and performance. Highly configurable and customizable for any use case.
+An open, community-agnostic, Docker-based Minecraft server infrastructure running the latest version of Minecraft (26.1) with Spigot for enhanced plugin support and performance. Highly configurable and customizable for any use case.
 
 ## Features
 
-- **Latest Minecraft Version**: Running Minecraft 1.21.10 with Spigot
+- **Latest Minecraft Version**: Running Minecraft 26.1 with Spigot
 - **Docker Containerized**: Easy deployment and management
 - **Web Dashboard**: Built-in Spring Boot web application for server management
 - **Automated Backups**: Scheduled backups with automatic cleanup and size management
