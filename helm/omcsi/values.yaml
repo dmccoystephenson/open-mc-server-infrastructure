@@ -141,12 +141,6 @@ nginx:
 
 # ---------------------------------------------------------------------------
 # Backup Manager
-# NOTE: The backup-manager application uses Docker CLI commands internally to
-# create tar archives of the mcserver volume. In Kubernetes the mcserver data
-# is mounted directly via PVC so the Docker-based tar step will not function.
-# A future update to backup-manager will add native filesystem backup support.
-# Until then, backups should be handled externally (e.g., via VolumeSnapshot
-# or a CronJob that tars /mcserver).
 # ---------------------------------------------------------------------------
 backupManager:
   image:
@@ -167,16 +161,13 @@ backupManager:
   env:
     BACKUP_DIRECTORY: "/backups"
     BACKUP_MAX_SIZE_MB: "10240"
-    # NOTE: backup-manager relies on Docker CLI commands that are not available
-    # inside the cluster, so scheduled backups will fail in Kubernetes.
-    # Keep BACKUP_SCHEDULE empty and leave SPRING_TASK_SCHEDULING_ENABLED as
-    # "false" to truly disable scheduling. Only change these after adding
-    # native filesystem backup support or an external backup strategy.
-    BACKUP_SCHEDULE: ""
-    SPRING_TASK_SCHEDULING_ENABLED: "false"
-    VOLUME_NAME: "mcserver"
-    ALERTS_BACKUP_SUCCESS: "false"
-    ALERTS_BACKUP_FAILURE: "false"
+    # Cron expression: seconds minutes hours day-of-month month day-of-week
+    # Default: 2:00 AM every day (server/container local time)
+    BACKUP_SCHEDULE: "0 0 2 * * ?"
+    SPRING_TASK_SCHEDULING_ENABLED: "true"
+    SOURCE_DIRECTORY: "/mcserver"
+    ALERTS_BACKUP_SUCCESS: "true"
+    ALERTS_BACKUP_FAILURE: "true"
 
 # ---------------------------------------------------------------------------
 # Alert Manager

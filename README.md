@@ -100,7 +100,7 @@ The chart exposes most application-level `sample.env` variables through `values.
 - The nginx config is managed via a `ConfigMap` and points to the webapp service automatically
 - The agent-manager is disabled by default and can be enabled via `agentManager.enabled=true`
 - Pods sharing the mcserver PVC use pod affinity to prefer co-locating on the same node (recommended for `ReadWriteOnce` volumes)
-- The backup-manager currently requires Docker CLI access for tar operations — in Kubernetes, consider using VolumeSnapshots or a sidecar CronJob for backups (see `values.yaml` for details)
+- The backup-manager uses `tar` directly on the mounted `/mcserver` PVC — no Docker socket or Docker CLI required; scheduled backups are enabled by default
 
 #### Building and Pushing Images
 
