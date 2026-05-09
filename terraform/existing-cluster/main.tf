@@ -145,6 +145,26 @@ resource "helm_release" "omcsi" {
     }
   }
 
+  # Discord alerts (auto-enabled when webhook URL is provided)
+  dynamic "set" {
+    for_each = var.discord_webhook_url != "" ? [1] : []
+    content {
+      name  = "alertManager.env.DISCORD_ENABLED"
+      value = "true"
+    }
+  }
+
+  set_sensitive {
+    name  = "secrets.discordWebhookUrl"
+    value = var.discord_webhook_url
+  }
+
+  # Plugin hot-deploy token
+  set_sensitive {
+    name  = "secrets.deployAuthToken"
+    value = var.deploy_auth_token
+  }
+
   # Agent-manager (optional)
   set {
     name  = "agentManager.enabled"
