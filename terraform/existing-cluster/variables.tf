@@ -66,6 +66,24 @@ variable "helm_values_file" {
 }
 
 # =============================================================================
+# Optional: notifications and plugin deployment
+# =============================================================================
+
+variable "discord_webhook_url" {
+  description = "Discord webhook URL for alert-manager notifications (server start/stop/crash/backup events). When set, Discord alerts are automatically enabled."
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "deploy_auth_token" {
+  description = "Bearer token for the plugin hot-deploy endpoint (POST /api/plugins/deploy). Leave empty to disable the deploy endpoint (all deploy requests are rejected)."
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+# =============================================================================
 # Optional: agent-manager
 # =============================================================================
 
