@@ -34,5 +34,5 @@ output "helm_release_status" {
 
 output "get_nginx_ip_command" {
   description = "Run after apply to retrieve the public nginx LoadBalancer IP (server address and dashboard endpoint)."
-  value       = "kubectl get svc -n ${var.helm_namespace} --kubeconfig ${local_sensitive_file.kubeconfig.filename}"
+  value       = "kubectl get svc -n ${var.helm_namespace} -l app.kubernetes.io/component=nginx --kubeconfig ${local_sensitive_file.kubeconfig.filename} -o jsonpath='{range .items[*]}{.metadata.name}{\"\\t\"}{.status.loadBalancer.ingress[0].ip}{.status.loadBalancer.ingress[0].hostname}{\"\\n\"}{end}'"
 }

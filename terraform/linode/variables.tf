@@ -115,7 +115,7 @@ variable "discord_webhook_url" {
 }
 
 variable "deploy_auth_token" {
-  description = "Bearer token for the plugin hot-deploy endpoint (POST /api/plugins/deploy). Leave empty to disable authenticated hot-deploy."
+  description = "Bearer token for the plugin hot-deploy endpoint (POST /api/plugins/deploy). Leave empty to disable the deploy endpoint (all deploy requests are rejected)."
   type        = string
   sensitive   = true
   default     = ""

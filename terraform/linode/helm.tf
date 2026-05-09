@@ -144,15 +144,21 @@ resource "helm_release" "omcsi" {
     }
   }
 
-  set_sensitive {
-    name  = "secrets.discordWebhookUrl"
-    value = var.discord_webhook_url
+  dynamic "set_sensitive" {
+    for_each = var.discord_webhook_url != "" ? [1] : []
+    content {
+      name  = "secrets.discordWebhookUrl"
+      value = var.discord_webhook_url
+    }
   }
 
   # Plugin hot-deploy token
-  set_sensitive {
-    name  = "secrets.deployAuthToken"
-    value = var.deploy_auth_token
+  dynamic "set_sensitive" {
+    for_each = var.deploy_auth_token != "" ? [1] : []
+    content {
+      name  = "secrets.deployAuthToken"
+      value = var.deploy_auth_token
+    }
   }
 
   # Agent-manager (optional)
