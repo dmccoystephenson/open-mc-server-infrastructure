@@ -21,6 +21,8 @@ provider "helm" {
 locals {
   use_custom_registry = var.image_registry != "" ? [1] : []
   use_storage_class   = var.storage_class != "" ? [1] : []
+  use_discord         = var.discord_webhook_url != "" ? [1] : []
+  use_deploy_token    = var.deploy_auth_token != "" ? [1] : []
 }
 
 resource "kubernetes_namespace" "omcsi" {
@@ -153,7 +155,7 @@ resource "helm_release" "omcsi" {
 
   # Discord alerts (auto-enabled when webhook URL is provided)
   dynamic "set" {
-    for_each = var.discord_webhook_url != "" ? [1] : []
+    for_each = local.use_discord
     content {
       name  = "alertManager.env.DISCORD_ENABLED"
       value = "true"

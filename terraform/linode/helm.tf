@@ -5,6 +5,8 @@
 locals {
   kubeconfig          = yamldecode(base64decode(linode_lke_cluster.omcsi.kubeconfig))
   use_custom_registry = var.image_registry != "" ? [1] : []
+  use_discord         = var.discord_webhook_url != "" ? [1] : []
+  use_deploy_token    = var.deploy_auth_token != "" ? [1] : []
 }
 
 provider "kubernetes" {
@@ -143,7 +145,7 @@ resource "helm_release" "omcsi" {
 
   # Discord alerts (auto-enabled when webhook URL is provided)
   dynamic "set" {
-    for_each = var.discord_webhook_url != "" ? [1] : []
+    for_each = local.use_discord
     content {
       name  = "alertManager.env.DISCORD_ENABLED"
       value = "true"
@@ -151,7 +153,7 @@ resource "helm_release" "omcsi" {
   }
 
   dynamic "set_sensitive" {
-    for_each = var.discord_webhook_url != "" ? [1] : []
+    for_each = local.use_discord
     content {
       name  = "secrets.discordWebhookUrl"
       value = var.discord_webhook_url
@@ -160,7 +162,7 @@ resource "helm_release" "omcsi" {
 
   # Plugin hot-deploy token
   dynamic "set_sensitive" {
-    for_each = var.deploy_auth_token != "" ? [1] : []
+    for_each = local.use_deploy_token
     content {
       name  = "secrets.deployAuthToken"
       value = var.deploy_auth_token
