@@ -32,6 +32,13 @@ admin_password = "strongpassword"
 # if your cluster uses a different StorageClass.
 # storage_class = "linode-block-storage-retain"
 
+# Optional: Discord alerts (alert-manager)
+# Setting discord_webhook_url automatically enables Discord in alert-manager.
+# discord_webhook_url = "https://discord.com/api/webhooks/..."
+
+# Optional: plugin hot-deploy bearer token (POST /api/plugins/deploy)
+# deploy_auth_token = "your-secret-token"
+
 # Optional: agent-manager (Discord AI bot)
 # agent_manager_enabled    = true
 # agent_discord_bot_token  = "BOT_TOKEN"
@@ -39,4 +46,6 @@ admin_password = "strongpassword"
 # agent_anthropic_api_key  = "API_KEY"
 
 # Optional: custom Helm values file
-# helm_values_file = "my-values.yaml"
+# Use this to override any Helm chart value not exposed as a Terraform variable
+# (e.g., MOTD, operator UUID, resource limits, TLS settings).
+# helm_values_file = "/absolute/path/to/my-values.yaml"
