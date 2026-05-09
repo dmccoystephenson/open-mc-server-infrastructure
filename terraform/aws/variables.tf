@@ -95,6 +95,17 @@ variable "storage_class" {
   default     = "gp2"
 }
 
+variable "minecraft_service_type" {
+  description = "Kubernetes Service type for the Minecraft game port (25565). Use 'LoadBalancer' for a dedicated public IP on port 25565, or 'NodePort' to expose via a high-numbered port on each node."
+  type        = string
+  default     = "NodePort"
+
+  validation {
+    condition     = contains(["NodePort", "LoadBalancer"], var.minecraft_service_type)
+    error_message = "minecraft_service_type must be 'NodePort' or 'LoadBalancer'."
+  }
+}
+
 variable "helm_values_file" {
   description = "Optional path to a custom Helm values file to merge. Leave empty to use defaults."
   type        = string

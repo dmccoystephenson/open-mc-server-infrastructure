@@ -63,6 +63,12 @@ resource "helm_release" "omcsi" {
     value = var.admin_password
   }
 
+  # Minecraft service type
+  set {
+    name  = "minecraftWrapper.service.type"
+    value = var.minecraft_service_type
+  }
+
   # Storage class for all PVCs (only when explicitly set)
   dynamic "set" {
     for_each = local.use_storage_class

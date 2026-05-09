@@ -44,6 +44,10 @@ admin_password = "strongpassword"
 # Optional: plugin hot-deploy bearer token (POST /api/plugins/deploy)
 # deploy_auth_token = "your-secret-token"
 
+# Minecraft service type — 'LoadBalancer' gives a dedicated public IP on port 25565
+# (recommended for production). 'NodePort' exposes via a high port on each node.
+# minecraft_service_type = "LoadBalancer"
+
 # Optional: agent-manager (Discord AI bot)
 # agent_manager_enabled    = true
 # agent_discord_bot_token  = "BOT_TOKEN"
