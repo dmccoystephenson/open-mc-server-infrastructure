@@ -73,6 +73,12 @@ resource "helm_release" "omcsi" {
     value = var.admin_password
   }
 
+  # Minecraft service type
+  set {
+    name  = "minecraftWrapper.service.type"
+    value = var.minecraft_service_type
+  }
+
   # Storage class for all PVCs
   set {
     name  = "persistence.mcserver.storageClass"
