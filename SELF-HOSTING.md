@@ -153,7 +153,7 @@ services:
 ### Other Essentials
 
 - Keep system and Docker images updated: `sudo apt-get upgrade -y && docker compose pull && ./up.sh`
-- Run backups regularly: `./backup.sh` (store copies offsite)
+- Run backups regularly: `./trigger-backup.sh` (store copies offsite)
 - Never expose RCON (port 25575) publicly; use the web dashboard or SSH tunnel instead
 
 ## Firewall Configuration
@@ -260,7 +260,7 @@ cd /path/to/open-mc-server-infrastructure && docker compose restart nginx
 - **Logs**: `docker logs -f open-mc-server`, `docker logs -f open-mc-nginx`
 - **Resource usage**: `docker stats`, `htop`
 - **Disk space**: `ncdu /var/lib/docker`
-- **Schedule**: run `./backup.sh` weekly, `sudo apt-get upgrade` monthly, `./upgrade.sh` quarterly
+- **Schedule**: run `./trigger-backup.sh` weekly, `sudo apt-get upgrade` monthly, `./upgrade.sh` quarterly
 
 ### Troubleshooting
 
