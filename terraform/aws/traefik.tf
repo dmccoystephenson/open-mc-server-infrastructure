@@ -87,10 +87,9 @@ resource "helm_release" "traefik" {
         protocol: TCP
     service:
       type: LoadBalancer
-    providers:
-      file:
-        directory: /etc/traefik/dynamic
-        watch: true
+    additionalArguments:
+      - "--providers.file.directory=/etc/traefik/dynamic"
+      - "--providers.file.watch=true"
     deployment:
       additionalVolumes:
         - name: dynamic-config
@@ -99,7 +98,6 @@ resource "helm_release" "traefik" {
     additionalVolumeMounts:
       - name: dynamic-config
         mountPath: /etc/traefik/dynamic
-    globalArguments: []
     logs:
       general:
         level: INFO
