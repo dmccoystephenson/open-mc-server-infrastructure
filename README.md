@@ -385,6 +385,9 @@ kubectl get pods -n omcsi
 | `admin_password` | Admin password for web dashboard | *(required)* |
 | `image_registry` | Container image registry prefix (e.g., `your-dockerhub-user`) | `dmccoystephenson` |
 | `storage_class` | Kubernetes StorageClass for PVCs | `linode-block-storage-retain` |
+| `minecraft_service_type` | Kubernetes Service type for the Minecraft port (`NodePort` or `LoadBalancer`) | `NodePort` |
+| `discord_webhook_url` | Discord webhook URL for alert-manager (auto-enables Discord when set) | `""` |
+| `deploy_auth_token` | Bearer token for the plugin hot-deploy endpoint | `""` |
 | `agent_manager_enabled` | Enable the Discord AI bot | `false` |
 | `helm_values_file` | Path to additional Helm values file | `""` |
 
@@ -445,6 +448,9 @@ kubectl get pods -n omcsi
 | `admin_password` | Admin password for web dashboard | *(required)* |
 | `image_registry` | Container image registry prefix (e.g., `your-dockerhub-user`) | `dmccoystephenson` |
 | `storage_class` | Kubernetes StorageClass for PVCs | `gp2` |
+| `minecraft_service_type` | Kubernetes Service type for the Minecraft port (`NodePort` or `LoadBalancer`) | `NodePort` |
+| `discord_webhook_url` | Discord webhook URL for alert-manager (auto-enables Discord when set) | `""` |
+| `deploy_auth_token` | Bearer token for the plugin hot-deploy endpoint | `""` |
 | `agent_manager_enabled` | Enable the Discord AI bot | `false` |
 | `helm_values_file` | Path to additional Helm values file | `""` |
 
@@ -508,6 +514,9 @@ kubectl get pods -n omcsi
 | `admin_password` | Admin password for web dashboard | *(required)* |
 | `image_registry` | Container image registry prefix (e.g., `your-dockerhub-user`) | `dmccoystephenson` |
 | `storage_class` | Kubernetes StorageClass for PVCs (empty = cluster default) | `""` |
+| `minecraft_service_type` | Kubernetes Service type for the Minecraft port (`NodePort` or `LoadBalancer`) | `NodePort` |
+| `discord_webhook_url` | Discord webhook URL for alert-manager (auto-enables Discord when set) | `""` |
+| `deploy_auth_token` | Bearer token for the plugin hot-deploy endpoint | `""` |
 | `agent_manager_enabled` | Enable the Discord AI bot | `false` |
 | `helm_values_file` | Path to additional Helm values file | `""` |
 
