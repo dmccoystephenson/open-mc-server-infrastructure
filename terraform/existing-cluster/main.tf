@@ -20,9 +20,9 @@ provider "helm" {
 
 locals {
   use_custom_registry = var.image_registry != "" ? [1] : []
-  use_storage_class   = var.storage_class != "" ? [1] : []
-  use_discord         = var.discord_webhook_url != "" ? [1] : []
-  use_deploy_token    = var.deploy_auth_token != "" ? [1] : []
+  use_storage_class   = toset(var.storage_class != "" ? ["enabled"] : [])
+  use_discord         = toset(var.discord_webhook_url != "" ? ["enabled"] : [])
+  use_deploy_token    = toset(var.deploy_auth_token != "" ? ["enabled"] : [])
 }
 
 resource "kubernetes_namespace" "omcsi" {

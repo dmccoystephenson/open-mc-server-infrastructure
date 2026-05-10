@@ -5,8 +5,8 @@
 locals {
   kubeconfig          = yamldecode(base64decode(linode_lke_cluster.omcsi.kubeconfig))
   use_custom_registry = var.image_registry != "" ? [1] : []
-  use_discord         = var.discord_webhook_url != "" ? [1] : []
-  use_deploy_token    = var.deploy_auth_token != "" ? [1] : []
+  use_discord         = toset(var.discord_webhook_url != "" ? ["enabled"] : [])
+  use_deploy_token    = toset(var.deploy_auth_token != "" ? ["enabled"] : [])
 }
 
 provider "kubernetes" {
