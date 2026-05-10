@@ -27,6 +27,13 @@ tests:
       - hasDocuments:
           count: 0
 
+  - it: renders 5 policies when networkPolicy key is absent (backward compat)
+    set:
+      networkPolicy: null
+    asserts:
+      - hasDocuments:
+          count: 5
+
   - it: all policies are NetworkPolicy kind
     asserts:
       - isKind:

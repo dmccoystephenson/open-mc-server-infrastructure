@@ -1,4 +1,4 @@
-{{- if .Values.networkPolicy.enabled }}
+{{- if ne "false" (toString ((.Values.networkPolicy).enabled)) }}
 # =============================================================================
 # NetworkPolicies — one per service.
 #
