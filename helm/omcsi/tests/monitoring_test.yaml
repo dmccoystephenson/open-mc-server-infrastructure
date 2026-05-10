@@ -1,0 +1,237 @@
+suite: monitoring
+capabilities:
+  apiVersions:
+    - monitoring.coreos.com/v1
+set:
+  secrets.rconPassword: ci
+  secrets.adminPassword: ci
+  monitoring.enabled: true
+  monitoring.serviceMonitor.labels:
+    release: kube-prometheus-stack
+  monitoring.grafanaDashboard.labels:
+    grafana_dashboard: "1"
+tests:
+  # -------------------------------------------------------------------------
+  # ServiceMonitors created when monitoring.enabled = true
+  # -------------------------------------------------------------------------
+  - it: minecraft-wrapper ServiceMonitor is created
+    templates:
+      - templates/servicemonitors.yaml
+    asserts:
+      - isKind:
+          of: ServiceMonitor
+        documentIndex: 0
+      - equal:
+          path: spec.endpoints[0].port
+          value: wrapper
+        documentIndex: 0
+      - equal:
+          path: spec.endpoints[0].path
+          value: /actuator/prometheus
+        documentIndex: 0
+      - equal:
+          path: spec.endpoints[0].interval
+          value: "30s"
+        documentIndex: 0
+      - equal:
+          path: spec.endpoints[0].scrapeTimeout
+          value: "10s"
+        documentIndex: 0
+
+  - it: webapp ServiceMonitor is created
+    templates:
+      - templates/servicemonitors.yaml
+    asserts:
+      - isKind:
+          of: ServiceMonitor
+        documentIndex: 1
+      - equal:
+          path: spec.endpoints[0].port
+          value: http
+        documentIndex: 1
+      - equal:
+          path: spec.endpoints[0].path
+          value: /actuator/prometheus
+        documentIndex: 1
+
+  - it: alert-manager ServiceMonitor is created
+    templates:
+      - templates/servicemonitors.yaml
+    asserts:
+      - isKind:
+          of: ServiceMonitor
+        documentIndex: 2
+      - equal:
+          path: spec.endpoints[0].port
+          value: http
+        documentIndex: 2
+
+  - it: backup-manager ServiceMonitor is created
+    templates:
+      - templates/servicemonitors.yaml
+    asserts:
+      - isKind:
+          of: ServiceMonitor
+        documentIndex: 3
+      - equal:
+          path: spec.endpoints[0].port
+          value: http
+        documentIndex: 3
+
+  - it: ServiceMonitor has user-supplied extra labels
+    templates:
+      - templates/servicemonitors.yaml
+    asserts:
+      - equal:
+          path: metadata.labels["release"]
+          value: kube-prometheus-stack
+        documentIndex: 0
+
+  # -------------------------------------------------------------------------
+  # agent-manager ServiceMonitor only when agentManager.enabled = true
+  # -------------------------------------------------------------------------
+  - it: agent-manager ServiceMonitor is NOT created when agentManager disabled
+    templates:
+      - templates/servicemonitors.yaml
+    asserts:
+      - hasDocuments:
+          count: 4
+
+  - it: agent-manager ServiceMonitor uses management port
+    set:
+      agentManager.enabled: true
+      secrets.agentDiscordBotToken: ci-token
+      secrets.agentDiscordChannelId: "123456"
+      secrets.agentAnthropicApiKey: ci-key
+    templates:
+      - templates/servicemonitors.yaml
+    asserts:
+      - hasDocuments:
+          count: 5
+      - equal:
+          path: spec.endpoints[0].port
+          value: management
+        documentIndex: 4
+
+  # -------------------------------------------------------------------------
+  # omcsi.io/metrics label on services
+  # -------------------------------------------------------------------------
+  - it: internal minecraft-wrapper service has metrics label when monitoring enabled
+    templates:
+      - templates/minecraft-wrapper.yaml
+    asserts:
+      - equal:
+          path: metadata.labels["omcsi.io/metrics"]
+          value: "true"
+        documentIndex: 2
+
+  - it: webapp service has metrics label when monitoring enabled
+    templates:
+      - templates/webapp.yaml
+    asserts:
+      - equal:
+          path: metadata.labels["omcsi.io/metrics"]
+          value: "true"
+        documentIndex: 1
+
+  - it: alert-manager service has metrics label when monitoring enabled
+    templates:
+      - templates/alert-manager.yaml
+    asserts:
+      - equal:
+          path: metadata.labels["omcsi.io/metrics"]
+          value: "true"
+        documentIndex: 1
+
+  - it: backup-manager service has metrics label when monitoring enabled
+    templates:
+      - templates/backup-manager.yaml
+    asserts:
+      - equal:
+          path: metadata.labels["omcsi.io/metrics"]
+          value: "true"
+        documentIndex: 1
+
+  # -------------------------------------------------------------------------
+  # Nothing created when monitoring.enabled = false
+  # -------------------------------------------------------------------------
+  - it: no ServiceMonitors when monitoring disabled
+    set:
+      monitoring.enabled: false
+    templates:
+      - templates/servicemonitors.yaml
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: no Grafana dashboard ConfigMap when monitoring disabled
+    set:
+      monitoring.enabled: false
+    templates:
+      - templates/grafana-dashboard.yaml
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: no metrics label on webapp service when monitoring disabled
+    set:
+      monitoring.enabled: false
+    templates:
+      - templates/webapp.yaml
+    asserts:
+      - isNull:
+          path: metadata.labels["omcsi.io/metrics"]
+        documentIndex: 1
+
+  # -------------------------------------------------------------------------
+  # Grafana dashboard ConfigMap
+  # -------------------------------------------------------------------------
+  - it: Grafana dashboard ConfigMap is created when monitoring enabled
+    templates:
+      - templates/grafana-dashboard.yaml
+    asserts:
+      - isKind:
+          of: ConfigMap
+        documentIndex: 0
+      - isNotNull:
+          path: data["omcsi-dashboard.json"]
+        documentIndex: 0
+
+  - it: Grafana dashboard ConfigMap has user-supplied extra labels
+    templates:
+      - templates/grafana-dashboard.yaml
+    asserts:
+      - equal:
+          path: metadata.labels["grafana_dashboard"]
+          value: "1"
+        documentIndex: 0
+
+  - it: Grafana dashboard ConfigMap skipped when grafanaDashboard disabled
+    set:
+      monitoring.grafanaDashboard.enabled: false
+    templates:
+      - templates/grafana-dashboard.yaml
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  # -------------------------------------------------------------------------
+  # agent-manager Service exposes management port 8094
+  # -------------------------------------------------------------------------
+  - it: agent-manager service exposes management port 8094
+    set:
+      agentManager.enabled: true
+      secrets.agentDiscordBotToken: ci-token
+      secrets.agentDiscordChannelId: "123456"
+      secrets.agentAnthropicApiKey: ci-key
+    templates:
+      - templates/agent-manager.yaml
+    asserts:
+      - contains:
+          path: spec.ports
+          content:
+            port: 8094
+            targetPort: management
+            protocol: TCP
+            name: management
+        documentIndex: 1

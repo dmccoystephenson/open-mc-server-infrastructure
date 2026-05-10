@@ -1,0 +1,14 @@
+{{- if and (ne "false" (toString ((.Values.monitoring).enabled))) (ne "false" (toString ((.Values.monitoring).grafanaDashboard).enabled)) }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "omcsi.fullname" . }}-grafana-dashboard
+  labels:
+    {{- include "omcsi.labels" . | nindent 4 }}
+    {{- with .Values.monitoring.grafanaDashboard.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+data:
+  omcsi-dashboard.json: |-
+    {{- .Files.Get "files/grafana-dashboard.json" | nindent 4 }}
+{{- end }}

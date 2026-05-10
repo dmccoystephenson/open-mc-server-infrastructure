@@ -125,6 +125,18 @@ variable "enable_traefik" {
   default     = false
 }
 
+variable "enable_grafana_route" {
+  description = "Expose a Traefik TCP entrypoint on port 3000 that forwards to Grafana. Only enable when Grafana is installed (e.g. via kube-prometheus-stack). Requires enable_traefik = true."
+  type        = bool
+  default     = false
+}
+
+variable "grafana_service_address" {
+  description = "Cluster-internal DNS address (host:port) of the Grafana Service used by the Traefik route. Only relevant when enable_grafana_route = true."
+  type        = string
+  default     = "kube-prometheus-stack-grafana.monitoring.svc.cluster.local:80"
+}
+
 variable "helm_values_file" {
   description = "Optional path to a custom Helm values file to merge. Leave empty to use defaults."
   type        = string

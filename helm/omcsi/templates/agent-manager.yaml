@@ -112,6 +112,9 @@ metadata:
   labels:
     {{- include "omcsi.labels" . | nindent 4 }}
     {{- include "omcsi.selectorLabels" (dict "root" . "component" "agent-manager") | nindent 4 }}
+    {{- if ne "false" (toString ((.Values.monitoring).enabled)) }}
+    omcsi.io/metrics: "true"
+    {{- end }}
 spec:
   type: {{ .Values.agentManager.service.type }}
   ports:
@@ -119,6 +122,10 @@ spec:
       targetPort: http
       protocol: TCP
       name: http
+    - port: 8094
+      targetPort: management
+      protocol: TCP
+      name: management
   selector:
     {{- include "omcsi.selectorLabels" (dict "root" . "component" "agent-manager") | nindent 4 }}
 {{- end }}

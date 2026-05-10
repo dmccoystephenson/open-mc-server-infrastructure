@@ -47,6 +47,10 @@ resource "kubernetes_config_map" "traefik_dynamic_config" {
             entryPoints: ["web"]
             rule: "HostSNI(`*`)"
             service: nginx-http-svc
+          %{if var.enable_grafana_route}grafana:
+            entryPoints: ["grafana"]
+            rule: "HostSNI(`*`)"
+            service: grafana-svc%{endif}
         services:
           minecraft-svc:
             loadBalancer:
@@ -60,6 +64,10 @@ resource "kubernetes_config_map" "traefik_dynamic_config" {
             loadBalancer:
               servers:
                 - address: "${var.helm_release_name}-nginx.${var.helm_namespace}.svc.cluster.local:80"
+          %{if var.enable_grafana_route}grafana-svc:
+            loadBalancer:
+              servers:
+                - address: "${var.grafana_service_address}"%{endif}
     EOT
   }
 }
@@ -94,6 +102,12 @@ resource "helm_release" "traefik" {
           default: true
         exposedPort: 25565
         protocol: TCP
+      %{if var.enable_grafana_route}grafana:
+        port: 3000
+        expose:
+          default: true
+        exposedPort: 3000
+        protocol: TCP%{endif}
     service:
       type: LoadBalancer
     additionalArguments:

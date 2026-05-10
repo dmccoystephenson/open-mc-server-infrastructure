@@ -47,6 +47,19 @@ spec:
               {{- include "omcsi.selectorLabels" (dict "root" . "component" "agent-manager") | nindent 14 }}
         - ipBlock:
             cidr: {{ ((.Values.networkPolicy).kubeNodeCIDR) | default "0.0.0.0/0" | quote }}
+    # Prometheus scrape of wrapper actuator metrics (cross-namespace)
+    {{- if ne "false" (toString ((.Values.monitoring).enabled)) }}
+    - ports:
+        - port: {{ .Values.minecraftWrapper.internalService.wrapperPort }}
+          protocol: TCP
+      from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ .Values.monitoring.prometheusNamespace | quote }}
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: prometheus
+    {{- end }}
     # BlueMap traffic from nginx
     - ports:
         - port: 8100
@@ -122,6 +135,19 @@ spec:
               {{- include "omcsi.selectorLabels" (dict "root" . "component" "nginx") | nindent 14 }}
         - ipBlock:
             cidr: {{ ((.Values.networkPolicy).kubeNodeCIDR) | default "0.0.0.0/0" | quote }}
+    # Prometheus scrape of webapp actuator metrics (cross-namespace)
+    {{- if ne "false" (toString ((.Values.monitoring).enabled)) }}
+    - ports:
+        - port: 8080
+          protocol: TCP
+      from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ .Values.monitoring.prometheusNamespace | quote }}
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: prometheus
+    {{- end }}
   egress:
     # Minecraft wrapper API and RCON
     - ports:
@@ -227,6 +253,19 @@ spec:
               {{- include "omcsi.selectorLabels" (dict "root" . "component" "agent-manager") | nindent 14 }}
         - ipBlock:
             cidr: {{ ((.Values.networkPolicy).kubeNodeCIDR) | default "0.0.0.0/0" | quote }}
+    # Prometheus scrape of backup-manager actuator metrics (cross-namespace)
+    {{- if ne "false" (toString ((.Values.monitoring).enabled)) }}
+    - ports:
+        - port: {{ .Values.backupManager.service.port }}
+          protocol: TCP
+      from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ .Values.monitoring.prometheusNamespace | quote }}
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: prometheus
+    {{- end }}
   egress:
     # Alert notifications
     - ports:
@@ -284,6 +323,19 @@ spec:
               {{- include "omcsi.selectorLabels" (dict "root" . "component" "agent-manager") | nindent 14 }}
         - ipBlock:
             cidr: {{ ((.Values.networkPolicy).kubeNodeCIDR) | default "0.0.0.0/0" | quote }}
+    # Prometheus scrape of alert-manager actuator metrics (cross-namespace)
+    {{- if ne "false" (toString ((.Values.monitoring).enabled)) }}
+    - ports:
+        - port: {{ .Values.alertManager.service.port }}
+          protocol: TCP
+      from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ .Values.monitoring.prometheusNamespace | quote }}
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: prometheus
+    {{- end }}
   egress:
     # RCON for in-game broadcast messages
     - ports:
@@ -330,13 +382,26 @@ spec:
       {{- include "omcsi.selectorLabels" (dict "root" . "component" "agent-manager") | nindent 6 }}
   policyTypes: [Ingress, Egress]
   ingress:
-    # Management/health probe port (8094) for kubelet probes
+    # Management/health probe port (8094) — kubelet probes
     - ports:
         - port: 8094
           protocol: TCP
       from:
         - ipBlock:
-            cidr: 0.0.0.0/0
+            cidr: {{ ((.Values.networkPolicy).kubeNodeCIDR) | default "0.0.0.0/0" | quote }}
+    # Prometheus scrape of agent-manager actuator metrics (cross-namespace)
+    {{- if ne "false" (toString ((.Values.monitoring).enabled)) }}
+    - ports:
+        - port: 8094
+          protocol: TCP
+      from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ .Values.monitoring.prometheusNamespace | quote }}
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: prometheus
+    {{- end }}
   egress:
     # Minecraft wrapper API
     - ports:

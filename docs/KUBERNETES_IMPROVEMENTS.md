@@ -138,16 +138,33 @@ All three PDBs use `policy/v1` (stable since Kubernetes 1.21).
 
 ---
 
-## 11. Monitoring and Observability
+## 11. ~~Monitoring and Observability~~ ✅ Resolved
 
-**Problem:** No Prometheus `ServiceMonitor` or Grafana dashboard templates are included. Operators must manually configure monitoring.
+**Problem:** No Prometheus `ServiceMonitor` or Grafana dashboard templates were included. Operators had to manually configure monitoring.
 
-**Suggested improvements:**
-- Add optional `ServiceMonitor` templates for services that expose Prometheus metrics (Spring Boot actuator endpoints).
-- Include a sample Grafana dashboard JSON for Minecraft server metrics (TPS, player count, memory usage).
-- Document integration with the Prometheus Operator / kube-prometheus-stack.
-
-**Priority:** Low — nice-to-have for production; OMCSI's webapp already provides basic resource metrics.
+**Implemented in PR #157:**
+- Added `monitoring.enabled` gate (defaults to `false`) in `values.yaml`.
+- When enabled, one `ServiceMonitor` is created per service targeting Spring Boot Actuator's `/actuator/prometheus` endpoint:
+  - `minecraft-wrapper` — internal service, `wrapper` port (8092)
+  - `webapp` — `http` port (8080)
+  - `alert-manager` — `http` port (8090)
+  - `backup-manager` — `http` port (8091)
+  - `agent-manager` — `management` port (8094), only when `agentManager.enabled: true`
+- Each scraped service gains an `omcsi.io/metrics: "true"` label so the `ServiceMonitor` selector avoids the external minecraft-wrapper NodePort (game port only).
+- Agent-manager's management port 8094 is now also exposed in its `Service` spec.
+- A sample Grafana dashboard ConfigMap (`monitoring.grafanaDashboard.enabled`, default `true` when monitoring is on) is created with panels for service uptime, JVM heap, HTTP request rate/latency, CPU usage, and GC pause time.
+- `monitoring.serviceMonitor.labels` and `monitoring.grafanaDashboard.labels` allow operators to match their Prometheus Operator's `serviceMonitorSelector` and Grafana sidecar label, e.g.:
+  ```yaml
+  monitoring:
+    enabled: true
+    serviceMonitor:
+      labels:
+        release: kube-prometheus-stack
+    grafanaDashboard:
+      labels:
+        grafana_dashboard: "1"
+  ```
+- Requires the Prometheus Operator (e.g., `kube-prometheus-stack`) to be installed in the cluster.
 
 ---
 
@@ -165,4 +182,4 @@ All three PDBs use `policy/v1` (stable since Kubernetes 1.21).
 | 8 | ~~Network policies~~ ✅ Resolved | ~~Low~~ | ~~Medium~~ |
 | 9 | ~~Pod Disruption Budgets~~ ✅ Resolved | ~~Low~~ | ~~Low~~ |
 | 10 | Helm chart publishing | Low | Low |
-| 11 | Monitoring and observability | Low | Medium |
+| 11 | ~~Monitoring and observability~~ ✅ Resolved | ~~Low~~ | ~~Medium~~ |
