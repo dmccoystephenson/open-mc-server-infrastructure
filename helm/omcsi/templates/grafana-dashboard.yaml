@@ -1,4 +1,4 @@
-{{- if and .Values.monitoring.enabled .Values.monitoring.grafanaDashboard.enabled }}
+{{- if and (ne "false" (toString ((.Values.monitoring).enabled))) (ne "false" (toString ((.Values.monitoring).grafanaDashboard).enabled)) }}
 apiVersion: v1
 kind: ConfigMap
 metadata:

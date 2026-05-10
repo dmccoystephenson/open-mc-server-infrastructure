@@ -15,3 +15,15 @@ variable "helm_release_name" {
   type        = string
   default     = "omcsi"
 }
+
+variable "enable_grafana_route" {
+  description = "Expose a Traefik TCP entrypoint on port 3000 forwarding to Grafana. Only enable when Grafana is installed in the cluster (e.g. via kube-prometheus-stack)."
+  type        = bool
+  default     = false
+}
+
+variable "grafana_service_address" {
+  description = "Cluster-internal DNS address (host:port) of the Grafana Service. Only used when enable_grafana_route is true."
+  type        = string
+  default     = "kube-prometheus-stack-grafana.monitoring.svc.cluster.local:80"
+}

@@ -1,4 +1,7 @@
 suite: monitoring
+capabilities:
+  apiVersions:
+    - monitoring.coreos.com/v1
 set:
   secrets.rconPassword: ci
   secrets.adminPassword: ci

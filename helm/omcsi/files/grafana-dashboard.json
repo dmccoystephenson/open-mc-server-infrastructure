@@ -2,7 +2,7 @@
   "annotations": {
     "list": []
   },
-  "description": "OMCSI – Open Minecraft Server Infrastructure overview. Covers JVM memory, HTTP request rates, and per-service uptime for all Spring Boot services.",
+  "description": "OMCSI – Open Minecraft Server Infrastructure overview. Covers per-service uptime (minecraft-wrapper, webapp, alert-manager, backup-manager, agent-manager), JVM memory and threads, HTTP request rates and latency, CPU usage, and GC pause time.",
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 1,
@@ -114,6 +114,31 @@
         }
       ],
       "title": "backup-manager",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "mappings": [
+            { "options": { "0": { "color": "red", "text": "DOWN" }, "1": { "color": "green", "text": "UP" } }, "type": "value" }
+          ],
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 1 }] }
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 4, "w": 4, "x": 16, "y": 1 },
+      "id": 6,
+      "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "up{job=~\".*agent-manager.*\"}",
+          "legendFormat": "agent-manager"
+        }
+      ],
+      "title": "agent-manager",
       "type": "stat"
     },
     {

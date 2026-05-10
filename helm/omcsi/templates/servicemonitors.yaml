@@ -1,4 +1,7 @@
-{{- if .Values.monitoring.enabled }}
+{{- if ne "false" (toString ((.Values.monitoring).enabled)) }}
+{{- if not (.Capabilities.APIVersions.Has "monitoring.coreos.com/v1") }}
+{{- fail "monitoring.enabled=true requires the Prometheus Operator CRDs. Install kube-prometheus-stack or the standalone Prometheus Operator before enabling monitoring." }}
+{{- end }}
 # ServiceMonitors tell the Prometheus Operator which services to scrape.
 # Each service must expose Spring Boot Actuator at /actuator/prometheus on the
 # port named below.  Only services with the omcsi.io/metrics: "true" label are
@@ -100,7 +103,7 @@ spec:
 # ---------------------------------------------------------------------------
 # agent-manager – management port 8094 (only when agent-manager is enabled)
 # ---------------------------------------------------------------------------
-{{- if .Values.agentManager.enabled }}
+{{- if ne "false" (toString ((.Values.agentManager).enabled)) }}
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:

@@ -180,7 +180,7 @@ metadata:
   labels:
     {{- include "omcsi.labels" . | nindent 4 }}
     {{- include "omcsi.selectorLabels" (dict "root" . "component" "minecraft-wrapper") | nindent 4 }}
-    {{- if .Values.monitoring.enabled }}
+    {{- if ne "false" (toString ((.Values.monitoring).enabled)) }}
     omcsi.io/metrics: "true"
     {{- end }}
 spec:
