@@ -103,8 +103,11 @@ This document captures issues, limitations, and improvement opportunities surfac
 
 **Resolution:** Per-service `NetworkPolicy` resources added to `helm/omcsi/templates/networkpolicies.yaml` in [PR #155](https://github.com/dmccoystephenson/open-mc-server-infrastructure/pull/155):
 - Each service has a policy with `policyTypes: [Ingress, Egress]`, which implicitly denies any traffic not matched by an explicit allow rule.
-- Ingress allow rules are scoped by `podSelector` where possible (RCON is restricted to webapp and alert-manager only). Health-probe ports and externally-accessible ports use `ipBlock: 0.0.0.0/0` — kubelet probes originate from the node host network and cannot be matched by a pod/namespace selector.
-- Egress allow rules cover only the specific service ports each pod needs to call, plus DNS (UDP/TCP 53) for all pods and external HTTPS (port 443) for services that call Discord or the Anthropic API.
+- Ingress allow rules use `podSelector` wherever possible. Ports shared between internal callers and kubelet health probes include both a `podSelector` for each known caller and an `ipBlock` using the configurable `networkPolicy.kubeNodeCIDR` value (default `0.0.0.0/0`); set this to your cluster's node CIDR for tighter control. Purely internal ports (RCON 25575) are restricted to specific pod selectors only with no `ipBlock`.
+- `alert-manager` ingress is restricted to minecraft-wrapper, webapp, backup-manager, and agent-manager pod selectors (plus `kubeNodeCIDR` for probes). `backup-manager` ingress is restricted to agent-manager (plus `kubeNodeCIDR`).
+- `minecraft-wrapper` egress includes webapp (for `WEBAPP_URL` deployment-history notifications) in addition to alert-manager and DNS.
+- DNS egress is scoped to CoreDNS pods in `kube-system` via configurable `networkPolicy.dnsNamespaceSelector` and `networkPolicy.dnsPodSelector` (defaults work for kubeadm, GKE, EKS, LKE). Falls back to unrestricted `0.0.0.0/0` when values are absent.
+- External HTTPS egress (port 443) is allowed only for services that call Discord or the Anthropic API (alert-manager, agent-manager).
 - The `agent-manager` policy is gated behind `agentManager.enabled` (same condition as the Deployment).
 - Gated behind `networkPolicy.enabled` (default `true`); set `false` on clusters whose CNI does not support NetworkPolicy (e.g. Flannel without a policy controller).
 
