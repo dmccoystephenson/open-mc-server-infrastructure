@@ -24,6 +24,7 @@ WORKDIR /app
 
 COPY --from=builder /build/build/libs/*.jar app.jar
 
+ENV HOME=/tmp
 USER 1000
 
 ENTRYPOINT ["java", "-jar", "app.jar"]

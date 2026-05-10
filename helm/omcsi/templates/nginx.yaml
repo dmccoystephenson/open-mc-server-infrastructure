@@ -32,6 +32,9 @@ spec:
           securityContext:
             {{- toYaml . | nindent 12 }}
           {{- end }}
+          env:
+            - name: HOME
+              value: /tmp
           command:
             - sh
             - -c
@@ -45,6 +48,8 @@ spec:
           volumeMounts:
             - name: tls
               mountPath: /etc/nginx/ssl
+            - name: nginx-tmp
+              mountPath: /tmp
       {{- end }}
       containers:
         - name: nginx

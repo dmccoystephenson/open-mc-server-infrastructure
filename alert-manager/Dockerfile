@@ -24,6 +24,9 @@ WORKDIR /app
 
 COPY --from=builder /build/build/libs/*.jar app.jar
 
+RUN mkdir -p /app/data && chown 1000:1000 /app/data
+
+ENV HOME=/tmp
 USER 1000
 
 ENTRYPOINT ["java", "-jar", "app.jar"]
