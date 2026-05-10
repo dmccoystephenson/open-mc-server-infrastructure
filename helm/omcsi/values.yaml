@@ -338,6 +338,10 @@ monitoring:
     #   labels:
     #     grafana_dashboard: "1"
     labels: {}
+  # Namespace where Prometheus is deployed. Used by NetworkPolicies to allow
+  # cross-namespace scrape traffic when monitoring.enabled is true.
+  # Override if you deploy kube-prometheus-stack in a non-default namespace.
+  prometheusNamespace: monitoring
 
 # ---------------------------------------------------------------------------
 # Persistence
