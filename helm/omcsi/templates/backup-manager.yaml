@@ -108,6 +108,9 @@ metadata:
   labels:
     {{- include "omcsi.labels" . | nindent 4 }}
     {{- include "omcsi.selectorLabels" (dict "root" . "component" "backup-manager") | nindent 4 }}
+    {{- if .Values.monitoring.enabled }}
+    omcsi.io/metrics: "true"
+    {{- end }}
 spec:
   type: {{ .Values.backupManager.service.type }}
   ports:

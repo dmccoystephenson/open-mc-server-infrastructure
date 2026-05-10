@@ -313,6 +313,33 @@ podDisruptionBudgets:
   enabled: true
 
 # ---------------------------------------------------------------------------
+# Monitoring
+# ---------------------------------------------------------------------------
+# When enabled, a ServiceMonitor is created for each service that exposes
+# Spring Boot Actuator Prometheus metrics (/actuator/prometheus).
+# Requires the Prometheus Operator (kube-prometheus-stack or standalone) to
+# be installed in the cluster.
+monitoring:
+  enabled: false
+  serviceMonitor:
+    # Extra labels added to every ServiceMonitor. Use this to match your
+    # Prometheus Operator's serviceMonitorSelector, e.g.:
+    #   labels:
+    #     release: kube-prometheus-stack
+    labels: {}
+    interval: "30s"
+    scrapeTimeout: "10s"
+  grafanaDashboard:
+    # When true, a ConfigMap containing a sample Grafana dashboard JSON is
+    # created. Import it in Grafana or let the Grafana sidecar pick it up.
+    enabled: true
+    # Extra labels added to the dashboard ConfigMap. Use this to target the
+    # Grafana sidecar, e.g.:
+    #   labels:
+    #     grafana_dashboard: "1"
+    labels: {}
+
+# ---------------------------------------------------------------------------
 # Persistence
 # ---------------------------------------------------------------------------
 persistence:

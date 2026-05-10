@@ -1,0 +1,124 @@
+{{- if .Values.monitoring.enabled }}
+# ServiceMonitors tell the Prometheus Operator which services to scrape.
+# Each service must expose Spring Boot Actuator at /actuator/prometheus on the
+# port named below.  Only services with the omcsi.io/metrics: "true" label are
+# targeted so that the external minecraft-wrapper Service (game port only) is
+# not accidentally scraped.
+
+# ---------------------------------------------------------------------------
+# minecraft-wrapper – internal service (wrapper port 8092)
+# ---------------------------------------------------------------------------
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "omcsi.fullname" . }}-minecraft-wrapper
+  labels:
+    {{- include "omcsi.labels" . | nindent 4 }}
+    {{- with .Values.monitoring.serviceMonitor.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  selector:
+    matchLabels:
+      omcsi.io/metrics: "true"
+      {{- include "omcsi.selectorLabels" (dict "root" . "component" "minecraft-wrapper") | nindent 6 }}
+  endpoints:
+    - port: wrapper
+      path: /actuator/prometheus
+      interval: {{ .Values.monitoring.serviceMonitor.interval | quote }}
+      scrapeTimeout: {{ .Values.monitoring.serviceMonitor.scrapeTimeout | quote }}
+---
+# ---------------------------------------------------------------------------
+# webapp – http port 8080
+# ---------------------------------------------------------------------------
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "omcsi.fullname" . }}-webapp
+  labels:
+    {{- include "omcsi.labels" . | nindent 4 }}
+    {{- with .Values.monitoring.serviceMonitor.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  selector:
+    matchLabels:
+      omcsi.io/metrics: "true"
+      {{- include "omcsi.selectorLabels" (dict "root" . "component" "webapp") | nindent 6 }}
+  endpoints:
+    - port: http
+      path: /actuator/prometheus
+      interval: {{ .Values.monitoring.serviceMonitor.interval | quote }}
+      scrapeTimeout: {{ .Values.monitoring.serviceMonitor.scrapeTimeout | quote }}
+---
+# ---------------------------------------------------------------------------
+# alert-manager – http port 8090
+# ---------------------------------------------------------------------------
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "omcsi.fullname" . }}-alert-manager
+  labels:
+    {{- include "omcsi.labels" . | nindent 4 }}
+    {{- with .Values.monitoring.serviceMonitor.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  selector:
+    matchLabels:
+      omcsi.io/metrics: "true"
+      {{- include "omcsi.selectorLabels" (dict "root" . "component" "alert-manager") | nindent 6 }}
+  endpoints:
+    - port: http
+      path: /actuator/prometheus
+      interval: {{ .Values.monitoring.serviceMonitor.interval | quote }}
+      scrapeTimeout: {{ .Values.monitoring.serviceMonitor.scrapeTimeout | quote }}
+---
+# ---------------------------------------------------------------------------
+# backup-manager – http port 8091
+# ---------------------------------------------------------------------------
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "omcsi.fullname" . }}-backup-manager
+  labels:
+    {{- include "omcsi.labels" . | nindent 4 }}
+    {{- with .Values.monitoring.serviceMonitor.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  selector:
+    matchLabels:
+      omcsi.io/metrics: "true"
+      {{- include "omcsi.selectorLabels" (dict "root" . "component" "backup-manager") | nindent 6 }}
+  endpoints:
+    - port: http
+      path: /actuator/prometheus
+      interval: {{ .Values.monitoring.serviceMonitor.interval | quote }}
+      scrapeTimeout: {{ .Values.monitoring.serviceMonitor.scrapeTimeout | quote }}
+---
+# ---------------------------------------------------------------------------
+# agent-manager – management port 8094 (only when agent-manager is enabled)
+# ---------------------------------------------------------------------------
+{{- if .Values.agentManager.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "omcsi.fullname" . }}-agent-manager
+  labels:
+    {{- include "omcsi.labels" . | nindent 4 }}
+    {{- with .Values.monitoring.serviceMonitor.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  selector:
+    matchLabels:
+      omcsi.io/metrics: "true"
+      {{- include "omcsi.selectorLabels" (dict "root" . "component" "agent-manager") | nindent 6 }}
+  endpoints:
+    - port: management
+      path: /actuator/prometheus
+      interval: {{ .Values.monitoring.serviceMonitor.interval | quote }}
+      scrapeTimeout: {{ .Values.monitoring.serviceMonitor.scrapeTimeout | quote }}
+{{- end }}
+{{- end }}
