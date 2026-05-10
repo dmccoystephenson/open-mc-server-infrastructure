@@ -104,6 +104,30 @@ spec:
               value: {{ .Values.minecraftWrapper.env.LOGS_DIAGNOSTIC_ENABLED | quote }}
             - name: LOGS_DIAGNOSTIC_MAX_LINES
               value: {{ .Values.minecraftWrapper.env.LOGS_DIAGNOSTIC_MAX_LINES | quote }}
+          # startupProbe gives the JVM time to initialise before liveness kicks in.
+          # failureThreshold × periodSeconds = 10 minutes — enough for Spigot's
+          # first-boot BuildTools compilation.
+          startupProbe:
+            httpGet:
+              path: /actuator/health
+              port: wrapper
+            failureThreshold: 60
+            periodSeconds: 10
+            timeoutSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: wrapper
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 5
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: wrapper
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
           resources:
             {{- toYaml .Values.minecraftWrapper.resources | nindent 12 }}
           volumeMounts:
