@@ -20,18 +20,14 @@ This document captures issues, limitations, and improvement opportunities surfac
 
 ---
 
-## 2. Health Probes — Missing for Several Services
+## 2. Health Probes — Missing for Several Services ✅ Resolved
 
-**Problem:** Only `alert-manager`, `webapp`, and `nginx` have health probes defined. The following services have **no** liveness, readiness, or startup probes:
-- `minecraft-wrapper` — the Minecraft server can take several minutes to start; without a startup probe, Kubernetes may kill the pod prematurely.
-- `backup-manager` — no probe to confirm the Spring Boot app started successfully.
-- `agent-manager` — no probe to confirm the Discord bot connected.
+**Problem:** Only `alert-manager`, `webapp`, and `nginx` had health probes defined. `minecraft-wrapper`, `backup-manager`, and `agent-manager` had no liveness, readiness, or startup probes.
 
-**Suggested improvements:**
-- Add a `startupProbe` to `minecraft-wrapper` with a generous `failureThreshold` (e.g., 30 × 10s = 5 minutes) to accommodate Spigot's build-on-first-run behavior.
-- Add `livenessProbe` and `readinessProbe` to `backup-manager` and `agent-manager` targeting their Spring Boot actuator health endpoints (e.g., `/actuator/health`).
-
-**Priority:** Medium — improves restart reliability and zero-downtime upgrades.
+**Resolution:** Health probes added to all services in [PR #153](https://github.com/dmccoystephenson/open-mc-server-infrastructure/pull/153):
+- `minecraft-wrapper`: `startupProbe` with `failureThreshold: 60 × periodSeconds: 10` = 10 minutes (accommodates Spigot's build-on-first-run compilation), plus `livenessProbe` and `readinessProbe` on the wrapper API port.
+- `backup-manager`: `livenessProbe` and `readinessProbe` on `/actuator/health`.
+- `agent-manager`: `livenessProbe` and `readinessProbe` on `/actuator/health` via the dedicated management port (8094). The management port address restriction (`127.0.0.1`) was removed so the kubelet can reach the probe endpoint.
 
 ---
 
@@ -114,15 +110,16 @@ This document captures issues, limitations, and improvement opportunities surfac
 
 ---
 
-## 9. Pod Disruption Budgets (PDB)
+## 9. Pod Disruption Budgets (PDB) ✅ Resolved
 
-**Problem:** No `PodDisruptionBudget` resources are defined. During node maintenance or cluster upgrades, all pods (including the Minecraft server) can be evicted simultaneously.
+**Problem:** No `PodDisruptionBudget` resources were defined. During node maintenance or cluster upgrades, all pods (including the Minecraft server) could be evicted simultaneously.
 
-**Suggested improvements:**
-- Add a PDB for `minecraft-wrapper` ensuring `minAvailable: 1` (the server should never have zero available replicas during voluntary disruptions).
-- Add PDBs for critical supporting services (webapp, alert-manager) when running multiple replicas.
+**Resolution:** PDBs added to `helm/omcsi/templates/pdb.yaml` in [PR #153](https://github.com/dmccoystephenson/open-mc-server-infrastructure/pull/153):
+- `minecraft-wrapper`: `minAvailable: 1` — prevents voluntary eviction of the live server.
+- `webapp`: `minAvailable: 1` — keeps the admin dashboard available during drains.
+- `alert-manager`: `minAvailable: 1` — prevents monitoring from going silent during maintenance.
 
-**Priority:** Low — relevant for production clusters with regular maintenance windows.
+All three PDBs use `policy/v1` (stable since Kubernetes 1.21).
 
 ---
 
@@ -157,13 +154,13 @@ This document captures issues, limitations, and improvement opportunities surfac
 | # | Improvement | Priority | Effort |
 |---|---|---|---|
 | 1 | ~~Backup manager — native filesystem mode~~ ✅ Resolved | ~~High~~ | ~~Medium~~ |
-| 2 | Health probes for all services | Medium | Low |
+| 2 | ~~Health probes for all services~~ ✅ Resolved | ~~Medium~~ | ~~Low~~ |
 | 3 | Security contexts | Medium | Low |
 | 4 | Ingress controller support | Medium | Medium |
 | 5 | TLS certificate management (cert-manager) | Low | Medium |
 | 6 | Shared PVC scheduling improvements | Low | Medium |
 | 7 | Horizontal Pod Autoscaler | Low | Low |
 | 8 | Network policies | Low | Medium |
-| 9 | Pod Disruption Budgets | Low | Low |
+| 9 | ~~Pod Disruption Budgets~~ ✅ Resolved | ~~Low~~ | ~~Low~~ |
 | 10 | Helm chart publishing | Low | Low |
 | 11 | Monitoring and observability | Low | Medium |

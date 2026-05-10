@@ -20,7 +20,7 @@ tests:
       - hasDocuments:
           count: 2
 
-  - it: Deployment has liveness probe when enabled
+  - it: Deployment has liveness probe on the management port when enabled
     set:
       agentManager.enabled: true
       secrets.agentDiscordBotToken: ci-token
@@ -33,7 +33,7 @@ tests:
         documentIndex: 0
       - equal:
           path: spec.template.spec.containers[0].livenessProbe.httpGet.port
-          value: http
+          value: management
         documentIndex: 0
       - equal:
           path: spec.template.spec.containers[0].livenessProbe.initialDelaySeconds
@@ -44,7 +44,7 @@ tests:
           value: 5
         documentIndex: 0
 
-  - it: Deployment has readiness probe when enabled
+  - it: Deployment has readiness probe on the management port when enabled
     set:
       agentManager.enabled: true
       secrets.agentDiscordBotToken: ci-token
@@ -57,7 +57,7 @@ tests:
         documentIndex: 0
       - equal:
           path: spec.template.spec.containers[0].readinessProbe.httpGet.port
-          value: http
+          value: management
         documentIndex: 0
       - equal:
           path: spec.template.spec.containers[0].readinessProbe.initialDelaySeconds
