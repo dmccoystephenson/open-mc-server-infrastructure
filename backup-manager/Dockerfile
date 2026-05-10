@@ -28,11 +28,13 @@ RUN apt-get update && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-# Set working directory
 WORKDIR /app
 
-# Copy the JAR file from builder stage
 COPY --from=builder /build/build/libs/*.jar app.jar
 
-# Run the application
+RUN groupadd -r -g 1000 appgroup && useradd -r -u 1000 -g appgroup appuser && \
+    chown appuser:appgroup app.jar
+
+USER appuser
+
 ENTRYPOINT ["java", "-jar", "app.jar"]

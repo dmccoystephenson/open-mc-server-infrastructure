@@ -78,6 +78,10 @@ spec:
               {{- if not .Values.nginx.tls.selfSigned }}
               readOnly: true
               {{- end }}
+            - name: nginx-tmp
+              mountPath: /tmp
+            - name: nginx-cache
+              mountPath: /var/cache/nginx
       volumes:
         - name: nginx-config
           configMap:
@@ -95,6 +99,10 @@ spec:
               - key: tls.key
                 path: key.pem
         {{- end }}
+        - name: nginx-tmp
+          emptyDir: {}
+        - name: nginx-cache
+          emptyDir: {}
 ---
 apiVersion: v1
 kind: Service

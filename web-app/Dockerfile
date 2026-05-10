@@ -22,8 +22,12 @@ FROM eclipse-temurin:21-jre
 
 WORKDIR /app
 
-# Copy the JAR file from builder stage
 COPY --from=builder /build/build/libs/*.jar app.jar
+
+RUN groupadd -r -g 1000 appgroup && useradd -r -u 1000 -g appgroup appuser && \
+    chown appuser:appgroup app.jar
+
+USER appuser
 
 EXPOSE 8080
 

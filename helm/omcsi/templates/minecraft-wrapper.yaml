@@ -141,6 +141,8 @@ spec:
           volumeMounts:
             - name: mcserver
               mountPath: /mcserver
+            - name: tmp
+              mountPath: /tmp
       volumes:
         - name: mcserver
           {{- if .Values.persistence.mcserver.enabled }}
@@ -149,6 +151,8 @@ spec:
           {{- else }}
           emptyDir: {}
           {{- end }}
+        - name: tmp
+          emptyDir: {}
 ---
 # External Service – exposes only the Minecraft game port
 apiVersion: v1

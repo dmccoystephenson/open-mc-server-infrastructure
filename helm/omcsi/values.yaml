@@ -138,13 +138,16 @@ nginx:
     # <release>-omcsi-nginx-tls). The Secret's tls.crt / tls.key are mapped
     # to the cert.pem / key.pem paths that nginx expects.
     selfSigned: true
-  # nginx needs NET_BIND_SERVICE to bind to ports 80/443 and SETUID/SETGID/CHOWN
-  # to manage worker-process privilege dropping.  All other capabilities are dropped.
+  # nginx needs NET_BIND_SERVICE to bind to ports 80/443.  Running as a
+  # non-root user (UID 1000) means CHOWN/SETUID/SETGID are no longer needed.
   containerSecurityContext:
     allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    runAsNonRoot: true
+    runAsUser: 1000
     capabilities:
       drop: [ALL]
-      add: [NET_BIND_SERVICE, CHOWN, SETUID, SETGID]
+      add: [NET_BIND_SERVICE]
 
 # ---------------------------------------------------------------------------
 # Backup Manager
@@ -259,9 +262,13 @@ secrets:
 podSecurityContext:
   seccompProfile:
     type: RuntimeDefault
+  fsGroup: 1000
 
 containerSecurityContext:
   allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
+  runAsUser: 1000
   capabilities:
     drop: [ALL]
 

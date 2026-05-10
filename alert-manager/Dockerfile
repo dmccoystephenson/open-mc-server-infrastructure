@@ -20,11 +20,13 @@ RUN gradle clean build -x test --no-daemon
 # Stage 2: Create the runtime image
 FROM eclipse-temurin:21-jre
 
-# Set working directory
 WORKDIR /app
 
-# Copy the JAR file from builder stage
 COPY --from=builder /build/build/libs/*.jar app.jar
 
-# Run the application
+RUN groupadd -r -g 1000 appgroup && useradd -r -u 1000 -g appgroup appuser && \
+    chown appuser:appgroup app.jar
+
+USER appuser
+
 ENTRYPOINT ["java", "-jar", "app.jar"]
