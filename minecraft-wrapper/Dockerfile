@@ -4,10 +4,7 @@ WORKDIR /app
 
 COPY build/libs/*.jar app.jar
 
-RUN addgroup -S -g 1000 appgroup && adduser -S -u 1000 -G appgroup appuser && \
-    chown appuser:appgroup app.jar
-
-USER appuser
+USER 1000
 
 EXPOSE 8092
 

@@ -24,10 +24,7 @@ WORKDIR /app
 
 COPY --from=builder /build/build/libs/*.jar app.jar
 
-RUN groupadd -r -g 1000 appgroup && useradd -r -u 1000 -g appgroup appuser && \
-    chown appuser:appgroup app.jar
-
-USER appuser
+USER 1000
 
 EXPOSE 8080
 
