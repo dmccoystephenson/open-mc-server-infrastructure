@@ -20,10 +20,14 @@ spec:
         {{- include "omcsi.labels" . | nindent 8 }}
         {{- include "omcsi.selectorLabels" (dict "root" . "component" "nginx") | nindent 8 }}
     spec:
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
       {{- if .Values.nginx.tls.selfSigned }}
       initContainers:
         - name: generate-tls
           image: "{{ .Values.nginx.image.repository }}:{{ .Values.nginx.image.tag }}"
+          securityContext:
+            {{- toYaml .Values.containerSecurityContext | nindent 12 }}
           command:
             - sh
             - -c
@@ -42,6 +46,8 @@ spec:
         - name: nginx
           image: "{{ .Values.nginx.image.repository }}:{{ .Values.nginx.image.tag }}"
           imagePullPolicy: {{ .Values.nginx.image.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.nginx.containerSecurityContext | nindent 12 }}
           ports:
             - name: http
               containerPort: 80

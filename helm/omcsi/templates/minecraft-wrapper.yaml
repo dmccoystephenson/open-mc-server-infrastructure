@@ -21,10 +21,14 @@ spec:
         {{- include "omcsi.selectorLabels" (dict "root" . "component" "minecraft-wrapper") | nindent 8 }}
     spec:
       terminationGracePeriodSeconds: 45
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
       containers:
         - name: minecraft-wrapper
           image: "{{ .Values.minecraftWrapper.image.repository }}:{{ .Values.minecraftWrapper.image.tag }}"
           imagePullPolicy: {{ .Values.minecraftWrapper.image.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.containerSecurityContext | nindent 12 }}
           ports:
             - name: minecraft
               containerPort: 25565

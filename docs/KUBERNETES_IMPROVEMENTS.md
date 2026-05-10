@@ -31,17 +31,17 @@ This document captures issues, limitations, and improvement opportunities surfac
 
 ---
 
-## 3. Security Contexts — Not Configured
+## 3. Security Contexts ✅ Resolved
 
 **Problem:** No Deployment in the Helm chart sets `securityContext`, `runAsNonRoot`, or `readOnlyRootFilesystem`. All containers run as root by default, which is a security concern in multi-tenant clusters.
 
-**Suggested improvements:**
-- Add pod-level and container-level security contexts to all Deployments.
-- Set `runAsNonRoot: true` and `readOnlyRootFilesystem: true` where feasible, using `emptyDir` volumes for any writable paths.
-- Drop all Linux capabilities (`drop: [ALL]`) and add back only what's needed.
-- Make security context values configurable in `values.yaml` for environments that need to override them.
+**Resolution:** Security contexts added to all Deployments in [PR #155](https://github.com/dmccoystephenson/open-mc-server-infrastructure/pull/155):
+- **Pod-level** (`spec.securityContext`): `seccompProfile: RuntimeDefault` on every Deployment — enables the kernel's seccomp filter for system call restriction without requiring application changes.
+- **Container-level** (`spec.containers[].securityContext`): `allowPrivilegeEscalation: false` and `capabilities.drop: [ALL]` on every container and init container.
+- **nginx exception**: the nginx main container additionally adds `NET_BIND_SERVICE` (to bind ports 80/443) and `CHOWN`, `SETUID`, `SETGID` (for worker-process privilege dropping). The nginx init container uses the global drop-ALL context.
+- All values are configurable via `podSecurityContext` and `containerSecurityContext` in `values.yaml`; nginx overrides via `nginx.containerSecurityContext`.
 
-**Priority:** Medium — important for production security posture and compliance.
+**Note:** `runAsNonRoot: true` and `readOnlyRootFilesystem: true` were intentionally deferred — they require verifying that the upstream Docker images support non-root execution and identifying all writable paths needed at runtime.
 
 ---
 
@@ -97,16 +97,16 @@ This document captures issues, limitations, and improvement opportunities surfac
 
 ---
 
-## 8. Network Policies
+## 8. Network Policies ✅ Resolved
 
 **Problem:** No `NetworkPolicy` resources are defined, so all pods can communicate with each other and with external endpoints without restriction.
 
-**Suggested improvements:**
-- Add default-deny ingress/egress policies per namespace.
-- Create allow-list policies for required traffic flows (e.g., webapp → minecraft-wrapper RCON, alert-manager → Discord webhook, nginx → webapp).
-- Make network policies optional via `networkPolicy.enabled` to avoid breaking clusters without a CNI that supports them.
-
-**Priority:** Low — improves defense-in-depth; important for shared or multi-tenant clusters.
+**Resolution:** Per-service `NetworkPolicy` resources added to `helm/omcsi/templates/networkpolicies.yaml` in [PR #155](https://github.com/dmccoystephenson/open-mc-server-infrastructure/pull/155):
+- Each service has a policy with `policyTypes: [Ingress, Egress]`, which implicitly denies any traffic not matched by an explicit allow rule.
+- Ingress allow rules are scoped by `podSelector` where possible (RCON is restricted to webapp and alert-manager only). Health-probe ports and externally-accessible ports use `ipBlock: 0.0.0.0/0` — kubelet probes originate from the node host network and cannot be matched by a pod/namespace selector.
+- Egress allow rules cover only the specific service ports each pod needs to call, plus DNS (UDP/TCP 53) for all pods and external HTTPS (port 443) for services that call Discord or the Anthropic API.
+- The `agent-manager` policy is gated behind `agentManager.enabled` (same condition as the Deployment).
+- Gated behind `networkPolicy.enabled` (default `true`); set `false` on clusters whose CNI does not support NetworkPolicy (e.g. Flannel without a policy controller).
 
 ---
 
@@ -155,12 +155,12 @@ All three PDBs use `policy/v1` (stable since Kubernetes 1.21).
 |---|---|---|---|
 | 1 | ~~Backup manager — native filesystem mode~~ ✅ Resolved | ~~High~~ | ~~Medium~~ |
 | 2 | ~~Health probes for all services~~ ✅ Resolved | ~~Medium~~ | ~~Low~~ |
-| 3 | Security contexts | Medium | Low |
+| 3 | ~~Security contexts~~ ✅ Resolved | ~~Medium~~ | ~~Low~~ |
 | 4 | Ingress controller support | Medium | Medium |
 | 5 | TLS certificate management (cert-manager) | Low | Medium |
 | 6 | Shared PVC scheduling improvements | Low | Medium |
 | 7 | Horizontal Pod Autoscaler | Low | Low |
-| 8 | Network policies | Low | Medium |
+| 8 | ~~Network policies~~ ✅ Resolved | ~~Low~~ | ~~Medium~~ |
 | 9 | ~~Pod Disruption Budgets~~ ✅ Resolved | ~~Low~~ | ~~Low~~ |
 | 10 | Helm chart publishing | Low | Low |
 | 11 | Monitoring and observability | Low | Medium |

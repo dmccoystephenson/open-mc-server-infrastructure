@@ -22,10 +22,14 @@ spec:
         {{- include "omcsi.selectorLabels" (dict "root" . "component" "backup-manager") | nindent 8 }}
     spec:
       {{- include "omcsi.mcserverAffinity" . | nindent 6 }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
       containers:
         - name: backup-manager
           image: "{{ .Values.backupManager.image.repository }}:{{ .Values.backupManager.image.tag }}"
           imagePullPolicy: {{ .Values.backupManager.image.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.containerSecurityContext | nindent 12 }}
           ports:
             - name: http
               containerPort: 8091
