@@ -49,6 +49,22 @@ spec:
               value: {{ .Values.backupManager.env.ALERTS_BACKUP_FAILURE | quote }}
             - name: ALERT_MANAGER_URL
               value: "http://{{ include "omcsi.alertManagerHost" . }}:{{ .Values.alertManager.service.port }}/api/alerts"
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 5
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
           resources:
             {{- toYaml .Values.backupManager.resources | nindent 12 }}
           volumeMounts:

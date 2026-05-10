@@ -27,6 +27,9 @@ spec:
             - name: http
               containerPort: 8093
               protocol: TCP
+            - name: management
+              containerPort: 8094
+              protocol: TCP
           env:
             - name: AGENT_DISCORD_BOT_TOKEN
               valueFrom:
@@ -69,6 +72,22 @@ spec:
               value: {{ .Values.agentManager.env.DIAGNOSTICS_LOGS_MAX_LINES | quote }}
             - name: DIAGNOSTICS_LOGS_ANONYMIZE
               value: {{ .Values.agentManager.env.DIAGNOSTICS_LOGS_ANONYMIZE | quote }}
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: management
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 5
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: management
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
           resources:
             {{- toYaml .Values.agentManager.resources | nindent 12 }}
 ---

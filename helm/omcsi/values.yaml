@@ -29,7 +29,7 @@ minecraftWrapper:
   image:
     repository: dmccoystephenson/open-mc-server
     tag: latest
-    pullPolicy: IfNotPresent
+    pullPolicy: Always
   # replicaCount is fixed at 1 — a single Minecraft server instance must own
   # the world data exclusively.  The value is hardcoded in the template.
   resources:
@@ -82,7 +82,7 @@ webapp:
   image:
     repository: dmccoystephenson/open-mc-server-webapp
     tag: latest
-    pullPolicy: IfNotPresent
+    pullPolicy: Always
   replicaCount: 1
   resources:
     requests:
@@ -116,7 +116,7 @@ nginx:
   image:
     repository: dmccoystephenson/open-mc-server-nginx
     tag: latest
-    pullPolicy: IfNotPresent
+    pullPolicy: Always
   replicaCount: 1
   resources:
     requests:
@@ -146,7 +146,7 @@ backupManager:
   image:
     repository: dmccoystephenson/open-mc-server-backup-manager
     tag: latest
-    pullPolicy: IfNotPresent
+    pullPolicy: Always
   replicaCount: 1
   resources:
     requests:
@@ -176,7 +176,7 @@ alertManager:
   image:
     repository: dmccoystephenson/open-mc-server-alert-manager
     tag: latest
-    pullPolicy: IfNotPresent
+    pullPolicy: Always
   replicaCount: 1
   resources:
     requests:
@@ -200,7 +200,7 @@ agentManager:
   image:
     repository: dmccoystephenson/open-mc-server-agent-manager
     tag: latest
-    pullPolicy: IfNotPresent
+    pullPolicy: Always
   replicaCount: 1
   resources:
     requests:
@@ -241,6 +241,15 @@ secrets:
   agentDiscordBotToken: ""
   agentDiscordChannelId: ""
   agentAnthropicApiKey: ""
+
+# ---------------------------------------------------------------------------
+# PodDisruptionBudgets
+# ---------------------------------------------------------------------------
+# When enabled, creates PDBs for minecraft-wrapper, webapp, and alert-manager
+# with minAvailable: 1.  Disable if your cluster has a single node and drain
+# operations would otherwise be blocked.
+podDisruptionBudgets:
+  enabled: true
 
 # ---------------------------------------------------------------------------
 # Persistence

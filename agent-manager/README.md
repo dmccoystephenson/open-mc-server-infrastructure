@@ -298,7 +298,7 @@ At DEBUG level, the agent-manager logs additional detail at each step:
 - Only the user who requested an action can confirm it via reaction
 - Pending confirmations expire after 5 minutes to prevent stale actions
 - The Discord bot only listens in the configured channel
-- The Actuator management endpoints (`/loggers`, `/health`) run on a separate port (8094) and are bound to `127.0.0.1` — only accessible from inside the container
+- The Actuator management endpoints (`/loggers`, `/health`) run on a separate port (8094). In Docker Compose this port is not mapped to the host, so it is only reachable from within the Docker network. In Kubernetes it is not exposed via any Service or Ingress, but it remains reachable on the cluster network via the pod IP (including by the kubelet for health probes). Use NetworkPolicies to restrict access if required
 
 ## Troubleshooting
 

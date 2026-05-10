@@ -1,0 +1,105 @@
+suite: webapp
+templates:
+  - templates/webapp.yaml
+set:
+  secrets.rconPassword: ci
+  secrets.adminPassword: ci
+tests:
+  - it: Deployment is the first document
+    asserts:
+      - isKind:
+          of: Deployment
+        documentIndex: 0
+
+  - it: has an init container named wait-for-wrapper
+    asserts:
+      - equal:
+          path: spec.template.spec.initContainers[0].name
+          value: wait-for-wrapper
+        documentIndex: 0
+
+  - it: init container uses busybox 1.36
+    asserts:
+      - equal:
+          path: spec.template.spec.initContainers[0].image
+          value: busybox:1.36
+        documentIndex: 0
+
+  - it: init container polls the minecraft-wrapper internal health endpoint
+    asserts:
+      - matchRegex:
+          path: spec.template.spec.initContainers[0].command[2]
+          pattern: "minecraft-wrapper-internal.*actuator/health"
+        documentIndex: 0
+
+  - it: init container wget uses a connect/read timeout
+    asserts:
+      - matchRegex:
+          path: spec.template.spec.initContainers[0].command[2]
+          pattern: "wget -T"
+        documentIndex: 0
+
+  - it: init container exits non-zero after max attempts
+    asserts:
+      - matchRegex:
+          path: spec.template.spec.initContainers[0].command[2]
+          pattern: "exit 1"
+        documentIndex: 0
+
+  - it: mounts mcserver and webapp-data volumes
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: mcserver
+            mountPath: /mcserver
+        documentIndex: 0
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: webapp-data
+            mountPath: /app/data
+        documentIndex: 0
+
+  - it: uses PVC for webapp-data when persistence is enabled
+    asserts:
+      - equal:
+          path: spec.template.spec.volumes[0].persistentVolumeClaim.claimName
+          value: RELEASE-NAME-omcsi-webapp-data
+        documentIndex: 0
+
+  - it: uses emptyDir for webapp-data when persistence is disabled
+    set:
+      persistence.webappData.enabled: false
+    asserts:
+      - isNotNull:
+          path: spec.template.spec.volumes[0].emptyDir
+        documentIndex: 0
+      - isNull:
+          path: spec.template.spec.volumes[0].persistentVolumeClaim
+        documentIndex: 0
+
+  - it: service is ClusterIP on port 8080
+    asserts:
+      - isKind:
+          of: Service
+        documentIndex: 1
+      - equal:
+          path: spec.type
+          value: ClusterIP
+        documentIndex: 1
+      - equal:
+          path: spec.ports[0].port
+          value: 8080
+        documentIndex: 1
+
+  - it: readiness probe checks root path on http port
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].readinessProbe.httpGet.path
+          value: /
+        documentIndex: 0
+      - equal:
+          path: spec.template.spec.containers[0].readinessProbe.httpGet.port
+          value: http
+        documentIndex: 0

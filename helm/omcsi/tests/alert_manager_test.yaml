@@ -1,0 +1,73 @@
+suite: alert-manager
+templates:
+  - templates/alert-manager.yaml
+set:
+  secrets.rconPassword: ci
+  secrets.adminPassword: ci
+tests:
+  - it: Deployment is the first document
+    asserts:
+      - isKind:
+          of: Deployment
+        documentIndex: 0
+
+  - it: liveness probe monitors /actuator/health
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].livenessProbe.httpGet.path
+          value: /actuator/health
+        documentIndex: 0
+      - equal:
+          path: spec.template.spec.containers[0].livenessProbe.httpGet.port
+          value: http
+        documentIndex: 0
+      - equal:
+          path: spec.template.spec.containers[0].livenessProbe.initialDelaySeconds
+          value: 30
+        documentIndex: 0
+
+  - it: readiness probe monitors /actuator/health
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].readinessProbe.httpGet.path
+          value: /actuator/health
+        documentIndex: 0
+      - equal:
+          path: spec.template.spec.containers[0].readinessProbe.httpGet.port
+          value: http
+        documentIndex: 0
+      - equal:
+          path: spec.template.spec.containers[0].readinessProbe.initialDelaySeconds
+          value: 30
+        documentIndex: 0
+
+  - it: service is ClusterIP on port 8090
+    asserts:
+      - isKind:
+          of: Service
+        documentIndex: 1
+      - equal:
+          path: spec.type
+          value: ClusterIP
+        documentIndex: 1
+      - equal:
+          path: spec.ports[0].port
+          value: 8090
+        documentIndex: 1
+
+  - it: uses PVC for alert-manager-data when persistence is enabled
+    asserts:
+      - isNotNull:
+          path: spec.template.spec.volumes[0].persistentVolumeClaim
+        documentIndex: 0
+
+  - it: uses emptyDir for alert-manager-data when persistence is disabled
+    set:
+      persistence.alertManagerData.enabled: false
+    asserts:
+      - isNotNull:
+          path: spec.template.spec.volumes[0].emptyDir
+        documentIndex: 0
+      - isNull:
+          path: spec.template.spec.volumes[0].persistentVolumeClaim
+        documentIndex: 0

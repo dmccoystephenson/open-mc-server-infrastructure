@@ -1,0 +1,88 @@
+suite: agent-manager conditional rendering
+templates:
+  - templates/agent-manager.yaml
+set:
+  secrets.rconPassword: ci
+  secrets.adminPassword: ci
+tests:
+  - it: renders nothing when disabled (default)
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: renders Deployment and Service when enabled
+    set:
+      agentManager.enabled: true
+      secrets.agentDiscordBotToken: ci-token
+      secrets.agentDiscordChannelId: "123456"
+      secrets.agentAnthropicApiKey: ci-key
+    asserts:
+      - hasDocuments:
+          count: 2
+
+  - it: Deployment has liveness probe on the management port when enabled
+    set:
+      agentManager.enabled: true
+      secrets.agentDiscordBotToken: ci-token
+      secrets.agentDiscordChannelId: "123456"
+      secrets.agentAnthropicApiKey: ci-key
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].livenessProbe.httpGet.path
+          value: /actuator/health
+        documentIndex: 0
+      - equal:
+          path: spec.template.spec.containers[0].livenessProbe.httpGet.port
+          value: management
+        documentIndex: 0
+      - equal:
+          path: spec.template.spec.containers[0].livenessProbe.initialDelaySeconds
+          value: 30
+        documentIndex: 0
+      - equal:
+          path: spec.template.spec.containers[0].livenessProbe.failureThreshold
+          value: 5
+        documentIndex: 0
+
+  - it: Deployment has readiness probe on the management port when enabled
+    set:
+      agentManager.enabled: true
+      secrets.agentDiscordBotToken: ci-token
+      secrets.agentDiscordChannelId: "123456"
+      secrets.agentAnthropicApiKey: ci-key
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].readinessProbe.httpGet.path
+          value: /actuator/health
+        documentIndex: 0
+      - equal:
+          path: spec.template.spec.containers[0].readinessProbe.httpGet.port
+          value: management
+        documentIndex: 0
+      - equal:
+          path: spec.template.spec.containers[0].readinessProbe.initialDelaySeconds
+          value: 30
+        documentIndex: 0
+      - equal:
+          path: spec.template.spec.containers[0].readinessProbe.failureThreshold
+          value: 3
+        documentIndex: 0
+
+  - it: Service is ClusterIP on port 8093 when enabled
+    set:
+      agentManager.enabled: true
+      secrets.agentDiscordBotToken: ci-token
+      secrets.agentDiscordChannelId: "123456"
+      secrets.agentAnthropicApiKey: ci-key
+    asserts:
+      - isKind:
+          of: Service
+        documentIndex: 1
+      - equal:
+          path: spec.type
+          value: ClusterIP
+        documentIndex: 1
+      - equal:
+          path: spec.ports[0].port
+          value: 8093
+        documentIndex: 1

@@ -1,0 +1,167 @@
+suite: minecraft-wrapper
+templates:
+  - templates/minecraft-wrapper.yaml
+set:
+  secrets.rconPassword: ci
+  secrets.adminPassword: ci
+tests:
+  - it: Deployment is the first document
+    asserts:
+      - isKind:
+          of: Deployment
+        documentIndex: 0
+
+  - it: hardcodes replica count to 1
+    asserts:
+      - equal:
+          path: spec.replicas
+          value: 1
+        documentIndex: 0
+
+  - it: uses Recreate strategy (world data must not be shared)
+    asserts:
+      - equal:
+          path: spec.strategy.type
+          value: Recreate
+        documentIndex: 0
+
+  - it: startup probe gives the JVM up to 10 minutes before liveness kicks in
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].startupProbe.httpGet.path
+          value: /actuator/health
+        documentIndex: 0
+      - equal:
+          path: spec.template.spec.containers[0].startupProbe.httpGet.port
+          value: wrapper
+        documentIndex: 0
+      - equal:
+          path: spec.template.spec.containers[0].startupProbe.failureThreshold
+          value: 60
+        documentIndex: 0
+      - equal:
+          path: spec.template.spec.containers[0].startupProbe.periodSeconds
+          value: 10
+        documentIndex: 0
+
+  - it: liveness probe restarts unresponsive wrapper
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].livenessProbe.httpGet.path
+          value: /actuator/health
+        documentIndex: 0
+      - equal:
+          path: spec.template.spec.containers[0].livenessProbe.httpGet.port
+          value: wrapper
+        documentIndex: 0
+      - equal:
+          path: spec.template.spec.containers[0].livenessProbe.periodSeconds
+          value: 30
+        documentIndex: 0
+      - equal:
+          path: spec.template.spec.containers[0].livenessProbe.failureThreshold
+          value: 5
+        documentIndex: 0
+
+  - it: readiness probe gates traffic until wrapper is healthy
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].readinessProbe.httpGet.path
+          value: /actuator/health
+        documentIndex: 0
+      - equal:
+          path: spec.template.spec.containers[0].readinessProbe.httpGet.port
+          value: wrapper
+        documentIndex: 0
+      - equal:
+          path: spec.template.spec.containers[0].readinessProbe.periodSeconds
+          value: 10
+        documentIndex: 0
+      - equal:
+          path: spec.template.spec.containers[0].readinessProbe.failureThreshold
+          value: 3
+        documentIndex: 0
+
+  - it: mounts mcserver volume at /mcserver
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: mcserver
+            mountPath: /mcserver
+        documentIndex: 0
+
+  - it: external service is NodePort on Minecraft port 25565
+    asserts:
+      - isKind:
+          of: Service
+        documentIndex: 1
+      - equal:
+          path: spec.type
+          value: NodePort
+        documentIndex: 1
+      - equal:
+          path: spec.ports[0].port
+          value: 25565
+        documentIndex: 1
+
+  - it: internal service is ClusterIP exposing RCON, BlueMap, and wrapper ports
+    asserts:
+      - isKind:
+          of: Service
+        documentIndex: 2
+      - equal:
+          path: spec.type
+          value: ClusterIP
+        documentIndex: 2
+      - equal:
+          path: spec.ports[0].name
+          value: rcon
+        documentIndex: 2
+      - equal:
+          path: spec.ports[0].port
+          value: 25575
+        documentIndex: 2
+      - equal:
+          path: spec.ports[1].name
+          value: bluemap
+        documentIndex: 2
+      - equal:
+          path: spec.ports[1].port
+          value: 8100
+        documentIndex: 2
+      - equal:
+          path: spec.ports[2].name
+          value: wrapper
+        documentIndex: 2
+      - equal:
+          path: spec.ports[2].port
+          value: 8092
+        documentIndex: 2
+
+  - it: external service type is configurable
+    set:
+      minecraftWrapper.service.type: LoadBalancer
+    asserts:
+      - equal:
+          path: spec.type
+          value: LoadBalancer
+        documentIndex: 1
+
+  - it: uses emptyDir for mcserver volume when persistence is disabled
+    set:
+      persistence.mcserver.enabled: false
+    asserts:
+      - isNotNull:
+          path: spec.template.spec.volumes[0].emptyDir
+        documentIndex: 0
+      - isNull:
+          path: spec.template.spec.volumes[0].persistentVolumeClaim
+        documentIndex: 0
+
+  - it: uses PVC for mcserver volume when persistence is enabled
+    asserts:
+      - equal:
+          path: spec.template.spec.volumes[0].persistentVolumeClaim.claimName
+          value: RELEASE-NAME-omcsi-mcserver
+        documentIndex: 0

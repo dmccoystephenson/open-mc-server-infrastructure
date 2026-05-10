@@ -1,0 +1,100 @@
+suite: backup-manager
+templates:
+  - templates/backup-manager.yaml
+set:
+  secrets.rconPassword: ci
+  secrets.adminPassword: ci
+tests:
+  - it: Deployment is the first document
+    asserts:
+      - isKind:
+          of: Deployment
+        documentIndex: 0
+
+  - it: liveness probe monitors /actuator/health
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].livenessProbe.httpGet.path
+          value: /actuator/health
+        documentIndex: 0
+      - equal:
+          path: spec.template.spec.containers[0].livenessProbe.httpGet.port
+          value: http
+        documentIndex: 0
+      - equal:
+          path: spec.template.spec.containers[0].livenessProbe.initialDelaySeconds
+          value: 30
+        documentIndex: 0
+      - equal:
+          path: spec.template.spec.containers[0].livenessProbe.failureThreshold
+          value: 5
+        documentIndex: 0
+
+  - it: readiness probe monitors /actuator/health
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].readinessProbe.httpGet.path
+          value: /actuator/health
+        documentIndex: 0
+      - equal:
+          path: spec.template.spec.containers[0].readinessProbe.httpGet.port
+          value: http
+        documentIndex: 0
+      - equal:
+          path: spec.template.spec.containers[0].readinessProbe.initialDelaySeconds
+          value: 30
+        documentIndex: 0
+      - equal:
+          path: spec.template.spec.containers[0].readinessProbe.failureThreshold
+          value: 3
+        documentIndex: 0
+
+  - it: mounts mcserver read-only and backups volumes
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: mcserver
+            mountPath: /mcserver
+            readOnly: true
+        documentIndex: 0
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: backups
+            mountPath: /backups
+        documentIndex: 0
+
+  - it: service is ClusterIP on port 8091
+    asserts:
+      - isKind:
+          of: Service
+        documentIndex: 1
+      - equal:
+          path: spec.type
+          value: ClusterIP
+        documentIndex: 1
+      - equal:
+          path: spec.ports[0].port
+          value: 8091
+        documentIndex: 1
+
+  - it: backup schedule env var is set from values
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: BACKUP_SCHEDULE
+            value: "0 0 2 * * ?"
+        documentIndex: 0
+
+  - it: backup schedule env var is omitted when empty string
+    set:
+      backupManager.env.BACKUP_SCHEDULE: ""
+    asserts:
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: BACKUP_SCHEDULE
+          any: true
+        documentIndex: 0
