@@ -81,7 +81,11 @@ COPY --from=wrapper-builder /wrapper-build/build/libs/minecraft-wrapper-*.jar /a
 
 # Copy resources and make scripts executable
 COPY ./resources /resources
-RUN chmod +x /resources/post-create.sh
+RUN chmod +x /resources/post-create.sh && \
+    groupadd -r -g 1000 appgroup && \
+    useradd -r -u 1000 -g appgroup appuser
+
+USER appuser
 
 # Run server
 WORKDIR /mcserver
