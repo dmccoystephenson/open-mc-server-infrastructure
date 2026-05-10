@@ -76,17 +76,37 @@ tests:
           value: 0.0.0.0/0
         documentIndex: 0
 
+  - it: minecraft-wrapper policy restricts wrapper API port to internal pods only
+    asserts:
+      - equal:
+          path: spec.ingress[1].ports[0].port
+          value: 8092
+        documentIndex: 0
+      - isNull:
+          path: spec.ingress[1].from[0].ipBlock
+        documentIndex: 0
+
   - it: minecraft-wrapper policy restricts RCON to specific pods only
     asserts:
       - isNotNull:
-          path: spec.ingress[2].ports
+          path: spec.ingress[3].ports
         documentIndex: 0
       - equal:
-          path: spec.ingress[2].ports[0].port
+          path: spec.ingress[3].ports[0].port
           value: 25575
         documentIndex: 0
       - isNull:
-          path: spec.ingress[2].from[0].ipBlock
+          path: spec.ingress[3].from[0].ipBlock
+        documentIndex: 0
+
+  - it: minecraft-wrapper policy allows egress to webapp for notifications
+    asserts:
+      - equal:
+          path: spec.egress[1].ports[0].port
+          value: 8080
+        documentIndex: 0
+      - isNull:
+          path: spec.egress[1].to[0].ipBlock
         documentIndex: 0
 
   - it: nginx policy allows external traffic on ports 80 and 443

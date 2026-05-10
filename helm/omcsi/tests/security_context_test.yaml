@@ -155,3 +155,26 @@ tests:
           path: spec.template.spec.containers[0].securityContext.allowPrivilegeEscalation
           value: false
         documentIndex: 0
+
+  # -------------------------------------------------------------------------
+  # nil-safety: securityContext keys absent (--reuse-values compatibility)
+  # -------------------------------------------------------------------------
+  - it: pod securityContext key is absent when podSecurityContext is null
+    templates:
+      - templates/minecraft-wrapper.yaml
+    set:
+      podSecurityContext: null
+    asserts:
+      - isNull:
+          path: spec.template.spec.securityContext
+        documentIndex: 0
+
+  - it: container securityContext key is absent when containerSecurityContext is null
+    templates:
+      - templates/minecraft-wrapper.yaml
+    set:
+      containerSecurityContext: null
+    asserts:
+      - isNull:
+          path: spec.template.spec.containers[0].securityContext
+        documentIndex: 0

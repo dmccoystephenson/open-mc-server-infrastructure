@@ -18,14 +18,18 @@ spec:
         {{- include "omcsi.labels" . | nindent 8 }}
         {{- include "omcsi.selectorLabels" (dict "root" . "component" "alert-manager") | nindent 8 }}
     spec:
+      {{- with .Values.podSecurityContext }}
       securityContext:
-        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       containers:
         - name: alert-manager
           image: "{{ .Values.alertManager.image.repository }}:{{ .Values.alertManager.image.tag }}"
           imagePullPolicy: {{ .Values.alertManager.image.pullPolicy }}
+          {{- with .Values.containerSecurityContext }}
           securityContext:
-            {{- toYaml .Values.containerSecurityContext | nindent 12 }}
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
           ports:
             - name: http
               containerPort: 8090

@@ -27,15 +27,24 @@ spec:
       {{- include "omcsi.selectorLabels" (dict "root" . "component" "minecraft-wrapper") | nindent 6 }}
   policyTypes: [Ingress, Egress]
   ingress:
-    # Player connections and kubelet probes on the wrapper API port (node network)
+    # Player connections (public game port)
     - ports:
         - port: 25565
-          protocol: TCP
-        - port: 8092
           protocol: TCP
       from:
         - ipBlock:
             cidr: 0.0.0.0/0
+    # Wrapper REST API — internal callers only; kubelet probes bypass via CNI host-network
+    - ports:
+        - port: 8092
+          protocol: TCP
+      from:
+        - podSelector:
+            matchLabels:
+              {{- include "omcsi.selectorLabels" (dict "root" . "component" "webapp") | nindent 14 }}
+        - podSelector:
+            matchLabels:
+              {{- include "omcsi.selectorLabels" (dict "root" . "component" "agent-manager") | nindent 14 }}
     # BlueMap traffic from nginx
     - ports:
         - port: 8100
@@ -64,6 +73,14 @@ spec:
         - podSelector:
             matchLabels:
               {{- include "omcsi.selectorLabels" (dict "root" . "component" "alert-manager") | nindent 14 }}
+    # Webapp notifications (WEBAPP_URL — deployment history, etc.)
+    - ports:
+        - port: {{ .Values.webapp.service.port }}
+          protocol: TCP
+      to:
+        - podSelector:
+            matchLabels:
+              {{- include "omcsi.selectorLabels" (dict "root" . "component" "webapp") | nindent 14 }}
     # DNS
     - ports:
         - port: 53
@@ -86,13 +103,14 @@ spec:
       {{- include "omcsi.selectorLabels" (dict "root" . "component" "webapp") | nindent 6 }}
   policyTypes: [Ingress, Egress]
   ingress:
-    # Dashboard traffic from nginx + kubelet probes
+    # Dashboard traffic from nginx; kubelet probes bypass via CNI host-network
     - ports:
         - port: 8080
           protocol: TCP
       from:
-        - ipBlock:
-            cidr: 0.0.0.0/0
+        - podSelector:
+            matchLabels:
+              {{- include "omcsi.selectorLabels" (dict "root" . "component" "nginx") | nindent 14 }}
   egress:
     # Minecraft wrapper API and RCON
     - ports:
