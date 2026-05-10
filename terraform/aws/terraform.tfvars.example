@@ -46,6 +46,11 @@ admin_password = "strongpassword"
 
 # Minecraft service type — 'LoadBalancer' gives a dedicated public IP on port 25565
 # (recommended for production). 'NodePort' exposes via a high port on each node.
+# Traefik ingress (single LoadBalancer IP for all traffic):
+# enable_traefik         = true
+# nginx_service_type     = "ClusterIP"
+# minecraft_service_type = "ClusterIP"
+# Without Traefik: 'LoadBalancer' or 'NodePort' (default)
 # minecraft_service_type = "LoadBalancer"
 
 # Optional: agent-manager (Discord AI bot)

@@ -39,8 +39,16 @@ admin_password = "strongpassword"
 # Optional: plugin hot-deploy bearer token (POST /api/plugins/deploy)
 # deploy_auth_token = "your-secret-token"
 
-# Minecraft service type — 'LoadBalancer' gives a dedicated public IP on port 25565
-# (recommended for production). 'NodePort' exposes via a high port on each node.
+# Traefik ingress controller — routes all public traffic through a single LoadBalancer IP.
+# When enabled, set both service types to ClusterIP so OMCSI services are no longer
+# directly exposed. The Traefik pod handles :80, :443, and :25565.
+# enable_traefik          = true
+# nginx_service_type      = "ClusterIP"
+# minecraft_service_type  = "ClusterIP"
+#
+# Without Traefik, set minecraft_service_type to control how Minecraft is exposed:
+# 'LoadBalancer' = dedicated public IP on port 25565 (recommended for production)
+# 'NodePort'     = high-numbered port on each node (default)
 # minecraft_service_type = "LoadBalancer"
 
 # Optional: agent-manager (Discord AI bot)
