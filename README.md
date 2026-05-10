@@ -1,6 +1,6 @@
 # Open Minecraft Server Infrastructure
 
-[![CI Pipeline](https://github.com/dmccoystephenson/private-mc-server/workflows/CI%20Pipeline/badge.svg?branch=main)](https://github.com/dmccoystephenson/private-mc-server/actions)
+[![CI Pipeline](https://github.com/dmccoystephenson/open-mc-server-infrastructure/workflows/CI%20Pipeline/badge.svg?branch=main)](https://github.com/dmccoystephenson/open-mc-server-infrastructure/actions)
 
 An open, community-agnostic, Docker-based Minecraft server infrastructure running the latest version of Minecraft (26.1) with Spigot for enhanced plugin support and performance. Highly configurable and customizable for any use case.
 
@@ -679,6 +679,12 @@ These settings allow you to run multiple server instances in parallel without co
 - `HOST_BLUEMAP_PORT`: Host port for BlueMap (default: `8100`)
 - `VOLUME_NAME`: Docker volume name for persistent data (default: `mcserver`)
 
+To run multiple servers simultaneously (e.g., for testing different configurations), create separate `.env` files with unique values for `CONTAINER_NAME`, `HOST_PORT`, `HOST_RCON_PORT`, `HOST_BLUEMAP_PORT`, `VOLUME_NAME`, `WEB_CONTAINER_NAME`, `NGINX_CONTAINER_NAME`, `BACKUP_CONTAINER_NAME`, `ALERT_CONTAINER_NAME`, `ALERT_PORT`, `WEB_HTTP_PORT`, and `WEB_HTTPS_PORT`, then start each with:
+
+```bash
+docker compose --env-file .env.dev2 up -d --build
+```
+
 ### Web Dashboard Configuration
 
 - `WEB_CONTAINER_NAME`: Web application container name (default: `open-mc-webapp`)
@@ -742,6 +748,7 @@ See [alert-manager/README.md](alert-manager/README.md) for detailed configuratio
 - `AGENT_START_SERVER_REQUIRES_CONFIRMATION`: Require confirmation to start server (default: `true`)
 - `AGENT_STOP_SERVER_REQUIRES_CONFIRMATION`: Require confirmation to stop server (default: `true`)
 - `AGENT_RESTART_SERVER_REQUIRES_CONFIRMATION`: Require confirmation to restart server (default: `true`)
+- `AGENT_TRIGGER_BACKUP_REQUIRES_CONFIRMATION`: Require confirmation to trigger a backup (default: `true`)
 
 See [agent-manager/README.md](agent-manager/README.md) for detailed configuration, Discord bot setup, and usage examples.
 
@@ -761,9 +768,6 @@ configuration toggles — then synthesising a natural language summary.
 
 This differs from a simple `/status` command because the agent **reasons** over the combined data rather than just returning a single API response. If any upstream source is unavailable the agent acknowledges the gap explicitly (e.g. "I wasn't able to reach the backup manager, but based on server status and recent alerts…"). Operators can control whether recent logs are included in diagnostics (and how they are anonymised) using the `diagnostics.logs.*` privacy toggles.
 
-**Running Parallel Development Servers**: To run multiple servers simultaneously (e.g., for testing different configurations), create separate `.env` files with different values for these settings and use `docker compose --env-file <env-file>` to start each server.
-
-Example for a second server: Create a separate `.env` file with different values for `CONTAINER_NAME`, `HOST_PORT`, `HOST_RCON_PORT`, `HOST_BLUEMAP_PORT`, `VOLUME_NAME`, `WEB_CONTAINER_NAME`, `NGINX_CONTAINER_NAME`, `BACKUP_CONTAINER_NAME`, `ALERT_CONTAINER_NAME`, `ALERT_PORT`, `WEB_HTTP_PORT`, and `WEB_HTTPS_PORT`, then start with `docker compose --env-file .env.dev2 up -d --build`.
 
 ## Management
 
@@ -1009,7 +1013,7 @@ The CI pipeline runs on:
 - Every push to `main` and `develop` branches
 - Every pull request to `main`
 
-Check the [Actions tab](https://github.com/dmccoystephenson/private-mc-server/actions) for detailed CI results and logs.
+Check the [Actions tab](https://github.com/dmccoystephenson/open-mc-server-infrastructure/actions) for detailed CI results and logs.
 
 ## Contributing
 
