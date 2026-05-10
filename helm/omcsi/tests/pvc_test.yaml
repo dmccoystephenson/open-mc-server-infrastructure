@@ -1,0 +1,68 @@
+suite: PersistentVolumeClaims
+templates:
+  - templates/pvc.yaml
+set:
+  secrets.rconPassword: ci
+  secrets.adminPassword: ci
+tests:
+  - it: renders four PVCs when all persistence is enabled (default)
+    asserts:
+      - hasDocuments:
+          count: 4
+
+  - it: mcserver PVC uses ReadWriteOnce and 10Gi
+    asserts:
+      - isKind:
+          of: PersistentVolumeClaim
+        documentIndex: 0
+      - equal:
+          path: spec.accessModes[0]
+          value: ReadWriteOnce
+        documentIndex: 0
+      - equal:
+          path: spec.resources.requests.storage
+          value: 10Gi
+        documentIndex: 0
+
+  - it: mcserver PVC has no storageClassName when storageClass is empty (uses cluster default)
+    asserts:
+      - isNull:
+          path: spec.storageClassName
+        documentIndex: 0
+
+  - it: mcserver PVC sets storageClassName when a storageClass is provided
+    set:
+      persistence.mcserver.storageClass: linode-block-storage-retain
+    asserts:
+      - equal:
+          path: spec.storageClassName
+          value: linode-block-storage-retain
+        documentIndex: 0
+
+  - it: webappData PVC uses ReadWriteOnce and 1Gi
+    asserts:
+      - isKind:
+          of: PersistentVolumeClaim
+        documentIndex: 1
+      - equal:
+          path: spec.accessModes[0]
+          value: ReadWriteOnce
+        documentIndex: 1
+      - equal:
+          path: spec.resources.requests.storage
+          value: 1Gi
+        documentIndex: 1
+
+  - it: backups PVC uses ReadWriteOnce and 20Gi
+    asserts:
+      - isKind:
+          of: PersistentVolumeClaim
+        documentIndex: 3
+      - equal:
+          path: spec.accessModes[0]
+          value: ReadWriteOnce
+        documentIndex: 3
+      - equal:
+          path: spec.resources.requests.storage
+          value: 20Gi
+        documentIndex: 3

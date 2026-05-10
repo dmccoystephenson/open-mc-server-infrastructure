@@ -1,0 +1,86 @@
+suite: PodDisruptionBudgets
+templates:
+  - templates/pdb.yaml
+set:
+  secrets.rconPassword: ci
+  secrets.adminPassword: ci
+tests:
+  - it: renders three PodDisruptionBudgets
+    asserts:
+      - hasDocuments:
+          count: 3
+
+  - it: all PDBs use policy/v1 (stable since K8s 1.21)
+    asserts:
+      - isAPIVersion:
+          of: policy/v1
+        documentIndex: 0
+      - isAPIVersion:
+          of: policy/v1
+        documentIndex: 1
+      - isAPIVersion:
+          of: policy/v1
+        documentIndex: 2
+
+  - it: minecraft-wrapper PDB has minAvailable 1
+    asserts:
+      - isKind:
+          of: PodDisruptionBudget
+        documentIndex: 0
+      - equal:
+          path: spec.minAvailable
+          value: 1
+        documentIndex: 0
+      - matchRegex:
+          path: metadata.name
+          pattern: minecraft-wrapper
+        documentIndex: 0
+
+  - it: minecraft-wrapper PDB selects the correct component
+    asserts:
+      - equal:
+          path: spec.selector.matchLabels["app.kubernetes.io/component"]
+          value: minecraft-wrapper
+        documentIndex: 0
+
+  - it: webapp PDB has minAvailable 1
+    asserts:
+      - isKind:
+          of: PodDisruptionBudget
+        documentIndex: 1
+      - equal:
+          path: spec.minAvailable
+          value: 1
+        documentIndex: 1
+      - matchRegex:
+          path: metadata.name
+          pattern: webapp
+        documentIndex: 1
+
+  - it: webapp PDB selects the correct component
+    asserts:
+      - equal:
+          path: spec.selector.matchLabels["app.kubernetes.io/component"]
+          value: webapp
+        documentIndex: 1
+
+  - it: alert-manager PDB has minAvailable 1
+    asserts:
+      - isKind:
+          of: PodDisruptionBudget
+        documentIndex: 2
+      - equal:
+          path: spec.minAvailable
+          value: 1
+        documentIndex: 2
+      - matchRegex:
+          path: metadata.name
+          pattern: alert-manager
+        documentIndex: 2
+
+  - it: alert-manager PDB selects the correct component
+    asserts:
+      - equal:
+          path: spec.selector.matchLabels["app.kubernetes.io/component"]
+          value: alert-manager
+        documentIndex: 2

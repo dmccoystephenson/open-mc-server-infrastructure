@@ -132,7 +132,29 @@ jobs:
         echo "⎈ Linting Helm chart..."
         helm lint helm/omcsi --set secrets.rconPassword=ci --set secrets.adminPassword=ci
         echo "✓ Helm chart linted successfully"
-        
+
+  helm-unit-test:
+    name: Helm Unit Tests
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Helm
+      uses: azure/setup-helm@v4
+      with:
+        version: 'v3.17.0'
+
+    - name: Install helm-unittest plugin
+      run: helm plugin install https://github.com/helm-unittest/helm-unittest
+
+    - name: Run Helm unit tests
+      run: |
+        echo "⎈ Running Helm unit tests..."
+        helm unittest helm/omcsi
+        echo "✓ All Helm unit tests passed"
+
   helm-deploy-test:
     name: Helm Deploy Smoke Test
     runs-on: ubuntu-latest
@@ -200,6 +222,41 @@ jobs:
         echo "🔍 Verifying ConfigMap..."
         kubectl get configmap omcsi-nginx-config -o name
         echo "  ✓ ConfigMap omcsi-nginx-config exists"
+
+    - name: Verify PodDisruptionBudgets
+      run: |
+        echo "🔍 Verifying PodDisruptionBudgets..."
+        for pdb in minecraft-wrapper webapp alert-manager; do
+          kubectl get pdb "omcsi-${pdb}" -o name
+          echo "  ✓ PDB omcsi-${pdb} exists"
+        done
+
+    - name: Verify health probes and webapp init container
+      run: |
+        echo "🔍 Verifying startup probe on minecraft-wrapper..."
+        STARTUP_PATH=$(kubectl get deployment omcsi-minecraft-wrapper \
+          -o jsonpath='{.spec.template.spec.containers[0].startupProbe.httpGet.path}')
+        [ "${STARTUP_PATH}" = "/actuator/health" ] || \
+          { echo "FAIL: startupProbe path '${STARTUP_PATH}' != /actuator/health"; exit 1; }
+        STARTUP_FT=$(kubectl get deployment omcsi-minecraft-wrapper \
+          -o jsonpath='{.spec.template.spec.containers[0].startupProbe.failureThreshold}')
+        [ "${STARTUP_FT}" = "60" ] || \
+          { echo "FAIL: startupProbe failureThreshold '${STARTUP_FT}' != 60"; exit 1; }
+        echo "  ✓ minecraft-wrapper startup probe (failureThreshold=60)"
+
+        echo "🔍 Verifying liveness probe on backup-manager..."
+        BM_LIVE=$(kubectl get deployment omcsi-backup-manager \
+          -o jsonpath='{.spec.template.spec.containers[0].livenessProbe.httpGet.path}')
+        [ "${BM_LIVE}" = "/actuator/health" ] || \
+          { echo "FAIL: backup-manager livenessProbe path '${BM_LIVE}' != /actuator/health"; exit 1; }
+        echo "  ✓ backup-manager liveness probe"
+
+        echo "🔍 Verifying wait-for-wrapper init container on webapp..."
+        INIT_NAME=$(kubectl get deployment omcsi-webapp \
+          -o jsonpath='{.spec.template.spec.initContainers[0].name}')
+        [ "${INIT_NAME}" = "wait-for-wrapper" ] || \
+          { echo "FAIL: webapp init container '${INIT_NAME}' != wait-for-wrapper"; exit 1; }
+        echo "  ✓ webapp wait-for-wrapper init container"
 
     - name: Verify Service types and ports
       run: |
