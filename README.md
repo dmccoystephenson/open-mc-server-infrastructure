@@ -385,13 +385,16 @@ kubectl get pods -n omcsi
 | `admin_password` | Admin password for web dashboard | *(required)* |
 | `image_registry` | Container image registry prefix (e.g., `your-dockerhub-user`) | `dmccoystephenson` |
 | `storage_class` | Kubernetes StorageClass for PVCs | `linode-block-storage-retain` |
-| `minecraft_service_type` | Kubernetes Service type for the Minecraft port (`NodePort` or `LoadBalancer`) | `NodePort` |
+| `node_pool_autoscaler` | Autoscaler config object (`enabled`, `min`, `max`) | `{enabled=false, min=2, max=4}` |
+| `minecraft_service_type` | Kubernetes Service type for the Minecraft port (`NodePort`, `LoadBalancer`, or `ClusterIP`) | `NodePort` |
+| `nginx_service_type` | Kubernetes Service type for nginx (`LoadBalancer` or `ClusterIP` when using Traefik) | `LoadBalancer` |
+| `enable_traefik` | Deploy Traefik as a single-IP ingress for Minecraft, HTTP, and HTTPS | `false` |
 | `discord_webhook_url` | Discord webhook URL for alert-manager (auto-enables Discord when set) | `""` |
 | `deploy_auth_token` | Bearer token for the plugin hot-deploy endpoint | `""` |
 | `agent_manager_enabled` | Enable the Discord AI bot | `false` |
 | `helm_values_file` | Path to additional Helm values file | `""` |
 
-See [`terraform/linode/variables.tf`](terraform/linode/variables.tf) for the full list including autoscaler and agent-manager options.
+See [`terraform/linode/variables.tf`](terraform/linode/variables.tf) for the full list including agent-manager options.
 
 > **Note:** Images default to Docker Hub under `dmccoystephenson`. Override `image_registry` if using a custom registry (see [Building and Pushing Images](#building-and-pushing-images)).
 
@@ -448,7 +451,9 @@ kubectl get pods -n omcsi
 | `admin_password` | Admin password for web dashboard | *(required)* |
 | `image_registry` | Container image registry prefix (e.g., `your-dockerhub-user`) | `dmccoystephenson` |
 | `storage_class` | Kubernetes StorageClass for PVCs | `gp2` |
-| `minecraft_service_type` | Kubernetes Service type for the Minecraft port (`NodePort` or `LoadBalancer`) | `NodePort` |
+| `minecraft_service_type` | Kubernetes Service type for the Minecraft port (`NodePort`, `LoadBalancer`, or `ClusterIP`) | `NodePort` |
+| `nginx_service_type` | Kubernetes Service type for nginx (`LoadBalancer` or `ClusterIP` when using Traefik) | `LoadBalancer` |
+| `enable_traefik` | Deploy Traefik as a single-IP ingress for Minecraft, HTTP, and HTTPS | `false` |
 | `discord_webhook_url` | Discord webhook URL for alert-manager (auto-enables Discord when set) | `""` |
 | `deploy_auth_token` | Bearer token for the plugin hot-deploy endpoint | `""` |
 | `agent_manager_enabled` | Enable the Discord AI bot | `false` |
@@ -514,7 +519,9 @@ kubectl get pods -n omcsi
 | `admin_password` | Admin password for web dashboard | *(required)* |
 | `image_registry` | Container image registry prefix (e.g., `your-dockerhub-user`) | `dmccoystephenson` |
 | `storage_class` | Kubernetes StorageClass for PVCs (empty = cluster default) | `""` |
-| `minecraft_service_type` | Kubernetes Service type for the Minecraft port (`NodePort` or `LoadBalancer`) | `NodePort` |
+| `minecraft_service_type` | Kubernetes Service type for the Minecraft port (`NodePort`, `LoadBalancer`, or `ClusterIP`) | `NodePort` |
+| `nginx_service_type` | Kubernetes Service type for nginx (`LoadBalancer` or `ClusterIP` when using Traefik) | `LoadBalancer` |
+| `enable_traefik` | Deploy Traefik as a single-IP ingress for Minecraft, HTTP, and HTTPS | `false` |
 | `discord_webhook_url` | Discord webhook URL for alert-manager (auto-enables Discord when set) | `""` |
 | `deploy_auth_token` | Bearer token for the plugin hot-deploy endpoint | `""` |
 | `agent_manager_enabled` | Enable the Discord AI bot | `false` |
