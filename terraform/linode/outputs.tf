@@ -29,7 +29,7 @@ output "kubeconfig_path" {
 
 output "helm_release_status" {
   description = "Status of the OMCSI Helm release."
-  value       = helm_release.omcsi.status
+  value       = module.omcsi.status
 }
 
 output "get_nginx_ip_command" {
