@@ -19,10 +19,18 @@ spec:
         {{- include "omcsi.labels" . | nindent 8 }}
         {{- include "omcsi.selectorLabels" (dict "root" . "component" "agent-manager") | nindent 8 }}
     spec:
+      {{- with .Values.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       containers:
         - name: agent-manager
           image: "{{ .Values.agentManager.image.repository }}:{{ .Values.agentManager.image.tag }}"
           imagePullPolicy: {{ .Values.agentManager.image.pullPolicy }}
+          {{- with .Values.containerSecurityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
           ports:
             - name: http
               containerPort: 8093

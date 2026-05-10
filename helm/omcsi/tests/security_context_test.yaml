@@ -1,0 +1,180 @@
+suite: security contexts
+set:
+  secrets.rconPassword: ci
+  secrets.adminPassword: ci
+tests:
+  # -------------------------------------------------------------------------
+  # minecraft-wrapper
+  # -------------------------------------------------------------------------
+  - it: minecraft-wrapper pod has seccompProfile RuntimeDefault
+    templates:
+      - templates/minecraft-wrapper.yaml
+    asserts:
+      - equal:
+          path: spec.template.spec.securityContext.seccompProfile.type
+          value: RuntimeDefault
+        documentIndex: 0
+
+  - it: minecraft-wrapper container drops all capabilities
+    templates:
+      - templates/minecraft-wrapper.yaml
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].securityContext.capabilities.drop
+          content: ALL
+        documentIndex: 0
+      - equal:
+          path: spec.template.spec.containers[0].securityContext.allowPrivilegeEscalation
+          value: false
+        documentIndex: 0
+
+  # -------------------------------------------------------------------------
+  # webapp
+  # -------------------------------------------------------------------------
+  - it: webapp pod has seccompProfile RuntimeDefault
+    templates:
+      - templates/webapp.yaml
+    asserts:
+      - equal:
+          path: spec.template.spec.securityContext.seccompProfile.type
+          value: RuntimeDefault
+        documentIndex: 0
+
+  - it: webapp init container drops all capabilities
+    templates:
+      - templates/webapp.yaml
+    asserts:
+      - contains:
+          path: spec.template.spec.initContainers[0].securityContext.capabilities.drop
+          content: ALL
+        documentIndex: 0
+
+  - it: webapp container drops all capabilities
+    templates:
+      - templates/webapp.yaml
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].securityContext.capabilities.drop
+          content: ALL
+        documentIndex: 0
+      - equal:
+          path: spec.template.spec.containers[0].securityContext.allowPrivilegeEscalation
+          value: false
+        documentIndex: 0
+
+  # -------------------------------------------------------------------------
+  # nginx
+  # -------------------------------------------------------------------------
+  - it: nginx pod has seccompProfile RuntimeDefault
+    templates:
+      - templates/nginx.yaml
+    asserts:
+      - equal:
+          path: spec.template.spec.securityContext.seccompProfile.type
+          value: RuntimeDefault
+        documentIndex: 0
+
+  - it: nginx init container uses global security context (drop ALL, no add)
+    templates:
+      - templates/nginx.yaml
+    asserts:
+      - contains:
+          path: spec.template.spec.initContainers[0].securityContext.capabilities.drop
+          content: ALL
+        documentIndex: 0
+      - isNull:
+          path: spec.template.spec.initContainers[0].securityContext.capabilities.add
+        documentIndex: 0
+
+  - it: nginx container drops all capabilities and adds privileged-port caps
+    templates:
+      - templates/nginx.yaml
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].securityContext.capabilities.drop
+          content: ALL
+        documentIndex: 0
+      - contains:
+          path: spec.template.spec.containers[0].securityContext.capabilities.add
+          content: NET_BIND_SERVICE
+        documentIndex: 0
+      - contains:
+          path: spec.template.spec.containers[0].securityContext.capabilities.add
+          content: SETUID
+        documentIndex: 0
+      - contains:
+          path: spec.template.spec.containers[0].securityContext.capabilities.add
+          content: SETGID
+        documentIndex: 0
+
+  # -------------------------------------------------------------------------
+  # backup-manager
+  # -------------------------------------------------------------------------
+  - it: backup-manager container drops all capabilities
+    templates:
+      - templates/backup-manager.yaml
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].securityContext.capabilities.drop
+          content: ALL
+        documentIndex: 0
+      - equal:
+          path: spec.template.spec.containers[0].securityContext.allowPrivilegeEscalation
+          value: false
+        documentIndex: 0
+
+  # -------------------------------------------------------------------------
+  # alert-manager
+  # -------------------------------------------------------------------------
+  - it: alert-manager container drops all capabilities
+    templates:
+      - templates/alert-manager.yaml
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].securityContext.capabilities.drop
+          content: ALL
+        documentIndex: 0
+
+  # -------------------------------------------------------------------------
+  # agent-manager (when enabled)
+  # -------------------------------------------------------------------------
+  - it: agent-manager container drops all capabilities when enabled
+    templates:
+      - templates/agent-manager.yaml
+    set:
+      agentManager.enabled: true
+      secrets.agentDiscordBotToken: ci
+      secrets.agentDiscordChannelId: ci
+      secrets.agentAnthropicApiKey: ci
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].securityContext.capabilities.drop
+          content: ALL
+        documentIndex: 0
+      - equal:
+          path: spec.template.spec.containers[0].securityContext.allowPrivilegeEscalation
+          value: false
+        documentIndex: 0
+
+  # -------------------------------------------------------------------------
+  # nil-safety: securityContext keys absent (--reuse-values compatibility)
+  # -------------------------------------------------------------------------
+  - it: pod securityContext key is absent when podSecurityContext is null
+    templates:
+      - templates/minecraft-wrapper.yaml
+    set:
+      podSecurityContext: null
+    asserts:
+      - isNull:
+          path: spec.template.spec.securityContext
+        documentIndex: 0
+
+  - it: container securityContext key is absent when containerSecurityContext is null
+    templates:
+      - templates/minecraft-wrapper.yaml
+    set:
+      containerSecurityContext: null
+    asserts:
+      - isNull:
+          path: spec.template.spec.containers[0].securityContext
+        documentIndex: 0

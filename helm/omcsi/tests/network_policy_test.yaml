@@ -1,0 +1,160 @@
+suite: network policies
+templates:
+  - templates/networkpolicies.yaml
+set:
+  secrets.rconPassword: ci
+  secrets.adminPassword: ci
+tests:
+  - it: renders 5 NetworkPolicies when enabled (agentManager disabled)
+    asserts:
+      - hasDocuments:
+          count: 5
+
+  - it: renders 6 NetworkPolicies when agentManager is enabled
+    set:
+      agentManager.enabled: true
+      secrets.agentDiscordBotToken: ci
+      secrets.agentDiscordChannelId: ci
+      secrets.agentAnthropicApiKey: ci
+    asserts:
+      - hasDocuments:
+          count: 6
+
+  - it: renders no documents when networkPolicy.enabled is false
+    set:
+      networkPolicy.enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: renders 5 policies when networkPolicy key is absent (backward compat)
+    set:
+      networkPolicy: null
+    asserts:
+      - hasDocuments:
+          count: 5
+
+  - it: all policies are NetworkPolicy kind
+    asserts:
+      - isKind:
+          of: NetworkPolicy
+        documentIndex: 0
+      - isKind:
+          of: NetworkPolicy
+        documentIndex: 1
+      - isKind:
+          of: NetworkPolicy
+        documentIndex: 2
+      - isKind:
+          of: NetworkPolicy
+        documentIndex: 3
+      - isKind:
+          of: NetworkPolicy
+        documentIndex: 4
+
+  - it: minecraft-wrapper policy covers both Ingress and Egress
+    asserts:
+      - contains:
+          path: spec.policyTypes
+          content: Ingress
+        documentIndex: 0
+      - contains:
+          path: spec.policyTypes
+          content: Egress
+        documentIndex: 0
+
+  - it: minecraft-wrapper policy allows player port 25565 from anywhere
+    asserts:
+      - contains:
+          path: spec.ingress[0].ports
+          content:
+            port: 25565
+            protocol: TCP
+        documentIndex: 0
+      - equal:
+          path: spec.ingress[0].from[0].ipBlock.cidr
+          value: 0.0.0.0/0
+        documentIndex: 0
+
+  - it: minecraft-wrapper API port allows internal pods and kubelet probes
+    asserts:
+      - equal:
+          path: spec.ingress[1].ports[0].port
+          value: 8092
+        documentIndex: 0
+      - isNull:
+          path: spec.ingress[1].from[0].ipBlock
+        documentIndex: 0
+      - isNotNull:
+          path: spec.ingress[1].from[2].ipBlock
+        documentIndex: 0
+
+  - it: minecraft-wrapper policy restricts RCON to specific pods only
+    asserts:
+      - isNotNull:
+          path: spec.ingress[3].ports
+        documentIndex: 0
+      - equal:
+          path: spec.ingress[3].ports[0].port
+          value: 25575
+        documentIndex: 0
+      - isNull:
+          path: spec.ingress[3].from[0].ipBlock
+        documentIndex: 0
+
+  - it: minecraft-wrapper policy allows egress to webapp for notifications
+    asserts:
+      - equal:
+          path: spec.egress[1].ports[0].port
+          value: 8080
+        documentIndex: 0
+      - isNull:
+          path: spec.egress[1].to[0].ipBlock
+        documentIndex: 0
+
+  - it: nginx policy allows external traffic on ports 80 and 443
+    asserts:
+      - contains:
+          path: spec.ingress[0].ports
+          content:
+            port: 80
+            protocol: TCP
+        documentIndex: 2
+      - contains:
+          path: spec.ingress[0].ports
+          content:
+            port: 443
+            protocol: TCP
+        documentIndex: 2
+      - equal:
+          path: spec.ingress[0].from[0].ipBlock.cidr
+          value: 0.0.0.0/0
+        documentIndex: 2
+
+  - it: alert-manager policy allows external HTTPS egress for Discord webhook
+    asserts:
+      - equal:
+          path: spec.egress[1].ports[0].port
+          value: 443
+        documentIndex: 4
+      - equal:
+          path: spec.egress[1].to[0].ipBlock.cidr
+          value: 0.0.0.0/0
+        documentIndex: 4
+
+  - it: all policies include a DNS egress rule scoped to CoreDNS
+    asserts:
+      - equal:
+          path: spec.egress[2].ports[0].port
+          value: 53
+        documentIndex: 0
+      - isNotNull:
+          path: spec.egress[2].to[0].namespaceSelector
+        documentIndex: 0
+      - equal:
+          path: spec.egress[2].ports[0].port
+          value: 53
+        documentIndex: 4
+      - isNotNull:
+          path: spec.egress[2].to[0].namespaceSelector
+        documentIndex: 4
