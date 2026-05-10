@@ -29,5 +29,5 @@ output "kubeconfig_command" {
 
 output "helm_release_status" {
   description = "Status of the OMCSI Helm release."
-  value       = helm_release.omcsi.status
+  value       = module.omcsi.status
 }
