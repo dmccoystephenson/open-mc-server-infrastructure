@@ -17,6 +17,13 @@ tests:
       - hasDocuments:
           count: 0
 
+  - it: renders three PDBs when podDisruptionBudgets key is absent (backward compat)
+    set:
+      podDisruptionBudgets: null
+    asserts:
+      - hasDocuments:
+          count: 3
+
   - it: all PDBs use policy/v1 (stable since K8s 1.21)
     asserts:
       - isAPIVersion:

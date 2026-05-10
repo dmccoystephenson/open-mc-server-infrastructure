@@ -1,4 +1,4 @@
-{{- if .Values.podDisruptionBudgets.enabled }}
+{{- if ne "false" (toString ((.Values.podDisruptionBudgets).enabled)) }}
 # PodDisruptionBudgets prevent voluntary evictions (node drain, cluster
 # upgrades) from taking these services offline without operator intent.
 # Disable with podDisruptionBudgets.enabled=false on single-node clusters
