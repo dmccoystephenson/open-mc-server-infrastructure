@@ -104,11 +104,13 @@ Replace the self-signed certificate with one from [Let's Encrypt](https://letsen
 # Temporarily allow port 80 and forward it on your router first
 sudo ufw allow 80/tcp
 sudo certbot certonly --standalone -d yourdomain.com
-# Then copy certs and remove port 80 rule
-sudo cp /etc/letsencrypt/live/yourdomain.com/fullchain.pem ./nginx/ssl/cert.pem
-sudo cp /etc/letsencrypt/live/yourdomain.com/privkey.pem ./nginx/ssl/key.pem
 sudo ufw delete allow 80/tcp
+
+# Start the stack so the nginx-ssl named volume exists, then inject certs
 ./up.sh
+docker cp /etc/letsencrypt/live/yourdomain.com/fullchain.pem open-mc-nginx:/etc/nginx/ssl/cert.pem
+docker cp /etc/letsencrypt/live/yourdomain.com/privkey.pem open-mc-nginx:/etc/nginx/ssl/key.pem
+docker compose restart nginx
 ```
 
 > If you can't expose port 80, use `--preferred-challenges dns` (DNS-01 challenge) instead.
@@ -141,9 +143,6 @@ services:
       - ALL
     cap_add:
       - NET_BIND_SERVICE
-      - CHOWN
-      - SETUID
-      - SETGID
     security_opt:
       - no-new-privileges:true
     cpus: '1'
