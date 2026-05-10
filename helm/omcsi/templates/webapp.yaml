@@ -48,6 +48,9 @@ spec:
                 sleep 5
               done
               echo "minecraft-wrapper is healthy"
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
       containers:
         - name: webapp
           image: "{{ .Values.webapp.image.repository }}:{{ .Values.webapp.image.tag }}"
@@ -131,6 +134,8 @@ spec:
               mountPath: /app/data
             - name: mcserver
               mountPath: /mcserver
+            - name: tmp
+              mountPath: /tmp
       volumes:
         - name: webapp-data
           {{- if .Values.persistence.webappData.enabled }}
@@ -146,6 +151,8 @@ spec:
           {{- else }}
           emptyDir: {}
           {{- end }}
+        - name: tmp
+          emptyDir: {}
 ---
 apiVersion: v1
 kind: Service

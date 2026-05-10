@@ -22,8 +22,12 @@ FROM eclipse-temurin:21-jre
 
 WORKDIR /app
 
-# Copy the JAR file from builder stage
 COPY --from=builder /build/build/libs/*.jar app.jar
+
+RUN mkdir -p /app/data && chown 1000:1000 /app/data
+
+ENV HOME=/tmp
+USER 1000
 
 EXPOSE 8080
 

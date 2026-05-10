@@ -35,13 +35,12 @@ This document captures issues, limitations, and improvement opportunities surfac
 
 **Problem:** No Deployment in the Helm chart sets `securityContext`, `runAsNonRoot`, or `readOnlyRootFilesystem`. All containers run as root by default, which is a security concern in multi-tenant clusters.
 
-**Resolution:** Security contexts added to all Deployments in [PR #155](https://github.com/dmccoystephenson/open-mc-server-infrastructure/pull/155):
-- **Pod-level** (`spec.securityContext`): `seccompProfile: RuntimeDefault` on every Deployment — enables the kernel's seccomp filter for system call restriction without requiring application changes.
-- **Container-level** (`spec.containers[].securityContext`): `allowPrivilegeEscalation: false` and `capabilities.drop: [ALL]` on every container and init container.
-- **nginx exception**: the nginx main container additionally adds `NET_BIND_SERVICE` (to bind ports 80/443) and `CHOWN`, `SETUID`, `SETGID` (for worker-process privilege dropping). The nginx init container uses the global drop-ALL context.
+**Resolution:** Security contexts added to all Deployments across [PR #155](https://github.com/dmccoystephenson/open-mc-server-infrastructure/pull/155) and [PR #156](https://github.com/dmccoystephenson/open-mc-server-infrastructure/pull/156):
+- **Pod-level** (`spec.securityContext`): `seccompProfile: RuntimeDefault` and `fsGroup: 1000` on every Deployment.
+- **Container-level** (`spec.containers[].securityContext`): `allowPrivilegeEscalation: false`, `capabilities.drop: [ALL]`, `readOnlyRootFilesystem: true`, `runAsNonRoot: true`, and `runAsUser: 1000` on every container and init container.
+- **nginx exception**: the nginx main container adds only `NET_BIND_SERVICE` (to bind ports 80/443 as UID 1000). `CHOWN`, `SETUID`, and `SETGID` are not needed because the container starts as a non-root user. The nginx binary has `CAP_NET_BIND_SERVICE` set at the file level (`setcap`) for Docker Compose compatibility.
+- All Java services mount a `/tmp` emptyDir for Spring Boot's embedded Tomcat temp directory; nginx additionally mounts `/var/cache/nginx`. These are the only writable paths at runtime.
 - All values are configurable via `podSecurityContext` and `containerSecurityContext` in `values.yaml`; nginx overrides via `nginx.containerSecurityContext`.
-
-**Note:** `runAsNonRoot: true` and `readOnlyRootFilesystem: true` were intentionally deferred — they require verifying that the upstream Docker images support non-root execution and identifying all writable paths needed at runtime.
 
 ---
 

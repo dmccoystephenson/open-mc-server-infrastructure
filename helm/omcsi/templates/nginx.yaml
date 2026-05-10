@@ -32,6 +32,9 @@ spec:
           securityContext:
             {{- toYaml . | nindent 12 }}
           {{- end }}
+          env:
+            - name: HOME
+              value: /tmp
           command:
             - sh
             - -c
@@ -45,6 +48,8 @@ spec:
           volumeMounts:
             - name: tls
               mountPath: /etc/nginx/ssl
+            - name: nginx-tmp
+              mountPath: /tmp
       {{- end }}
       containers:
         - name: nginx
@@ -78,6 +83,10 @@ spec:
               {{- if not .Values.nginx.tls.selfSigned }}
               readOnly: true
               {{- end }}
+            - name: nginx-tmp
+              mountPath: /tmp
+            - name: nginx-cache
+              mountPath: /var/cache/nginx
       volumes:
         - name: nginx-config
           configMap:
@@ -95,6 +104,10 @@ spec:
               - key: tls.key
                 path: key.pem
         {{- end }}
+        - name: nginx-tmp
+          emptyDir: {}
+        - name: nginx-cache
+          emptyDir: {}
 ---
 apiVersion: v1
 kind: Service

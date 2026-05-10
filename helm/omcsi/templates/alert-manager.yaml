@@ -74,6 +74,8 @@ spec:
           volumeMounts:
             - name: alert-manager-data
               mountPath: /app/data
+            - name: tmp
+              mountPath: /tmp
       volumes:
         - name: alert-manager-data
           {{- if .Values.persistence.alertManagerData.enabled }}
@@ -82,6 +84,8 @@ spec:
           {{- else }}
           emptyDir: {}
           {{- end }}
+        - name: tmp
+          emptyDir: {}
 ---
 apiVersion: v1
 kind: Service

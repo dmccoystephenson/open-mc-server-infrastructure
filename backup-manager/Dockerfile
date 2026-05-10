@@ -28,11 +28,11 @@ RUN apt-get update && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-# Set working directory
 WORKDIR /app
 
-# Copy the JAR file from builder stage
 COPY --from=builder /build/build/libs/*.jar app.jar
 
-# Run the application
+ENV HOME=/tmp
+USER 1000
+
 ENTRYPOINT ["java", "-jar", "app.jar"]

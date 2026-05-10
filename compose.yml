@@ -98,7 +98,7 @@ services:
     depends_on:
       - webapp
     volumes:
-      - ./nginx/ssl:/etc/nginx/ssl
+      - nginx-ssl:/etc/nginx/ssl
 
   backup-manager:
     build:
@@ -110,7 +110,7 @@ services:
       - "${BACKUP_PORT:-8091}:8091"
     volumes:
       - mcserver:/mcserver:ro
-      - ./backups:/backups
+      - backups:/backups
     depends_on:
       alert-manager:
         condition: service_healthy
@@ -185,4 +185,10 @@ volumes:
     external: false
   alert-manager-data:
     name: ${ALERT_MANAGER_VOLUME_NAME:-alert-manager-data}
+    external: false
+  backups:
+    name: ${BACKUPS_VOLUME_NAME:-backups}
+    external: false
+  nginx-ssl:
+    name: ${NGINX_SSL_VOLUME_NAME:-nginx-ssl}
     external: false

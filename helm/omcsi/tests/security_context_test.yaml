@@ -86,7 +86,7 @@ tests:
           path: spec.template.spec.initContainers[0].securityContext.capabilities.add
         documentIndex: 0
 
-  - it: nginx container drops all capabilities and adds privileged-port caps
+  - it: nginx container drops all capabilities and adds only NET_BIND_SERVICE
     templates:
       - templates/nginx.yaml
     asserts:
@@ -98,13 +98,17 @@ tests:
           path: spec.template.spec.containers[0].securityContext.capabilities.add
           content: NET_BIND_SERVICE
         documentIndex: 0
-      - contains:
+      - notContains:
           path: spec.template.spec.containers[0].securityContext.capabilities.add
           content: SETUID
         documentIndex: 0
-      - contains:
+      - notContains:
           path: spec.template.spec.containers[0].securityContext.capabilities.add
           content: SETGID
+        documentIndex: 0
+      - notContains:
+          path: spec.template.spec.containers[0].securityContext.capabilities.add
+          content: CHOWN
         documentIndex: 0
 
   # -------------------------------------------------------------------------
@@ -154,6 +158,116 @@ tests:
       - equal:
           path: spec.template.spec.containers[0].securityContext.allowPrivilegeEscalation
           value: false
+        documentIndex: 0
+
+  # -------------------------------------------------------------------------
+  # readOnlyRootFilesystem + runAsNonRoot
+  # -------------------------------------------------------------------------
+  - it: minecraft-wrapper container has readOnlyRootFilesystem and runs as non-root
+    templates:
+      - templates/minecraft-wrapper.yaml
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].securityContext.readOnlyRootFilesystem
+          value: true
+        documentIndex: 0
+      - equal:
+          path: spec.template.spec.containers[0].securityContext.runAsNonRoot
+          value: true
+        documentIndex: 0
+      - equal:
+          path: spec.template.spec.containers[0].securityContext.runAsUser
+          value: 1000
+        documentIndex: 0
+
+  - it: webapp container has readOnlyRootFilesystem and runs as non-root
+    templates:
+      - templates/webapp.yaml
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].securityContext.readOnlyRootFilesystem
+          value: true
+        documentIndex: 0
+      - equal:
+          path: spec.template.spec.containers[0].securityContext.runAsNonRoot
+          value: true
+        documentIndex: 0
+      - equal:
+          path: spec.template.spec.containers[0].securityContext.runAsUser
+          value: 1000
+        documentIndex: 0
+
+  - it: nginx container has readOnlyRootFilesystem and runs as non-root
+    templates:
+      - templates/nginx.yaml
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].securityContext.readOnlyRootFilesystem
+          value: true
+        documentIndex: 0
+      - equal:
+          path: spec.template.spec.containers[0].securityContext.runAsNonRoot
+          value: true
+        documentIndex: 0
+      - equal:
+          path: spec.template.spec.containers[0].securityContext.runAsUser
+          value: 1000
+        documentIndex: 0
+
+  - it: alert-manager container has readOnlyRootFilesystem and runs as non-root
+    templates:
+      - templates/alert-manager.yaml
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].securityContext.readOnlyRootFilesystem
+          value: true
+        documentIndex: 0
+      - equal:
+          path: spec.template.spec.containers[0].securityContext.runAsNonRoot
+          value: true
+        documentIndex: 0
+      - equal:
+          path: spec.template.spec.containers[0].securityContext.runAsUser
+          value: 1000
+        documentIndex: 0
+
+  - it: backup-manager container has readOnlyRootFilesystem and runs as non-root
+    templates:
+      - templates/backup-manager.yaml
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].securityContext.readOnlyRootFilesystem
+          value: true
+        documentIndex: 0
+      - equal:
+          path: spec.template.spec.containers[0].securityContext.runAsNonRoot
+          value: true
+        documentIndex: 0
+      - equal:
+          path: spec.template.spec.containers[0].securityContext.runAsUser
+          value: 1000
+        documentIndex: 0
+
+  - it: agent-manager container has readOnlyRootFilesystem and runs as non-root when enabled
+    templates:
+      - templates/agent-manager.yaml
+    set:
+      agentManager.enabled: true
+      secrets.agentDiscordBotToken: ci
+      secrets.agentDiscordChannelId: ci
+      secrets.agentAnthropicApiKey: ci
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].securityContext.readOnlyRootFilesystem
+          value: true
+        documentIndex: 0
+      - equal:
+          path: spec.template.spec.containers[0].securityContext.runAsNonRoot
+          value: true
+        documentIndex: 0
+      - equal:
+          path: spec.template.spec.containers[0].securityContext.runAsUser
+          value: 1000
         documentIndex: 0
 
   # -------------------------------------------------------------------------

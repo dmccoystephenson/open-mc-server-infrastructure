@@ -83,6 +83,9 @@ COPY --from=wrapper-builder /wrapper-build/build/libs/minecraft-wrapper-*.jar /a
 COPY ./resources /resources
 RUN chmod +x /resources/post-create.sh
 
+ENV HOME=/tmp
+USER 1000
+
 # Run server
 WORKDIR /mcserver
 EXPOSE 25565

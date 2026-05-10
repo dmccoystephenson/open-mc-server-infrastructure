@@ -98,6 +98,12 @@ spec:
             failureThreshold: 3
           resources:
             {{- toYaml .Values.agentManager.resources | nindent 12 }}
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}
 ---
 apiVersion: v1
 kind: Service
