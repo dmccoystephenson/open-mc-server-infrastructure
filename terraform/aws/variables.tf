@@ -96,14 +96,31 @@ variable "storage_class" {
 }
 
 variable "minecraft_service_type" {
-  description = "Kubernetes Service type for the Minecraft game port (25565). Use 'LoadBalancer' for a dedicated public IP on port 25565, or 'NodePort' to expose via a high-numbered port on each node."
+  description = "Kubernetes Service type for the Minecraft game port (25565). Use 'LoadBalancer' for a dedicated public IP, 'NodePort' for a high-numbered node port, or 'ClusterIP' when fronting with an ingress controller like Traefik."
   type        = string
   default     = "NodePort"
 
   validation {
-    condition     = contains(["NodePort", "LoadBalancer"], var.minecraft_service_type)
-    error_message = "minecraft_service_type must be 'NodePort' or 'LoadBalancer'."
+    condition     = contains(["NodePort", "LoadBalancer", "ClusterIP"], var.minecraft_service_type)
+    error_message = "minecraft_service_type must be 'NodePort', 'LoadBalancer', or 'ClusterIP'."
   }
+}
+
+variable "nginx_service_type" {
+  description = "Kubernetes Service type for the nginx reverse proxy. Use 'ClusterIP' when fronting with an ingress controller like Traefik; 'LoadBalancer' to expose nginx directly."
+  type        = string
+  default     = "LoadBalancer"
+
+  validation {
+    condition     = contains(["LoadBalancer", "NodePort", "ClusterIP"], var.nginx_service_type)
+    error_message = "nginx_service_type must be 'LoadBalancer', 'NodePort', or 'ClusterIP'."
+  }
+}
+
+variable "enable_traefik" {
+  description = "Deploy Traefik as the single-entrypoint ingress controller, routing Minecraft TCP (25565), HTTP (80), and HTTPS (443) through one LoadBalancer IP. When enabled, set minecraft_service_type and nginx_service_type to 'ClusterIP'."
+  type        = bool
+  default     = false
 }
 
 variable "helm_values_file" {

@@ -36,3 +36,8 @@ output "get_nginx_ip_command" {
   description = "Run after apply to retrieve the nginx LoadBalancer endpoint as tab-separated columns: service name, ingress IP, ingress hostname."
   value       = "kubectl get svc -n ${var.helm_namespace} -l app.kubernetes.io/component=nginx --kubeconfig ${local_sensitive_file.kubeconfig.filename} -o jsonpath='{range .items[*]}{.metadata.name}{\"\\t\"}{.status.loadBalancer.ingress[0].ip}{\"\\t\"}{.status.loadBalancer.ingress[0].hostname}{\"\\n\"}{end}'"
 }
+
+output "get_traefik_ip_command" {
+  description = "Run after apply to retrieve the Traefik LoadBalancer IP (only populated when enable_traefik = true)."
+  value       = var.enable_traefik ? "kubectl get svc -n traefik traefik --kubeconfig ${local_sensitive_file.kubeconfig.filename} -o jsonpath='{.status.loadBalancer.ingress[0].ip}'" : null
+}

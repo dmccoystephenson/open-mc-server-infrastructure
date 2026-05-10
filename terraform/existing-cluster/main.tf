@@ -65,10 +65,15 @@ resource "helm_release" "omcsi" {
     value = var.admin_password
   }
 
-  # Minecraft service type
+  # Service types
   set {
     name  = "minecraftWrapper.service.type"
     value = var.minecraft_service_type
+  }
+
+  set {
+    name  = "nginx.service.type"
+    value = var.nginx_service_type
   }
 
   # Storage class for all PVCs (only when explicitly set)
