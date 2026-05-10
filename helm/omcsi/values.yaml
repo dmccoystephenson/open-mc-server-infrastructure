@@ -279,6 +279,22 @@ containerSecurityContext:
 # without a policy controller).
 networkPolicy:
   enabled: true
+  # CIDR allowed to reach service probe ports for kubelet health checks.
+  # Kubelet probes originate from the node's host network; set this to your
+  # cluster's node CIDR for tighter control, or leave as 0.0.0.0/0 for broad
+  # CNI compatibility (including CNIs that don't bypass NetworkPolicy for
+  # host-network traffic).
+  kubeNodeCIDR: "0.0.0.0/0"
+  # Selectors for the cluster DNS service (CoreDNS/kube-dns).
+  # Defaults work for kubeadm, GKE, EKS, LKE, and most standard distros.
+  # Adjust if your cluster uses different labels (e.g. some distributions use
+  # app: coredns instead of k8s-app: kube-dns).
+  dnsNamespaceSelector:
+    matchLabels:
+      kubernetes.io/metadata.name: kube-system
+  dnsPodSelector:
+    matchLabels:
+      k8s-app: kube-dns
 
 # ---------------------------------------------------------------------------
 # PodDisruptionBudgets

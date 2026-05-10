@@ -34,7 +34,7 @@ spec:
       from:
         - ipBlock:
             cidr: 0.0.0.0/0
-    # Wrapper REST API — internal callers only; kubelet probes bypass via CNI host-network
+    # Wrapper REST API — internal callers + kubelet health probes (node network)
     - ports:
         - port: 8092
           protocol: TCP
@@ -45,6 +45,8 @@ spec:
         - podSelector:
             matchLabels:
               {{- include "omcsi.selectorLabels" (dict "root" . "component" "agent-manager") | nindent 14 }}
+        - ipBlock:
+            cidr: {{ ((.Values.networkPolicy).kubeNodeCIDR) | default "0.0.0.0/0" | quote }}
     # BlueMap traffic from nginx
     - ports:
         - port: 8100
@@ -81,12 +83,19 @@ spec:
         - podSelector:
             matchLabels:
               {{- include "omcsi.selectorLabels" (dict "root" . "component" "webapp") | nindent 14 }}
-    # DNS
+    # DNS — scoped to CoreDNS (adjust networkPolicy.dnsNamespaceSelector/dnsPodSelector for non-standard distros)
     - ports:
         - port: 53
           protocol: UDP
         - port: 53
           protocol: TCP
+      {{- if and ((.Values.networkPolicy).dnsNamespaceSelector) ((.Values.networkPolicy).dnsPodSelector) }}
+      to:
+        - namespaceSelector:
+            {{- toYaml .Values.networkPolicy.dnsNamespaceSelector | nindent 12 }}
+          podSelector:
+            {{- toYaml .Values.networkPolicy.dnsPodSelector | nindent 12 }}
+      {{- end }}
 ---
 # ---------------------------------------------------------------------------
 # webapp
@@ -103,7 +112,7 @@ spec:
       {{- include "omcsi.selectorLabels" (dict "root" . "component" "webapp") | nindent 6 }}
   policyTypes: [Ingress, Egress]
   ingress:
-    # Dashboard traffic from nginx; kubelet probes bypass via CNI host-network
+    # Dashboard traffic from nginx + kubelet health probes (node network)
     - ports:
         - port: 8080
           protocol: TCP
@@ -111,6 +120,8 @@ spec:
         - podSelector:
             matchLabels:
               {{- include "omcsi.selectorLabels" (dict "root" . "component" "nginx") | nindent 14 }}
+        - ipBlock:
+            cidr: {{ ((.Values.networkPolicy).kubeNodeCIDR) | default "0.0.0.0/0" | quote }}
   egress:
     # Minecraft wrapper API and RCON
     - ports:
@@ -130,12 +141,19 @@ spec:
         - podSelector:
             matchLabels:
               {{- include "omcsi.selectorLabels" (dict "root" . "component" "alert-manager") | nindent 14 }}
-    # DNS
+    # DNS — scoped to CoreDNS (adjust networkPolicy.dnsNamespaceSelector/dnsPodSelector for non-standard distros)
     - ports:
         - port: 53
           protocol: UDP
         - port: 53
           protocol: TCP
+      {{- if and ((.Values.networkPolicy).dnsNamespaceSelector) ((.Values.networkPolicy).dnsPodSelector) }}
+      to:
+        - namespaceSelector:
+            {{- toYaml .Values.networkPolicy.dnsNamespaceSelector | nindent 12 }}
+          podSelector:
+            {{- toYaml .Values.networkPolicy.dnsPodSelector | nindent 12 }}
+      {{- end }}
 ---
 # ---------------------------------------------------------------------------
 # nginx
@@ -170,12 +188,19 @@ spec:
         - podSelector:
             matchLabels:
               {{- include "omcsi.selectorLabels" (dict "root" . "component" "webapp") | nindent 14 }}
-    # DNS
+    # DNS — scoped to CoreDNS (adjust networkPolicy.dnsNamespaceSelector/dnsPodSelector for non-standard distros)
     - ports:
         - port: 53
           protocol: UDP
         - port: 53
           protocol: TCP
+      {{- if and ((.Values.networkPolicy).dnsNamespaceSelector) ((.Values.networkPolicy).dnsPodSelector) }}
+      to:
+        - namespaceSelector:
+            {{- toYaml .Values.networkPolicy.dnsNamespaceSelector | nindent 12 }}
+          podSelector:
+            {{- toYaml .Values.networkPolicy.dnsPodSelector | nindent 12 }}
+      {{- end }}
 ---
 # ---------------------------------------------------------------------------
 # backup-manager
@@ -192,13 +217,16 @@ spec:
       {{- include "omcsi.selectorLabels" (dict "root" . "component" "backup-manager") | nindent 6 }}
   policyTypes: [Ingress, Egress]
   ingress:
-    # REST API + kubelet probes (agent-manager and webapp may call this)
+    # REST API from agent-manager + kubelet health probes (node network)
     - ports:
         - port: {{ .Values.backupManager.service.port }}
           protocol: TCP
       from:
+        - podSelector:
+            matchLabels:
+              {{- include "omcsi.selectorLabels" (dict "root" . "component" "agent-manager") | nindent 14 }}
         - ipBlock:
-            cidr: 0.0.0.0/0
+            cidr: {{ ((.Values.networkPolicy).kubeNodeCIDR) | default "0.0.0.0/0" | quote }}
   egress:
     # Alert notifications
     - ports:
@@ -208,12 +236,19 @@ spec:
         - podSelector:
             matchLabels:
               {{- include "omcsi.selectorLabels" (dict "root" . "component" "alert-manager") | nindent 14 }}
-    # DNS
+    # DNS — scoped to CoreDNS (adjust networkPolicy.dnsNamespaceSelector/dnsPodSelector for non-standard distros)
     - ports:
         - port: 53
           protocol: UDP
         - port: 53
           protocol: TCP
+      {{- if and ((.Values.networkPolicy).dnsNamespaceSelector) ((.Values.networkPolicy).dnsPodSelector) }}
+      to:
+        - namespaceSelector:
+            {{- toYaml .Values.networkPolicy.dnsNamespaceSelector | nindent 12 }}
+          podSelector:
+            {{- toYaml .Values.networkPolicy.dnsPodSelector | nindent 12 }}
+      {{- end }}
 ---
 # ---------------------------------------------------------------------------
 # alert-manager
@@ -230,13 +265,25 @@ spec:
       {{- include "omcsi.selectorLabels" (dict "root" . "component" "alert-manager") | nindent 6 }}
   policyTypes: [Ingress, Egress]
   ingress:
-    # Alert API + kubelet probes (multiple services post alerts here)
+    # Alert API from internal callers + kubelet health probes (node network)
     - ports:
         - port: {{ .Values.alertManager.service.port }}
           protocol: TCP
       from:
+        - podSelector:
+            matchLabels:
+              {{- include "omcsi.selectorLabels" (dict "root" . "component" "minecraft-wrapper") | nindent 14 }}
+        - podSelector:
+            matchLabels:
+              {{- include "omcsi.selectorLabels" (dict "root" . "component" "webapp") | nindent 14 }}
+        - podSelector:
+            matchLabels:
+              {{- include "omcsi.selectorLabels" (dict "root" . "component" "backup-manager") | nindent 14 }}
+        - podSelector:
+            matchLabels:
+              {{- include "omcsi.selectorLabels" (dict "root" . "component" "agent-manager") | nindent 14 }}
         - ipBlock:
-            cidr: 0.0.0.0/0
+            cidr: {{ ((.Values.networkPolicy).kubeNodeCIDR) | default "0.0.0.0/0" | quote }}
   egress:
     # RCON for in-game broadcast messages
     - ports:
@@ -253,12 +300,19 @@ spec:
       to:
         - ipBlock:
             cidr: 0.0.0.0/0
-    # DNS
+    # DNS — scoped to CoreDNS (adjust networkPolicy.dnsNamespaceSelector/dnsPodSelector for non-standard distros)
     - ports:
         - port: 53
           protocol: UDP
         - port: 53
           protocol: TCP
+      {{- if and ((.Values.networkPolicy).dnsNamespaceSelector) ((.Values.networkPolicy).dnsPodSelector) }}
+      to:
+        - namespaceSelector:
+            {{- toYaml .Values.networkPolicy.dnsNamespaceSelector | nindent 12 }}
+          podSelector:
+            {{- toYaml .Values.networkPolicy.dnsPodSelector | nindent 12 }}
+      {{- end }}
 {{- if .Values.agentManager.enabled }}
 ---
 # ---------------------------------------------------------------------------
@@ -323,11 +377,18 @@ spec:
       to:
         - ipBlock:
             cidr: 0.0.0.0/0
-    # DNS
+    # DNS — scoped to CoreDNS (adjust networkPolicy.dnsNamespaceSelector/dnsPodSelector for non-standard distros)
     - ports:
         - port: 53
           protocol: UDP
         - port: 53
           protocol: TCP
+      {{- if and ((.Values.networkPolicy).dnsNamespaceSelector) ((.Values.networkPolicy).dnsPodSelector) }}
+      to:
+        - namespaceSelector:
+            {{- toYaml .Values.networkPolicy.dnsNamespaceSelector | nindent 12 }}
+          podSelector:
+            {{- toYaml .Values.networkPolicy.dnsPodSelector | nindent 12 }}
+      {{- end }}
 {{- end }}
 {{- end }}

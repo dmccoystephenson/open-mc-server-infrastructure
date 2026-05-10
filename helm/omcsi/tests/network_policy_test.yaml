@@ -76,7 +76,7 @@ tests:
           value: 0.0.0.0/0
         documentIndex: 0
 
-  - it: minecraft-wrapper policy restricts wrapper API port to internal pods only
+  - it: minecraft-wrapper API port allows internal pods and kubelet probes
     asserts:
       - equal:
           path: spec.ingress[1].ports[0].port
@@ -84,6 +84,9 @@ tests:
         documentIndex: 0
       - isNull:
           path: spec.ingress[1].from[0].ipBlock
+        documentIndex: 0
+      - isNotNull:
+          path: spec.ingress[1].from[2].ipBlock
         documentIndex: 0
 
   - it: minecraft-wrapper policy restricts RCON to specific pods only
@@ -139,23 +142,19 @@ tests:
           value: 0.0.0.0/0
         documentIndex: 4
 
-  - it: all policies include a DNS egress rule
+  - it: all policies include a DNS egress rule scoped to CoreDNS
     asserts:
-      - contains:
-          path: spec.egress
-          content:
-            ports:
-              - port: 53
-                protocol: UDP
-              - port: 53
-                protocol: TCP
+      - equal:
+          path: spec.egress[2].ports[0].port
+          value: 53
         documentIndex: 0
-      - contains:
-          path: spec.egress
-          content:
-            ports:
-              - port: 53
-                protocol: UDP
-              - port: 53
-                protocol: TCP
+      - isNotNull:
+          path: spec.egress[2].to[0].namespaceSelector
+        documentIndex: 0
+      - equal:
+          path: spec.egress[2].ports[0].port
+          value: 53
+        documentIndex: 4
+      - isNotNull:
+          path: spec.egress[2].to[0].namespaceSelector
         documentIndex: 4
