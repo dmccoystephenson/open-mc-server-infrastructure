@@ -1,7 +1,8 @@
+{{- if .Values.podDisruptionBudgets.enabled }}
 # PodDisruptionBudgets prevent voluntary evictions (node drain, cluster
 # upgrades) from taking these services offline without operator intent.
-# minecraft-wrapper is protected unconditionally; webapp and alert-manager
-# are protected so a drain does not silently remove monitoring/access.
+# Disable with podDisruptionBudgets.enabled=false on single-node clusters
+# where drain operations would otherwise be permanently blocked.
 apiVersion: policy/v1
 kind: PodDisruptionBudget
 metadata:
@@ -37,3 +38,4 @@ spec:
   selector:
     matchLabels:
       {{- include "omcsi.selectorLabels" (dict "root" . "component" "alert-manager") | nindent 6 }}
+{{- end }}

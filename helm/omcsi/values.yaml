@@ -243,6 +243,15 @@ secrets:
   agentAnthropicApiKey: ""
 
 # ---------------------------------------------------------------------------
+# PodDisruptionBudgets
+# ---------------------------------------------------------------------------
+# When enabled, creates PDBs for minecraft-wrapper, webapp, and alert-manager
+# with minAvailable: 1.  Disable if your cluster has a single node and drain
+# operations would otherwise be blocked.
+podDisruptionBudgets:
+  enabled: true
+
+# ---------------------------------------------------------------------------
 # Persistence
 # ---------------------------------------------------------------------------
 persistence:

@@ -29,10 +29,17 @@ spec:
             - sh
             - -c
             - |
-              until wget -qO /dev/null http://{{ include "omcsi.minecraftWrapperHost" . }}-internal:{{ .Values.minecraftWrapper.internalService.wrapperPort }}/actuator/health; do
-                echo "Waiting for minecraft-wrapper...";
-                sleep 5;
+              attempt=0
+              until wget -T 5 -qO /dev/null http://{{ include "omcsi.minecraftWrapperHost" . }}-internal:{{ .Values.minecraftWrapper.internalService.wrapperPort }}/actuator/health; do
+                attempt=$((attempt + 1))
+                if [ "$attempt" -ge 60 ]; then
+                  echo "ERROR: minecraft-wrapper did not become healthy after $attempt attempts. Check wrapper logs."
+                  exit 1
+                fi
+                echo "Waiting for minecraft-wrapper (attempt $attempt/60)..."
+                sleep 5
               done
+              echo "minecraft-wrapper is healthy"
       containers:
         - name: webapp
           image: "{{ .Values.webapp.image.repository }}:{{ .Values.webapp.image.tag }}"

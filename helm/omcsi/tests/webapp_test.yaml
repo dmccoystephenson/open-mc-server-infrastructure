@@ -32,6 +32,20 @@ tests:
           pattern: "minecraft-wrapper-internal.*actuator/health"
         documentIndex: 0
 
+  - it: init container wget uses a connect/read timeout
+    asserts:
+      - matchRegex:
+          path: spec.template.spec.initContainers[0].command[2]
+          pattern: "wget -T"
+        documentIndex: 0
+
+  - it: init container exits non-zero after max attempts
+    asserts:
+      - matchRegex:
+          path: spec.template.spec.initContainers[0].command[2]
+          pattern: "exit 1"
+        documentIndex: 0
+
   - it: mounts mcserver and webapp-data volumes
     asserts:
       - contains:

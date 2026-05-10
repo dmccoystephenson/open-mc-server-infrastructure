@@ -5,10 +5,17 @@ set:
   secrets.rconPassword: ci
   secrets.adminPassword: ci
 tests:
-  - it: renders three PodDisruptionBudgets
+  - it: renders three PodDisruptionBudgets when enabled (default)
     asserts:
       - hasDocuments:
           count: 3
+
+  - it: renders no documents when podDisruptionBudgets.enabled is false
+    set:
+      podDisruptionBudgets.enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
 
   - it: all PDBs use policy/v1 (stable since K8s 1.21)
     asserts:
