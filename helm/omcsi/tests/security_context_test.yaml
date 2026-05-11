@@ -2,7 +2,6 @@ suite: security contexts
 set:
   secrets.rconPassword: ci
   secrets.adminPassword: ci
-  secrets.postgresPassword: ci
 tests:
   # -------------------------------------------------------------------------
   # minecraft-wrapper

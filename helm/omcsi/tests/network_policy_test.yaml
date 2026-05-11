@@ -4,14 +4,13 @@ templates:
 set:
   secrets.rconPassword: ci
   secrets.adminPassword: ci
-  secrets.postgresPassword: ci
 tests:
-  - it: renders 6 NetworkPolicies when enabled (agentManager disabled, postgres enabled)
+  - it: renders 5 NetworkPolicies when enabled (agentManager disabled)
     asserts:
       - hasDocuments:
-          count: 6
+          count: 5
 
-  - it: renders 7 NetworkPolicies when agentManager is enabled
+  - it: renders 6 NetworkPolicies when agentManager is enabled
     set:
       agentManager.enabled: true
       secrets.agentDiscordBotToken: ci
@@ -19,7 +18,7 @@ tests:
       secrets.agentAnthropicApiKey: ci
     asserts:
       - hasDocuments:
-          count: 7
+          count: 6
 
   - it: renders no documents when networkPolicy.enabled is false
     set:
@@ -28,10 +27,9 @@ tests:
       - hasDocuments:
           count: 0
 
-  - it: renders 5 policies when postgres disabled and networkPolicy key is absent (backward compat)
+  - it: renders 5 policies when networkPolicy key is absent (backward compat)
     set:
       networkPolicy: null
-      postgres.enabled: "false"
     asserts:
       - hasDocuments:
           count: 5
@@ -144,7 +142,7 @@ tests:
           value: 0.0.0.0/0
         documentIndex: 4
 
-  - it: minecraft-wrapper DNS egress rule is scoped to CoreDNS
+  - it: all policies include a DNS egress rule scoped to CoreDNS
     asserts:
       - equal:
           path: spec.egress[2].ports[0].port
@@ -153,13 +151,10 @@ tests:
       - isNotNull:
           path: spec.egress[2].to[0].namespaceSelector
         documentIndex: 0
-
-  - it: alert-manager DNS egress rule is scoped to CoreDNS (egress[3] with postgres)
-    asserts:
       - equal:
-          path: spec.egress[3].ports[0].port
+          path: spec.egress[2].ports[0].port
           value: 53
         documentIndex: 4
       - isNotNull:
-          path: spec.egress[3].to[0].namespaceSelector
+          path: spec.egress[2].to[0].namespaceSelector
         documentIndex: 4
