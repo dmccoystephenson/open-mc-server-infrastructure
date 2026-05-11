@@ -1,4 +1,4 @@
-CREATE TABLE alert_record (
+CREATE TABLE IF NOT EXISTS alert_record (
     id BIGSERIAL PRIMARY KEY,
     title TEXT,
     message TEXT,
@@ -7,4 +7,4 @@ CREATE TABLE alert_record (
     received_at TIMESTAMP WITH TIME ZONE NOT NULL
 );
 
-CREATE INDEX idx_ar_received_at ON alert_record (received_at DESC);
+CREATE INDEX IF NOT EXISTS idx_ar_received_at ON alert_record (received_at DESC);

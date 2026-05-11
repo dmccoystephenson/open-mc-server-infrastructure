@@ -1,4 +1,4 @@
-CREATE TABLE activity_tracker_snapshot (
+CREATE TABLE IF NOT EXISTS activity_tracker_snapshot (
     id BIGSERIAL PRIMARY KEY,
     timestamp TIMESTAMP WITH TIME ZONE NOT NULL,
     success BOOLEAN NOT NULL,
@@ -7,9 +7,9 @@ CREATE TABLE activity_tracker_snapshot (
     leaderboard TEXT
 );
 
-CREATE INDEX idx_ats_timestamp ON activity_tracker_snapshot (timestamp);
+CREATE INDEX IF NOT EXISTS idx_ats_timestamp ON activity_tracker_snapshot (timestamp);
 
-CREATE TABLE deployment_record (
+CREATE TABLE IF NOT EXISTS deployment_record (
     id BIGSERIAL PRIMARY KEY,
     timestamp TIMESTAMP WITH TIME ZONE NOT NULL,
     plugin_name TEXT,
@@ -20,9 +20,9 @@ CREATE TABLE deployment_record (
     message TEXT
 );
 
-CREATE INDEX idx_dr_timestamp ON deployment_record (timestamp);
+CREATE INDEX IF NOT EXISTS idx_dr_timestamp ON deployment_record (timestamp);
 
-CREATE TABLE retrieval_record (
+CREATE TABLE IF NOT EXISTS retrieval_record (
     id BIGSERIAL PRIMARY KEY,
     timestamp TIMESTAMP WITH TIME ZONE NOT NULL,
     success BOOLEAN NOT NULL,
@@ -34,4 +34,4 @@ CREATE TABLE retrieval_record (
     memory_used_percent DOUBLE PRECISION
 );
 
-CREATE INDEX idx_rr_timestamp ON retrieval_record (timestamp);
+CREATE INDEX IF NOT EXISTS idx_rr_timestamp ON retrieval_record (timestamp);
