@@ -251,6 +251,32 @@ secrets:
   agentDiscordBotToken: ""
   agentDiscordChannelId: ""
   agentAnthropicApiKey: ""
+  postgresPassword: ""
+
+# ---------------------------------------------------------------------------
+# PostgreSQL
+# ---------------------------------------------------------------------------
+postgres:
+  enabled: true
+  image:
+    repository: postgres
+    tag: "16"
+    pullPolicy: IfNotPresent
+  database: omcsi
+  username: omcsi
+  resources:
+    requests:
+      cpu: "100m"
+      memory: 256Mi
+    limits:
+      cpu: "500m"
+      memory: 512Mi
+  service:
+    port: 5432
+  persistence:
+    storageClass: ""
+    accessMode: ReadWriteOnce
+    size: 5Gi
 
 # ---------------------------------------------------------------------------
 # Security Contexts

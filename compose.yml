@@ -46,6 +46,23 @@ services:
       - WEBAPP_URL=${WEBAPP_URL:-http://webapp:8080}
       - DEPLOYMENT_AUTH_TOKEN=${DEPLOYMENT_AUTH_TOKEN:-}
 
+  postgres:
+    image: postgres:16
+    restart: always
+    container_name: ${POSTGRES_CONTAINER_NAME:-open-mc-postgres}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-omcsi} -d ${POSTGRES_DB:-omcsi}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB:-omcsi}
+      - POSTGRES_USER=${POSTGRES_USER:-omcsi}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+
   webapp:
     build:
       context: ./web-app
@@ -62,6 +79,8 @@ services:
       - mcserver:/mcserver:rw
     depends_on:
       - minecraft-wrapper
+      postgres:
+        condition: service_healthy
     environment:
       - MC_HOST=minecraft-wrapper
       - MC_RCON_PORT=25575
@@ -85,6 +104,9 @@ services:
       - MINECRAFT_WRAPPER_URL=${MINECRAFT_WRAPPER_URL:-http://minecraft-wrapper:8092}
       - ACCORDION_CHAT_URL=${ACCORDION_CHAT_URL:-}
       - DEPLOYMENT_AUTH_TOKEN=${DEPLOYMENT_AUTH_TOKEN:-}
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://${POSTGRES_HOST:-postgres}:${POSTGRES_PORT:-5432}/${POSTGRES_DB:-omcsi}
+      - SPRING_DATASOURCE_USERNAME=${POSTGRES_USER:-omcsi}
+      - SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD}
 
   nginx:
     build:
@@ -136,6 +158,9 @@ services:
       timeout: 5s
       retries: 5
       start_period: 30s
+    depends_on:
+      postgres:
+        condition: service_healthy
     volumes:
       - alert-manager-data:/app/data
     environment:
@@ -145,6 +170,9 @@ services:
       - MINECRAFT_RCON_PORT=${MINECRAFT_RCON_PORT:-25575}
       - MINECRAFT_RCON_PASSWORD=${RCON_PASSWORD:-minecraft}
       - MINECRAFT_RCON_ENABLED=${MINECRAFT_RCON_ENABLED:-true}
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://${POSTGRES_HOST:-postgres}:${POSTGRES_PORT:-5432}/${POSTGRES_DB:-omcsi}
+      - SPRING_DATASOURCE_USERNAME=${POSTGRES_USER:-omcsi}
+      - SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD}
 
   agent-manager:
     build:
@@ -185,6 +213,9 @@ volumes:
     external: false
   alert-manager-data:
     name: ${ALERT_MANAGER_VOLUME_NAME:-alert-manager-data}
+    external: false
+  postgres-data:
+    name: ${POSTGRES_VOLUME_NAME:-postgres-data}
     external: false
   backups:
     name: ${BACKUPS_VOLUME_NAME:-backups}

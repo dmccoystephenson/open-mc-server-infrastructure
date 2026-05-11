@@ -1,36 +1,34 @@
 package com.openmc.alertmanager.repository;
 
-import com.openmc.alertmanager.config.DataStorageConfig;
+import com.openmc.alertmanager.entity.AlertRecordEntity;
 import com.openmc.alertmanager.model.Alert;
 import com.openmc.alertmanager.model.AlertLevel;
 import com.openmc.alertmanager.model.AlertRecord;
+import com.openmc.alertmanager.repository.jpa.AlertRecordJpaRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
+import org.springframework.data.domain.Pageable;
 
-import java.nio.file.Path;
+import java.util.Collections;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
 
 @DisplayName("AlertRepository Tests")
 class AlertRepositoryTest {
 
-    @TempDir
-    Path tempDir;
-
+    private AlertRecordJpaRepository jpaRepository;
     private AlertRepository alertRepository;
-
-    private DataStorageConfig configFor(Path dir) {
-        DataStorageConfig config = new DataStorageConfig();
-        config.setBaseDirectory(dir.toString());
-        return config;
-    }
 
     @BeforeEach
     void setUp() {
-        alertRepository = new AlertRepository(configFor(tempDir));
+        jpaRepository = mock(AlertRecordJpaRepository.class);
+        when(jpaRepository.findTopByOrderByReceivedAtDesc(any(Pageable.class)))
+                .thenReturn(Collections.emptyList());
+        when(jpaRepository.save(any(AlertRecordEntity.class))).thenAnswer(i -> i.getArgument(0));
+        alertRepository = new AlertRepository(jpaRepository);
     }
 
     private Alert alert(String title) {
@@ -53,19 +51,12 @@ class AlertRepositoryTest {
     }
 
     @Test
-    @DisplayName("Should persist alerts to disk and reload on new instance")
-    void shouldPersistAcrossRestarts() {
+    @DisplayName("Should persist each alert to the database")
+    void shouldPersistToDatabase() {
         alertRepository.store(alert("Alpha"));
         alertRepository.store(alert("Beta"));
 
-        // Create a fresh instance pointing at the same directory
-        AlertRepository reloaded = new AlertRepository(configFor(tempDir));
-        List<AlertRecord> records = reloaded.getRecent(10);
-
-        assertEquals(2, records.size());
-        // Newest-first order
-        assertEquals("Beta", records.get(0).getTitle());
-        assertEquals("Alpha", records.get(1).getTitle());
+        verify(jpaRepository, times(2)).save(any(AlertRecordEntity.class));
     }
 
     @Test
@@ -93,8 +84,8 @@ class AlertRepositoryTest {
     }
 
     @Test
-    @DisplayName("New instance starts empty when no file exists")
-    void newInstanceStartsEmptyWithNoFile() {
+    @DisplayName("New instance starts empty when no records in database")
+    void newInstanceStartsEmptyWithNoRecords() {
         assertTrue(alertRepository.getRecent(10).isEmpty());
     }
 }

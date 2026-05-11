@@ -167,6 +167,16 @@ spec:
         - podSelector:
             matchLabels:
               {{- include "omcsi.selectorLabels" (dict "root" . "component" "alert-manager") | nindent 14 }}
+    {{- if ne "false" (toString ((.Values.postgres).enabled)) }}
+    # PostgreSQL
+    - ports:
+        - port: {{ .Values.postgres.service.port }}
+          protocol: TCP
+      to:
+        - podSelector:
+            matchLabels:
+              {{- include "omcsi.selectorLabels" (dict "root" . "component" "postgres") | nindent 14 }}
+    {{- end }}
     # DNS — scoped to CoreDNS (adjust networkPolicy.dnsNamespaceSelector/dnsPodSelector for non-standard distros)
     - ports:
         - port: 53
@@ -352,6 +362,16 @@ spec:
       to:
         - ipBlock:
             cidr: 0.0.0.0/0
+    {{- if ne "false" (toString ((.Values.postgres).enabled)) }}
+    # PostgreSQL
+    - ports:
+        - port: {{ .Values.postgres.service.port }}
+          protocol: TCP
+      to:
+        - podSelector:
+            matchLabels:
+              {{- include "omcsi.selectorLabels" (dict "root" . "component" "postgres") | nindent 14 }}
+    {{- end }}
     # DNS — scoped to CoreDNS (adjust networkPolicy.dnsNamespaceSelector/dnsPodSelector for non-standard distros)
     - ports:
         - port: 53
@@ -365,6 +385,55 @@ spec:
           podSelector:
             {{- toYaml .Values.networkPolicy.dnsPodSelector | nindent 12 }}
       {{- end }}
+{{- if ne "false" (toString ((.Values.postgres).enabled)) }}
+---
+# ---------------------------------------------------------------------------
+# postgres — ingress from webapp and alert-manager only
+# ---------------------------------------------------------------------------
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "omcsi.fullname" . }}-postgres
+  labels:
+    {{- include "omcsi.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "omcsi.selectorLabels" (dict "root" . "component" "postgres") | nindent 6 }}
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - ports:
+        - port: {{ .Values.postgres.service.port }}
+          protocol: TCP
+      from:
+        - podSelector:
+            matchLabels:
+              {{- include "omcsi.selectorLabels" (dict "root" . "component" "webapp") | nindent 14 }}
+        - podSelector:
+            matchLabels:
+              {{- include "omcsi.selectorLabels" (dict "root" . "component" "alert-manager") | nindent 14 }}
+    # kubelet health probes
+    - ports:
+        - port: {{ .Values.postgres.service.port }}
+          protocol: TCP
+      from:
+        - ipBlock:
+            cidr: {{ ((.Values.networkPolicy).kubeNodeCIDR) | default "0.0.0.0/0" | quote }}
+  egress:
+    # DNS only — postgres itself doesn't call other services
+    - ports:
+        - port: 53
+          protocol: UDP
+        - port: 53
+          protocol: TCP
+      {{- if and ((.Values.networkPolicy).dnsNamespaceSelector) ((.Values.networkPolicy).dnsPodSelector) }}
+      to:
+        - namespaceSelector:
+            {{- toYaml .Values.networkPolicy.dnsNamespaceSelector | nindent 12 }}
+          podSelector:
+            {{- toYaml .Values.networkPolicy.dnsPodSelector | nindent 12 }}
+      {{- end }}
+{{- end }}
 {{- if .Values.agentManager.enabled }}
 ---
 # ---------------------------------------------------------------------------

@@ -1,0 +1,106 @@
+suite: postgres
+set:
+  secrets.rconPassword: ci
+  secrets.adminPassword: ci
+  secrets.postgresPassword: ci
+tests:
+  # -------------------------------------------------------------------------
+  # StatefulSet
+  # -------------------------------------------------------------------------
+  - it: renders a StatefulSet when postgres is enabled
+    templates:
+      - templates/postgres/statefulset.yaml
+    asserts:
+      - isKind:
+          of: StatefulSet
+
+  - it: StatefulSet uses postgres:16 image
+    templates:
+      - templates/postgres/statefulset.yaml
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: postgres:16
+
+  - it: StatefulSet sets POSTGRES_DB from values
+    templates:
+      - templates/postgres/statefulset.yaml
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: POSTGRES_DB
+            value: omcsi
+
+  - it: StatefulSet mounts postgres-data PVC
+    templates:
+      - templates/postgres/statefulset.yaml
+    asserts:
+      - equal:
+          path: spec.template.spec.volumes[0].persistentVolumeClaim.claimName
+          value: RELEASE-NAME-omcsi-postgres-data
+
+  - it: renders nothing when postgres is disabled
+    templates:
+      - templates/postgres/statefulset.yaml
+    set:
+      postgres.enabled: "false"
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  # -------------------------------------------------------------------------
+  # Service
+  # -------------------------------------------------------------------------
+  - it: renders a headless Service when postgres is enabled
+    templates:
+      - templates/postgres/service.yaml
+    asserts:
+      - isKind:
+          of: Service
+      - equal:
+          path: spec.clusterIP
+          value: None
+      - equal:
+          path: spec.ports[0].port
+          value: 5432
+
+  - it: Service renders nothing when postgres is disabled
+    templates:
+      - templates/postgres/service.yaml
+    set:
+      postgres.enabled: "false"
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  # -------------------------------------------------------------------------
+  # NetworkPolicy
+  # -------------------------------------------------------------------------
+  - it: postgres NetworkPolicy is rendered when both networkPolicy and postgres are enabled
+    templates:
+      - templates/networkpolicies.yaml
+    asserts:
+      - hasDocuments:
+          count: 6
+
+  - it: postgres NetworkPolicy allows ingress from webapp and alert-manager
+    templates:
+      - templates/networkpolicies.yaml
+    asserts:
+      - equal:
+          path: spec.ingress[0].ports[0].port
+          value: 5432
+        documentIndex: 5
+      - isNull:
+          path: spec.ingress[0].from[0].ipBlock
+        documentIndex: 5
+
+  - it: postgres NetworkPolicy allows only DNS egress
+    templates:
+      - templates/networkpolicies.yaml
+    asserts:
+      - equal:
+          path: spec.egress[0].ports[0].port
+          value: 53
+        documentIndex: 5
