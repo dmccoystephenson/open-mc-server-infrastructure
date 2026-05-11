@@ -22,40 +22,6 @@ spec:
       securityContext:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- if ne "false" (toString ((.Values.postgres).enabled)) }}
-      initContainers:
-        - name: wait-for-postgres
-          image: "{{ .Values.postgres.image.repository }}:{{ .Values.postgres.image.tag }}"
-          imagePullPolicy: {{ .Values.postgres.image.pullPolicy }}
-          {{- with .Values.containerSecurityContext }}
-          securityContext:
-            {{- toYaml . | nindent 12 }}
-          {{- end }}
-          command:
-            - sh
-            - -c
-            - |
-              attempt=0
-              until pg_isready -h {{ include "omcsi.fullname" . }}-postgres -U {{ .Values.postgres.username | quote }} -d {{ .Values.postgres.database | quote }}; do
-                attempt=$((attempt + 1))
-                if [ "$attempt" -ge 60 ]; then
-                  echo "ERROR: postgres did not become ready after $attempt attempts."
-                  exit 1
-                fi
-                echo "Waiting for postgres (attempt $attempt/60)..."
-                sleep 5
-              done
-              echo "postgres is ready"
-          env:
-            - name: PGPASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "omcsi.secretName" . }}
-                  key: POSTGRES_PASSWORD
-          volumeMounts:
-            - name: tmp
-              mountPath: /tmp
-      {{- end }}
       containers:
         - name: alert-manager
           image: "{{ .Values.alertManager.image.repository }}:{{ .Values.alertManager.image.tag }}"
@@ -87,17 +53,6 @@ spec:
                   key: RCON_PASSWORD
             - name: MINECRAFT_RCON_ENABLED
               value: {{ .Values.alertManager.env.MINECRAFT_RCON_ENABLED | quote }}
-            {{- if ne "false" (toString ((.Values.postgres).enabled)) }}
-            - name: SPRING_DATASOURCE_URL
-              value: "jdbc:postgresql://{{ include "omcsi.fullname" . }}-postgres:{{ .Values.postgres.service.port }}/{{ .Values.postgres.database }}"
-            - name: SPRING_DATASOURCE_USERNAME
-              value: {{ .Values.postgres.username | quote }}
-            - name: SPRING_DATASOURCE_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "omcsi.secretName" . }}
-                  key: POSTGRES_PASSWORD
-            {{- end }}
           livenessProbe:
             httpGet:
               path: /actuator/health

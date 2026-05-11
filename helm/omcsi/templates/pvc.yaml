@@ -69,21 +69,3 @@ spec:
     requests:
       storage: {{ .Values.persistence.backups.size }}
 {{- end }}
----
-{{- if ne "false" (toString ((.Values.postgres).enabled)) }}
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: {{ include "omcsi.fullname" . }}-postgres-data
-  labels:
-    {{- include "omcsi.labels" . | nindent 4 }}
-spec:
-  accessModes:
-    - {{ .Values.postgres.persistence.accessMode }}
-  {{- if .Values.postgres.persistence.storageClass }}
-  storageClassName: {{ .Values.postgres.persistence.storageClass | quote }}
-  {{- end }}
-  resources:
-    requests:
-      storage: {{ .Values.postgres.persistence.size }}
-{{- end }}

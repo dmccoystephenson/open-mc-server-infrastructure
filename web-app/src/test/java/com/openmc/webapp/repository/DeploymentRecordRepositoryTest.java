@@ -1,8 +1,10 @@
 package com.openmc.webapp.repository;
 
+import com.openmc.webapp.config.TestDataStorageConfig;
 import com.openmc.webapp.model.DeploymentRecord;
 import org.junit.jupiter.api.*;
 
+import java.io.File;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -13,15 +15,35 @@ import static org.junit.jupiter.api.Assertions.*;
 @DisplayName("DeploymentRecordRepository Tests")
 class DeploymentRecordRepositoryTest {
 
-    private Repository<DeploymentRecord> repository;
+    private static final String TEST_DATA_FILE = "data/deployment-history.json";
+    private DeploymentRecordRepository repository;
+    private TestDataStorageConfig config;
 
     @BeforeEach
     void setUp() {
-        repository = new InMemoryRepository<>();
+        cleanupDataFile();
+        config = new TestDataStorageConfig();
+        repository = new DeploymentRecordRepository(config);
+    }
+
+    @AfterEach
+    void tearDown() {
+        cleanupDataFile();
+    }
+
+    private void cleanupDataFile() {
+        File dataFile = new File(TEST_DATA_FILE);
+        if (dataFile.exists()) {
+            dataFile.delete();
+        }
+        File dataDir = dataFile.getParentFile();
+        if (dataDir != null && dataDir.exists() && dataDir.list() != null && dataDir.list().length == 0) {
+            dataDir.delete();
+        }
     }
 
     @Test
-    @DisplayName("Should return empty list when no data exists")
+    @DisplayName("Should return empty list when no data file exists")
     void shouldReturnEmptyListWhenNoDataFileExists() {
         List<DeploymentRecord> records = repository.findAll();
         assertNotNull(records);
@@ -47,21 +69,24 @@ class DeploymentRecordRepositoryTest {
     }
 
     @Test
-    @DisplayName("Should clear data when clear is called")
+    @DisplayName("Should clear data file when clear is called")
     void shouldClearDataFileWhenClearIsCalled() {
         List<DeploymentRecord> records = createTestRecords(2);
         repository.save(records);
 
-        assertFalse(repository.findAll().isEmpty());
+        File dataFile = new File(TEST_DATA_FILE);
+        assertTrue(dataFile.exists());
 
         repository.clear();
 
-        assertTrue(repository.findAll().isEmpty());
+        assertFalse(dataFile.exists());
     }
 
     @Test
     @DisplayName("Should filter out records older than retention period")
     void shouldFilterOutRecordsOlderThanRetentionPeriod() {
+        DeploymentRecordRepository shortRetentionRepository = new DeploymentRecordRepository(config, Duration.ofDays(1));
+
         List<DeploymentRecord> records = new ArrayList<>();
 
         // Recent record (should be kept)
@@ -69,17 +94,17 @@ class DeploymentRecordRepositoryTest {
                 Instant.now().minus(Duration.ofHours(12)), "RecentPlugin.jar",
                 "SUCCESS", "automated", "main", null, "Deployed successfully"));
 
-        // Old record (should also be kept in InMemory — retention is a DB concern)
+        // Old record (should be filtered out)
         records.add(new DeploymentRecord(
                 Instant.now().minus(Duration.ofDays(2)), "OldPlugin.jar",
                 "SUCCESS", "automated", "main", null, "Deployed successfully"));
 
-        repository.save(records);
+        shortRetentionRepository.save(records);
 
-        List<DeploymentRecord> loadedRecords = repository.findAll();
+        List<DeploymentRecord> loadedRecords = shortRetentionRepository.findAll();
 
-        // InMemoryRepository stores all records; retention filtering is done in the JPA impl
-        assertFalse(loadedRecords.isEmpty());
+        assertEquals(1, loadedRecords.size());
+        assertEquals("RecentPlugin.jar", loadedRecords.get(0).getPluginName());
     }
 
     private List<DeploymentRecord> createTestRecords(int count) {
