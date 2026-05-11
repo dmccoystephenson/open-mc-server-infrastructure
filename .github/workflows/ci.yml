@@ -130,7 +130,7 @@ jobs:
     - name: Lint Helm chart
       run: |
         echo "⎈ Linting Helm chart..."
-        helm lint helm/omcsi --set secrets.rconPassword=ci --set secrets.adminPassword=ci
+        helm lint helm/omcsi --set secrets.rconPassword=ci --set secrets.adminPassword=ci --set secrets.postgresPassword=ci
         echo "✓ Helm chart linted successfully"
 
   helm-unit-test:
@@ -188,6 +188,7 @@ jobs:
         helm install omcsi ./helm/omcsi \
           --set secrets.rconPassword=ci-test-rcon \
           --set secrets.adminPassword=ci-test-admin \
+          --set secrets.postgresPassword=ci-test-postgres \
           --wait=false \
           --timeout 60s
         echo "✓ Helm install completed"
@@ -254,12 +255,16 @@ jobs:
           { echo "FAIL: backup-manager livenessProbe path '${BM_LIVE}' != /actuator/health"; exit 1; }
         echo "  ✓ backup-manager liveness probe"
 
-        echo "🔍 Verifying wait-for-wrapper init container on webapp..."
-        INIT_NAME=$(kubectl get deployment omcsi-webapp \
+        echo "🔍 Verifying init containers on webapp..."
+        INIT0=$(kubectl get deployment omcsi-webapp \
           -o jsonpath='{.spec.template.spec.initContainers[0].name}')
-        [ "${INIT_NAME}" = "wait-for-wrapper" ] || \
-          { echo "FAIL: webapp init container '${INIT_NAME}' != wait-for-wrapper"; exit 1; }
-        echo "  ✓ webapp wait-for-wrapper init container"
+        INIT1=$(kubectl get deployment omcsi-webapp \
+          -o jsonpath='{.spec.template.spec.initContainers[1].name}')
+        [ "${INIT0}" = "wait-for-postgres" ] || \
+          { echo "FAIL: webapp initContainers[0] '${INIT0}' != wait-for-postgres"; exit 1; }
+        [ "${INIT1}" = "wait-for-wrapper" ] || \
+          { echo "FAIL: webapp initContainers[1] '${INIT1}' != wait-for-wrapper"; exit 1; }
+        echo "  ✓ webapp wait-for-postgres and wait-for-wrapper init containers"
 
     - name: Verify Service types and ports
       run: |

@@ -4,6 +4,7 @@ templates:
 set:
   secrets.rconPassword: ci
   secrets.adminPassword: ci
+  secrets.postgresPassword: ci
 tests:
   - it: Deployment is the first document
     asserts:

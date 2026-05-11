@@ -4,11 +4,12 @@ templates:
 set:
   secrets.rconPassword: ci
   secrets.adminPassword: ci
+  secrets.postgresPassword: ci
 tests:
-  - it: renders four PVCs when all persistence is enabled (default)
+  - it: renders five PVCs when all persistence is enabled (default, postgres enabled)
     asserts:
       - hasDocuments:
-          count: 4
+          count: 5
 
   - it: mcserver PVC uses ReadWriteOnce and 10Gi
     asserts:
@@ -66,3 +67,24 @@ tests:
           path: spec.resources.requests.storage
           value: 20Gi
         documentIndex: 3
+
+  - it: postgres-data PVC uses ReadWriteOnce and 5Gi
+    asserts:
+      - isKind:
+          of: PersistentVolumeClaim
+        documentIndex: 4
+      - equal:
+          path: spec.accessModes[0]
+          value: ReadWriteOnce
+        documentIndex: 4
+      - equal:
+          path: spec.resources.requests.storage
+          value: 5Gi
+        documentIndex: 4
+
+  - it: renders four PVCs when postgres is disabled
+    set:
+      postgres.enabled: "false"
+    asserts:
+      - hasDocuments:
+          count: 4

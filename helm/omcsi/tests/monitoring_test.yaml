@@ -5,6 +5,7 @@ capabilities:
 set:
   secrets.rconPassword: ci
   secrets.adminPassword: ci
+  secrets.postgresPassword: ci
   monitoring.enabled: true
   monitoring.serviceMonitor.labels:
     release: kube-prometheus-stack

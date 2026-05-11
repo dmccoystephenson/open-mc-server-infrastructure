@@ -4,6 +4,7 @@ templates:
 set:
   secrets.rconPassword: ci
   secrets.adminPassword: ci
+  secrets.postgresPassword: ci
 tests:
   - it: renders three PodDisruptionBudgets when enabled (default)
     asserts:

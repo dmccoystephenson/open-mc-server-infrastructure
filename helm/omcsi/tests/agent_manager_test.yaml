@@ -4,6 +4,7 @@ templates:
 set:
   secrets.rconPassword: ci
   secrets.adminPassword: ci
+  secrets.postgresPassword: ci
 tests:
   - it: renders nothing when disabled (default)
     asserts:
