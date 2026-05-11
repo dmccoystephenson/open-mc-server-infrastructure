@@ -94,6 +94,22 @@ Common cases requiring policy updates:
 
 After editing, run `helm unittest helm/omcsi` to validate.
 
+## Monitoring (Kubernetes only)
+
+Prometheus scraping and a Grafana dashboard are optional and gated by `monitoring.enabled` (default `false`). Enabling requires the Prometheus Operator CRDs to be installed first (e.g. via `kube-prometheus-stack`).
+
+**Enable monitoring on an existing release:**
+```bash
+helm upgrade omcsi helm/omcsi --namespace omcsi --reuse-values \
+  --set-json 'monitoring={"enabled":true,"serviceMonitor":{"labels":{"release":"kube-prometheus-stack"},"interval":"30s","scrapeTimeout":"10s"},"grafanaDashboard":{"enabled":true,"labels":{"grafana_dashboard":"1"}},"prometheusNamespace":"monitoring"}'
+```
+
+The `--set-json` form is required for the `monitoring` map because `--reuse-values` does not inherit new map-type keys from `values.yaml` defaults.
+
+**Grafana dashboard provisioning gotcha:** The dashboard ConfigMap is picked up by the Grafana sidecar. The sidecar does **not** process `__inputs` / `__requires` blocks or resolve `${DS_PROMETHEUS}` placeholders — those only work on manual import. Dashboard JSON must use the literal datasource UID (e.g. `"uid": "prometheus"`) and omit `__inputs`/`__requires`.
+
+**Grafana access via Traefik:** Set `TF_VAR_enable_grafana_route=true` in `.env` to expose Grafana on port 3000 through the Traefik LoadBalancer. Also set `TF_VAR_grafana_service_address` if Grafana is deployed with a non-default release name or namespace.
+
 ## Secrets and Credentials
 
 - **Docker**: credentials live in `.env` (gitignored), documented in `sample.env`. Never hardcode in `compose.yml`.
