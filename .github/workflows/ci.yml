@@ -130,7 +130,7 @@ jobs:
     - name: Lint Helm chart
       run: |
         echo "⎈ Linting Helm chart..."
-        helm lint helm/omcsi --set secrets.rconPassword=ci --set secrets.adminPassword=ci
+        helm lint helm/omcsi --set secrets.rconPassword=ci --set secrets.adminPassword=ci --set secrets.postgresPassword=ci
         echo "✓ Helm chart linted successfully"
 
   helm-unit-test:
@@ -188,6 +188,7 @@ jobs:
         helm install omcsi ./helm/omcsi \
           --set secrets.rconPassword=ci-test-rcon \
           --set secrets.adminPassword=ci-test-admin \
+          --set secrets.postgresPassword=ci-test-postgres \
           --wait=false \
           --timeout 60s
         echo "✓ Helm install completed"

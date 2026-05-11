@@ -78,7 +78,8 @@ services:
       # so we mount the entire volume but PluginService enforces access only to /mcserver/plugins
       - mcserver:/mcserver:rw
     depends_on:
-      - minecraft-wrapper
+      minecraft-wrapper:
+        condition: service_started
       postgres:
         condition: service_healthy
     environment:
