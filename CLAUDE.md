@@ -9,6 +9,10 @@
 | **Docker Compose** | `./up.sh` / `compose.yml` | `.env` (copied from `sample.env`) |
 | **Kubernetes (Helm)** | `terraform apply` or `helm upgrade` | Kubernetes Secrets + `values.yaml` / `values-override.yaml` |
 
+## Branching and PRs
+
+Branch protection is enforced on `main` for all users — direct pushes are blocked. Always work on a feature/fix branch and open a PR. Never attempt to push directly to `main`.
+
 ## Critical Rule: Both Deployment Targets Must Always Work
 
 Every change to this repo — new service, new config, dependency update, persistence change, networking change — **must be implemented and verified for both Docker Compose and Kubernetes**. Never leave one target behind.
@@ -105,6 +109,8 @@ helm upgrade omcsi helm/omcsi --namespace omcsi --reuse-values \
 ```
 
 The `--set-json` form is required for the `monitoring` map because `--reuse-values` does not inherit new map-type keys from `values.yaml` defaults.
+
+**`imagePullPolicy` gotcha:** The initial Helm install bakes `imagePullPolicy: IfNotPresent` into the stored release. Subsequent `helm upgrade --reuse-values` calls preserve it, so new image pushes to Docker Hub are never pulled even after `kubectl rollout restart`. When deploying freshly built images, always add `--set '*.image.pullPolicy=Always'` (or ensure `values.yaml` defaults to `Always`).
 
 **Grafana dashboard provisioning gotcha:** The dashboard ConfigMap is picked up by the Grafana sidecar. The sidecar does **not** process `__inputs` / `__requires` blocks or resolve `${DS_PROMETHEUS}` placeholders — those only work on manual import. Dashboard JSON must use the literal datasource UID (e.g. `"uid": "prometheus"`) and omit `__inputs`/`__requires`.
 
