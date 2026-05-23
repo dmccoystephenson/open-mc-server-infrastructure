@@ -324,9 +324,47 @@
                 max-width: none;
             }
         }
+
+        .skip-link {
+            position: absolute;
+            top: -40px;
+            left: 8px;
+            background: var(--card-bg);
+            color: var(--primary-color);
+            padding: 8px 16px;
+            border-radius: 6px;
+            text-decoration: none;
+            font-weight: 600;
+            z-index: 1100;
+            transition: top 0.2s ease;
+        }
+        .skip-link:focus {
+            top: 8px;
+            outline: 3px solid var(--primary-color);
+            outline-offset: 2px;
+        }
+
+        /* Visible focus rings everywhere — the global `outline: none` on inputs
+           is fine since we add a border-color focus state, but buttons and nav
+           links also need a visible focus indicator for keyboard users. */
+        .btn:focus-visible,
+        .nav a:focus-visible,
+        .btn-danger:focus-visible,
+        .file-input-label:focus-within {
+            outline: 3px solid #fbbf24;
+            outline-offset: 2px;
+        }
+
+        .btn[aria-busy="true"],
+        .btn-danger[aria-busy="true"] {
+            opacity: 0.7;
+            cursor: progress;
+            pointer-events: none;
+        }
     </style>
 </head>
 <body>
+    <a href="#mainContent" class="skip-link">Skip to main content</a>
     <div id="toastRegion" class="toast-region" role="region" aria-label="Notifications" aria-live="polite"></div>
     <div class="container">
         <div class="header">
@@ -345,6 +383,7 @@
             </a>
         </div>
         
+        <main id="mainContent">
         <!-- Credentials Card -->
         <div class="card">
             <h2>Authentication</h2>
@@ -393,17 +432,23 @@
             <h2>Server Control</h2>
             <p style="color: var(--text-muted); margin-bottom: 15px;">Start, stop, or restart the Minecraft server</p>
             <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                <button onclick="startServer()" class="btn btn-primary" style="background: #10b981;">
+                <button type="button" id="btnStartServer" onclick="startServer()"
+                        class="btn btn-primary" style="background: #10b981;"
+                        aria-label="Start the Minecraft server">
                     ▶ Start Server
                 </button>
-                <button onclick="stopServer()" class="btn btn-primary" style="background: #ef4444;">
+                <button type="button" id="btnStopServer" onclick="stopServer()"
+                        class="btn btn-primary" style="background: #ef4444;"
+                        aria-label="Stop the Minecraft server (disconnects players)">
                     ⏹ Stop Server
                 </button>
-                <button onclick="restartServer()" class="btn btn-primary" style="background: #f59e0b;">
+                <button type="button" id="btnRestartServer" onclick="restartServer()"
+                        class="btn btn-primary" style="background: #f59e0b;"
+                        aria-label="Restart the Minecraft server (briefly disconnects players)">
                     🔄 Restart Server
                 </button>
             </div>
-            <div id="serverControlOutput" class="command-output"></div>
+            <div id="serverControlOutput" class="command-output" role="status" aria-live="polite"></div>
         </div>
         
         <!-- Plugin Management Card -->
@@ -430,8 +475,9 @@
                 <div class="empty-state">Enter credentials above, then click <strong>Refresh List</strong> to load installed plugins.</div>
             </div>
         </div>
+        </main>
     </div>
-    
+
     <script>
         function getCredentials() {
             const username = document.getElementById('usernameInput').value.trim();
@@ -659,15 +705,32 @@
             return div.innerHTML;
         }
         
+        // Lock all server-control buttons while any one is in flight so a user
+        // can't click Stop and Restart concurrently and confuse the wrapper.
+        function setServerControlsBusy(busy) {
+            ['btnStartServer', 'btnStopServer', 'btnRestartServer'].forEach(id => {
+                const el = document.getElementById(id);
+                if (!el) return;
+                if (busy) {
+                    el.setAttribute('aria-busy', 'true');
+                    el.disabled = true;
+                } else {
+                    el.removeAttribute('aria-busy');
+                    el.disabled = false;
+                }
+            });
+        }
+
         async function startServer() {
             const creds = requireCredentials();
             if (!creds) return;
             const { username, password } = creds;
 
             const output = document.getElementById('serverControlOutput');
-            output.textContent = 'Starting server...';
+            output.textContent = 'Starting server…';
             output.classList.add('show');
-            
+            setServerControlsBusy(true);
+
             try {
                 const response = await fetch('/api/server/start', {
                     method: 'POST',
@@ -679,11 +742,13 @@
                         password: password
                     })
                 });
-                
+
                 const data = await response.json();
                 output.textContent = data.success ? '✓ ' + data.message : '✗ ' + data.message;
             } catch (error) {
                 output.textContent = '✗ Error: ' + error.message;
+            } finally {
+                setServerControlsBusy(false);
             }
         }
         
@@ -695,11 +760,12 @@
             if (!confirm('Stop the Minecraft server? Connected players will be disconnected.')) {
                 return;
             }
-            
+
             const output = document.getElementById('serverControlOutput');
-            output.textContent = 'Stopping server...';
+            output.textContent = 'Stopping server…';
             output.classList.add('show');
-            
+            setServerControlsBusy(true);
+
             try {
                 const response = await fetch('/api/server/stop', {
                     method: 'POST',
@@ -711,11 +777,13 @@
                         password: password
                     })
                 });
-                
+
                 const data = await response.json();
                 output.textContent = data.success ? '✓ ' + data.message : '✗ ' + data.message;
             } catch (error) {
                 output.textContent = '✗ Error: ' + error.message;
+            } finally {
+                setServerControlsBusy(false);
             }
         }
         
@@ -727,11 +795,12 @@
             if (!confirm('Restart the Minecraft server? Connected players will be briefly disconnected.')) {
                 return;
             }
-            
+
             const output = document.getElementById('serverControlOutput');
-            output.textContent = 'Restarting server...';
+            output.textContent = 'Restarting server…';
             output.classList.add('show');
-            
+            setServerControlsBusy(true);
+
             try {
                 const response = await fetch('/api/server/restart', {
                     method: 'POST',
@@ -743,11 +812,13 @@
                         password: password
                     })
                 });
-                
+
                 const data = await response.json();
                 output.textContent = data.success ? '✓ ' + data.message : '✗ ' + data.message;
             } catch (error) {
                 output.textContent = '✗ Error: ' + error.message;
+            } finally {
+                setServerControlsBusy(false);
             }
         }
     </script>

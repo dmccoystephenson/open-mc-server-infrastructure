@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title th:text="${dashboardTitle}">Minecraft Server Dashboard</title>
+    <title th:text="${dashboardTitle} + ' — Dashboard'">Minecraft Server Dashboard — Dashboard</title>
     <style>
         :root {
             --primary-color: /*[[${dashboardPrimaryColor}]]*/ #667eea;
@@ -570,9 +570,44 @@
             text-align: center;
             color: var(--text-faint);
         }
+
+        .skip-link {
+            position: absolute;
+            top: -40px;
+            left: 8px;
+            background: var(--card-bg);
+            color: var(--primary-color);
+            padding: 8px 16px;
+            border-radius: 6px;
+            text-decoration: none;
+            font-weight: 600;
+            z-index: 1100;
+            transition: top 0.2s ease;
+        }
+        .skip-link:focus {
+            top: 8px;
+            outline: 3px solid var(--primary-color);
+            outline-offset: 2px;
+        }
+
+        .btn:focus-visible,
+        .nav a:focus-visible {
+            outline: 3px solid #fbbf24;
+            outline-offset: 2px;
+        }
+
+        /* Visually-hidden text for screen-readers only (used for chart summaries). */
+        .visually-hidden {
+            position: absolute;
+            width: 1px; height: 1px;
+            padding: 0; margin: -1px;
+            overflow: hidden; clip: rect(0,0,0,0);
+            white-space: nowrap; border: 0;
+        }
     </style>
 </head>
 <body>
+    <a href="#mainContent" class="skip-link">Skip to main content</a>
     <div class="dashboard-grid">
         <!-- Header Section -->
         <div class="header-section">
@@ -646,7 +681,7 @@
         </aside>
         
         <!-- Main Content -->
-        <main class="main-content">
+        <main class="main-content" id="mainContent">
         
         <div class="card">
             <h2>Server Status</h2>
@@ -779,39 +814,48 @@
             </div>
             
             <div style="margin-bottom: 30px;">
-                <h3 class="chart-section-title">Player Activity Over Time</h3>
+                <h3 class="chart-section-title" id="playerChartTitle">Player Activity Over Time</h3>
                 <div class="chart-container">
-                    <canvas id="playerChart" class="chart-canvas"></canvas>
+                    <canvas id="playerChart" class="chart-canvas"
+                            role="img" aria-labelledby="playerChartTitle"
+                            aria-describedby="playerChartSummary"></canvas>
                 </div>
+                <div id="playerChartSummary" class="visually-hidden" aria-live="polite">Chart loading…</div>
                 <div class="chart-legend">
                     <div class="chart-legend-item">
-                        <div class="chart-legend-color" style="background: #22c55e;"></div>
+                        <div class="chart-legend-color" style="background: #22c55e;" aria-hidden="true"></div>
                         <span>Players Online</span>
                     </div>
                 </div>
             </div>
-            
+
             <div>
-                <h3 class="chart-section-title">Memory Usage Over Time</h3>
+                <h3 class="chart-section-title" id="memoryChartTitle">Memory Usage Over Time</h3>
                 <div class="chart-container">
-                    <canvas id="memoryChart" class="chart-canvas"></canvas>
+                    <canvas id="memoryChart" class="chart-canvas"
+                            role="img" aria-labelledby="memoryChartTitle"
+                            aria-describedby="memoryChartSummary"></canvas>
                 </div>
+                <div id="memoryChartSummary" class="visually-hidden" aria-live="polite">Chart loading…</div>
                 <div class="chart-legend">
                     <div class="chart-legend-item">
-                        <div class="chart-legend-color" style="background: #3b82f6;"></div>
+                        <div class="chart-legend-color" style="background: #3b82f6;" aria-hidden="true"></div>
                         <span>Memory Usage %</span>
                     </div>
                 </div>
             </div>
-            
+
             <div style="margin-top: 30px;">
-                <h3 class="chart-section-title">TPS (Ticks Per Second) Over Time</h3>
+                <h3 class="chart-section-title" id="tpsChartTitle">TPS (Ticks Per Second) Over Time</h3>
                 <div class="chart-container">
-                    <canvas id="tpsChart" class="chart-canvas"></canvas>
+                    <canvas id="tpsChart" class="chart-canvas"
+                            role="img" aria-labelledby="tpsChartTitle"
+                            aria-describedby="tpsChartSummary"></canvas>
                 </div>
+                <div id="tpsChartSummary" class="visually-hidden" aria-live="polite">Chart loading…</div>
                 <div class="chart-legend">
                     <div class="chart-legend-item">
-                        <div class="chart-legend-color" style="background: #f59e0b;"></div>
+                        <div class="chart-legend-color" style="background: #f59e0b;" aria-hidden="true"></div>
                         <span>TPS</span>
                     </div>
                 </div>
@@ -1078,7 +1122,26 @@
                     yMin: 0,
                     yMax: 20
                 });
-                
+
+                // Accessible summaries — screen readers can't read a canvas.
+                function summarize(label, points, unit, decimals) {
+                    if (!points.length) return `${label}: no data available.`;
+                    const values = points.map(p => p.value);
+                    const min = Math.min(...values);
+                    const max = Math.max(...values);
+                    const latest = values[values.length - 1];
+                    const fmt = (n) => decimals != null ? n.toFixed(decimals) : Math.round(n);
+                    return `${label} over the last ${points.length} samples: ` +
+                        `latest ${fmt(latest)}${unit}, ` +
+                        `min ${fmt(min)}${unit}, max ${fmt(max)}${unit}.`;
+                }
+                const playerSummaryEl = document.getElementById('playerChartSummary');
+                const memorySummaryEl = document.getElementById('memoryChartSummary');
+                const tpsSummaryEl = document.getElementById('tpsChartSummary');
+                if (playerSummaryEl) playerSummaryEl.textContent = summarize('Players online', playerData, '', 0);
+                if (memorySummaryEl) memorySummaryEl.textContent = summarize('Memory usage', memoryData, '%', 1);
+                if (tpsSummaryEl) tpsSummaryEl.textContent = summarize('TPS', tpsData, '', 1);
+
                 // Update recent activity sidebar
                 updateRecentActivity(reversedHistory);
                 
