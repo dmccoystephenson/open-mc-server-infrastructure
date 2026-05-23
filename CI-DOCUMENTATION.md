@@ -10,57 +10,85 @@ The CI pipeline runs automatically on:
 
 ## CI Jobs
 
-### 1. Validate Code and Configuration
+The pipeline (`.github/workflows/ci.yml`) is composed of several parallel jobs.
+The end-to-end server run lives in a separate workflow
+(`.github/workflows/test-server-run.yml`).
 
-This is the main validation job that performs comprehensive checks across multiple areas:
+### 1. Validate Code and Configuration (`validate`)
+
+The main per-PR validation job. It runs the following steps in order:
 
 #### Shell Script Validation
-- **Syntax Checking**: Validates that all shell scripts have correct bash syntax using `bash -n`
-  - Checks: `up.sh`, `down.sh`, `resources/post-create.sh`, `resources/minecraft-wrapper.sh`
-- **ShellCheck Linting**: Runs static analysis on all shell scripts to catch common issues
-  - Validates code quality, potential bugs, and best practices
-  - Checks all `.sh` files in `resources/` and `scripts/` directories
+- **Syntax Checking** (`bash -n`): `up.sh`, `down.sh`, `upgrade.sh`,
+  `trigger-backup.sh`, `resources/post-create.sh`.
+- **ShellCheck Linting**: the same five scripts plus everything under
+  `scripts/*.sh`.
 
 #### Docker Configuration Validation
-- **Dockerfile Validation**: 
-  - Verifies Dockerfile exists and contains required `FROM` directive
-  - Tests Docker build process up to the `base` stage
-- **Docker Compose Validation**:
-  - Creates test environment file with valid placeholder values
-  - Validates compose configuration syntax using `docker compose config`
-  - Ensures all required services and volumes are properly defined
+- **Dockerfile Validation**: verifies the root `Dockerfile` exists and contains
+  a `FROM` directive, then builds the `base` stage to confirm syntax.
+- **Docker Compose Validation**: writes a temporary `.env` with placeholder
+  values, then runs `docker compose config` to verify the compose file parses
+  and every service/volume reference resolves.
 
 #### Environment Configuration Validation
-- **Sample Environment File**: Validates `sample.env` contains all required variables:
-  - `MINECRAFT_VERSION`
-  - `OPERATOR_UUID`
-  - `OPERATOR_NAME`
-  - `SERVER_MOTD`
+Asserts `sample.env` declares each of these keys (`grep -q KEY=`):
+`MINECRAFT_VERSION`, `OPERATOR_UUID`, `OPERATOR_NAME`, `SERVER_MOTD`.
+
+#### Java Module Builds and Tests
+Sets up JDK 21 (Temurin), then runs `./gradlew build` and `./gradlew test`
+for each Spring Boot module that has its own Gradle project:
+- `web-app`
+- `minecraft-wrapper`
+- `agent-manager`
+
+(Other modules — `alert-manager`, `backup-manager` — are exercised indirectly
+via the Helm tests and the end-to-end server run.)
 
 #### Documentation Validation
-- **README.md**: Verifies main documentation exists and has correct structure
-- **LICENSE**: Ensures license file is present
+- Confirms `README.md` exists and contains the expected H1
+  (`# Open Minecraft Server Infrastructure`).
+- Confirms `LICENSE` is present.
 
-#### Graceful Shutdown Testing
-- **Functionality Test**: Executes comprehensive test of the graceful shutdown mechanism
-  - Tests SIGTERM signal handling
-  - Verifies proper stop command transmission via FIFO
-  - Validates plugin data preservation during shutdown
-  - Confirms clean server termination
+#### Helm Chart Linting
+- Sets up Helm and runs `helm lint helm/omcsi` against the chart.
 
-### 2. Security Scanning
+### 2. Helm Unit Tests (`helm-unit-test`)
+
+A separate job that installs the
+[`helm-unittest`](https://github.com/helm-unittest/helm-unittest) plugin and
+runs `helm unittest helm/omcsi`. The test suites live under
+`helm/omcsi/tests/` and cover NetworkPolicies, PodDisruptionBudgets,
+ServiceMonitors, security contexts, and per-service Deployment/Service
+templates.
+
+### 3. Helm Deploy Smoke Test (`helm-deploy-test`)
+
+Spins up a `kind` cluster, installs the chart with minimal required values,
+and checks the resulting workloads come up healthy. Catches template
+regressions that lint and unit tests miss (e.g. selector mismatches,
+PVC binding failures).
+
+### 4. Terraform Validate (`terraform-validate`)
+
+Runs `terraform init -backend=false` and `terraform validate` for each
+Terraform stack under `terraform/` (`aws`, `linode`, `existing-cluster`,
+and the shared modules) to catch syntax and provider errors before
+they hit a real deployment.
+
+### 5. Security Scanning (`security-scan`)
 
 Performs security vulnerability scanning using Trivy:
 
-#### Trivy File System Scan
 - **Vulnerability Detection**: Scans entire repository for known security vulnerabilities
 - **SARIF Report Generation**: Creates standardized security report format
 - **GitHub Security Integration**: Uploads results to GitHub Security tab for review
 - **Non-blocking**: Continues pipeline execution even if vulnerabilities are found (informational)
 
-### 3. Test Server Run
+### 6. End-to-End Server Run (`test-server-run.yml`)
 
-Performs end-to-end testing by actually running the Minecraft server in a containerized environment:
+A separate workflow that performs end-to-end testing by actually running
+the Minecraft server in a containerized environment.
 
 #### Server Build and Startup
 - **Docker Image Build**: Builds the complete Minecraft server Docker image with Spigot
@@ -77,7 +105,8 @@ Performs end-to-end testing by actually running the Minecraft server in a contai
 - **Log Validation**: Confirms graceful shutdown signals are processed correctly
 - **Resource Cleanup**: Ensures all resources are properly cleaned up after testing
 
-This test provides real-world verification that the server can actually start, run, and stop correctly in a production-like environment.
+This workflow provides real-world verification that the server can actually
+start, run, and stop correctly in a production-like environment.
 
 ## Local Testing
 
@@ -92,30 +121,35 @@ This script mirrors the CI pipeline checks and helps catch issues before submitt
 ## What Gets Checked
 
 ### ✅ Code Quality
-- Shell script syntax correctness
+- Shell script syntax (`bash -n`)
 - ShellCheck linting compliance
-- File permission validation
+- Java module compilation and unit tests for `web-app`,
+  `minecraft-wrapper`, and `agent-manager`
 
 ### ✅ Configuration Integrity
-- Docker build process validation
-- Docker Compose configuration syntax
-- Environment variable completeness
+- Dockerfile parses and the `base` stage builds
+- `docker compose config` resolves the full stack
+- `sample.env` declares all required keys
+- Terraform stacks pass `terraform validate`
 
-### ✅ Functionality Verification
-- Graceful shutdown mechanism testing
-- Server wrapper script reliability
-- Plugin data preservation
-- Full server run testing with actual Minecraft server
-- Port availability and network functionality
-- Server file system initialization
+### ✅ Kubernetes / Helm
+- `helm lint` against `helm/omcsi`
+- `helm unittest` covering NetworkPolicies, PDBs, ServiceMonitors,
+  security contexts, and per-service templates
+- Smoke deploy of the chart into a `kind` cluster
+
+### ✅ End-to-End (separate workflow)
+- Real Spigot build + server boot
+- Port availability (25565, 25575) and file-system initialization
+- Graceful shutdown via Compose
 
 ### ✅ Security Assessment
-- Vulnerability scanning
-- Security best practices
+- Trivy vulnerability scanning
+- Results uploaded to the GitHub Security tab
 
 ### ✅ Documentation Standards
-- Required documentation presence
-- Structure validation
+- `README.md` exists with the expected H1
+- `LICENSE` is present
 
 ## CI/CD Plugin Deployment
 
@@ -198,10 +232,21 @@ The workflow:
 - Verify all required files are present
 - Test `docker build` locally
 
-### Graceful Shutdown Test Failures
-- Check that the wrapper script handles signals correctly
-- Verify FIFO communication works properly
-- Test shutdown sequence manually
+### Java Module Build / Test Failures
+- Run `./gradlew build` and `./gradlew test` locally inside the affected
+  module (`web-app`, `minecraft-wrapper`, or `agent-manager`) to reproduce.
+- Confirm you're on JDK 21 — older or newer JDKs may produce class-version
+  errors that look unrelated.
+
+### Helm Lint / Unit Test Failures
+- `helm lint helm/omcsi` reproduces lint output locally.
+- `helm unittest helm/omcsi` reproduces template assertions; look at
+  `helm/omcsi/tests/*.yaml` for which template a failing assertion belongs to.
+
+### Helm Deploy Smoke Test Failures
+- Usually a selector mismatch, missing required value, or PVC binding
+  failure on the kind cluster. Render with `helm template omcsi helm/omcsi
+  --values <your-overrides>.yaml` to see what would be applied.
 
 ### Environment Configuration Failures
 - Ensure all required variables are defined in `sample.env`
@@ -213,6 +258,13 @@ The workflow:
 - Ensure sufficient resources are available for server build
 - Check for port conflicts or networking issues
 - Review server configuration in test environment
+
+### Graceful Shutdown Test Failures (end-to-end workflow)
+- Check that `minecraft-wrapper` handles signals correctly
+- Verify FIFO communication works properly between the wrapper and the
+  Spigot process
+- Test the shutdown sequence manually with
+  `scripts/test-docker-graceful-shutdown.sh`
 
 ## Performance
 
