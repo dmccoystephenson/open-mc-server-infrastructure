@@ -45,7 +45,7 @@ Checklist for any PR touching services, config, or infrastructure:
 | `nginx` | 80 / 443 | Reverse proxy |
 | `alert-manager` | 8090 | Discord webhook notifications |
 | `backup-manager` | 8091 | Scheduled backups |
-| `agent-manager` | 8093 / 8094 | Discord AI bot (disabled by default) |
+| `agent-manager` | 8093 (API), 8094 (Spring management/actuator, container-internal) | Discord AI bot (disabled by default) |
 
 ## Verification Before Marking Work Done
 

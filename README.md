@@ -677,9 +677,10 @@ These settings allow you to run multiple server instances in parallel without co
 - `HOST_PORT`: Host port for Minecraft server (default: `25565`)
 - `HOST_RCON_PORT`: Host port for RCON (default: `25575`)
 - `HOST_BLUEMAP_PORT`: Host port for BlueMap (default: `8100`)
+- `WRAPPER_PORT`: Host port for the minecraft-wrapper REST API (default: `8092`)
 - `VOLUME_NAME`: Docker volume name for persistent data (default: `mcserver`)
 
-To run multiple servers simultaneously (e.g., for testing different configurations), create separate `.env` files with unique values for `CONTAINER_NAME`, `HOST_PORT`, `HOST_RCON_PORT`, `HOST_BLUEMAP_PORT`, `VOLUME_NAME`, `WEB_CONTAINER_NAME`, `NGINX_CONTAINER_NAME`, `BACKUP_CONTAINER_NAME`, `ALERT_CONTAINER_NAME`, `ALERT_PORT`, `WEB_HTTP_PORT`, and `WEB_HTTPS_PORT`, then start each with:
+To run multiple servers simultaneously (e.g., for testing different configurations), create separate `.env` files with unique values for `CONTAINER_NAME`, `HOST_PORT`, `HOST_RCON_PORT`, `HOST_BLUEMAP_PORT`, `WRAPPER_PORT`, `VOLUME_NAME`, `WEB_CONTAINER_NAME`, `NGINX_CONTAINER_NAME`, `BACKUP_CONTAINER_NAME`, `ALERT_CONTAINER_NAME`, `BACKUP_PORT`, `ALERT_PORT`, `AGENT_PORT`, `WEB_HTTP_PORT`, and `WEB_HTTPS_PORT`, then start each with:
 
 ```bash
 docker compose --env-file .env.dev2 up -d --build
@@ -740,7 +741,7 @@ See [alert-manager/README.md](alert-manager/README.md) for detailed configuratio
 ### Agent Manager Configuration
 
 - `AGENT_CONTAINER_NAME`: Agent manager container name (default: `open-mc-agent-manager`)
-- `AGENT_PORT`: Agent manager API port (default: `8093`)
+- `AGENT_PORT`: Agent manager API port (default: `8093`). The Spring Boot management/actuator endpoint also listens on `8094` inside the container but is not published to the host by default — see `agent-manager/README.md` for details.
 - `AGENT_DISCORD_BOT_TOKEN`: Discord bot token (required for agent manager)
 - `AGENT_DISCORD_CHANNEL_ID`: Discord channel ID to listen on (required for agent manager)
 - `AGENT_ANTHROPIC_API_KEY`: Anthropic API key (required for agent manager)

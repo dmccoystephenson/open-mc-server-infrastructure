@@ -6,8 +6,8 @@ A Spring Boot service that manages the Minecraft server lifecycle, providing gra
 
 This module replaces the original `minecraft-wrapper.sh` bash script with a testable, maintainable Spring Boot application. It is integrated into the main Minecraft server container and provides:
 
-- **Testable Logic**: All wrapper functionality is covered by unit tests (15 tests)
-- **REST API**: Exposes endpoints for server management and messaging
+- **Testable Logic**: All wrapper functionality is covered by unit and controller tests
+- **REST API**: Exposes endpoints for server management, plugin deployment, and messaging
 - **Service Integration**: Other services can interact with the wrapper via HTTP
 
 ## Features
@@ -15,8 +15,8 @@ This module replaces the original `minecraft-wrapper.sh` bash script with a test
 - **Server Lifecycle Management**: Automatically starts and manages the Minecraft server process
 - **Graceful Shutdown**: Warns players with countdown messages before shutting down
 - **Alert Integration**: Sends alerts to the alert-manager service for server events (start, stop, crash)
-- **REST API**: Exposes endpoints for server status, command execution, and message sending
-- **Unit Tests**: Comprehensive test coverage for all service components (15 tests)
+- **REST API**: Exposes endpoints for server status, command execution, message sending, plugin deployment, and log/metrics retrieval
+- **Unit & Controller Tests**: Comprehensive test coverage across service and controller layers
 
 ## Deployment
 
@@ -63,6 +63,16 @@ The Spring Boot wrapper is built as part of the main Minecraft server Docker ima
   curl -X POST http://localhost:8092/api/server/shutdown
   ```
 
+- `GET /api/server/logs` - Retrieve recent server log lines
+  ```bash
+  curl http://localhost:8092/api/server/logs
+  ```
+
+- `GET /api/server/metrics` - Retrieve server resource metrics (memory, TPS)
+  ```bash
+  curl http://localhost:8092/api/server/metrics
+  ```
+
 ### Messaging
 
 - `POST /api/messages` - Send a message to players
@@ -71,6 +81,14 @@ The Spring Boot wrapper is built as part of the main Minecraft server Docker ima
     -H "Content-Type: application/json" \
     -d '{"text": "Server maintenance in 5 minutes", "destination": "MINECRAFT"}'
   ```
+
+### Plugin Deployment
+
+- `POST /api/plugins/deploy` - Deploy a plugin JAR to the server's `plugins/` directory.
+  Used by the [`deploy-plugin.yml`](../docs/github-actions/deploy-plugin.yml)
+  GitHub Actions workflow to ship plugin builds from CI to the server. See the
+  [`PluginDeployController`](src/main/java/com/openmc/minecraftwrapper/controller/PluginDeployController.java)
+  source for the request schema and authentication requirements.
 
 ## Configuration
 
@@ -118,11 +136,14 @@ alerts.server.crash=true
 ./gradlew test
 ```
 
-All tests pass, providing confidence in the wrapper logic:
-- AlertServiceTest: 8 tests
-- MessageServiceTest: 4 tests  
-- ShutdownServiceTest: 2 tests
-- MinecraftWrapperApplicationTest: 1 test
+Tests are split across the service and controller layers — run `./gradlew test`
+to see the current count and breakdown. The current suite covers, at minimum:
+
+- Service layer: `AlertServiceTest`, `MessageServiceTest`, `ShutdownServiceTest`,
+  `PluginDeployServiceTest`
+- Controller layer: `ServerControllerTest`, `MessageControllerTest`,
+  `PluginDeployControllerTest`
+- Application bootstrapping: `MinecraftWrapperApplicationTest`
 
 ## Integration with Infrastructure
 
@@ -137,7 +158,7 @@ The wrapper service is built and deployed as part of the main Minecraft server c
 
 The Spring Boot wrapper replaces the previous bash script with these benefits:
 
-- ✅ **Unit tested**: 15 tests covering all core logic
+- ✅ **Unit tested**: service and controller layers covered by JUnit tests
 - ✅ **REST API**: Remote management capabilities
 - ✅ **Better error handling**: Structured logging and exception handling
 - ✅ **Maintainable**: Easier to extend and modify

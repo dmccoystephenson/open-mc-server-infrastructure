@@ -141,6 +141,11 @@ The backup-manager exposes a REST API on port 8091 (configurable via `BACKUP_POR
 - Returns JSON response with backup status and location
 - HTTP 200 on success, 500 on failure
 
+**GET /api/backups/latest**
+- Returns metadata about the most recent backup. Always HTTP 200; when no
+  backup has been performed yet the response body is
+  `{"available": false, "message": "No backup has been performed yet"}`.
+
 ## Volume Mounts
 
 The backup-manager container has access to:
@@ -151,7 +156,11 @@ The backup-manager container has access to:
 ## Security Notes
 
 - The Minecraft server volume is mounted read-only for safety
-- The REST API is exposed on localhost by default (port 8091)
+- The REST API listens on port 8091 inside the container. By default Docker
+  Compose publishes it as `${BACKUP_PORT:-8091}:8091` with no bind address,
+  which means **all host interfaces** — not just localhost. If you don't need
+  external access to the backup API, restrict the binding (e.g.
+  `"127.0.0.1:${BACKUP_PORT:-8091}:8091"`) or block the port at your firewall.
 
 ## Troubleshooting
 
