@@ -75,28 +75,50 @@
                     "header header header"
                     "left-sidebar main right-sidebar";
             }
-            
+
             .header-section {
                 grid-area: header;
             }
-            
+
             .left-sidebar {
                 grid-area: left-sidebar;
             }
-            
+
             .main-content {
                 grid-area: main;
             }
-            
+
             .right-sidebar {
                 grid-area: right-sidebar;
             }
         }
-        
+
         @media (max-width: 1023px) {
-            .left-sidebar,
+            /* On small screens: keep header first, then put quick-stats/quick-links
+               above the main content (instead of hiding them entirely as before).
+               Hide the lower-priority Recent Activity sidebar to keep scroll
+               length reasonable. */
+            .header-section { order: 0; }
+            .left-sidebar { order: 1; }
+            .main-content { order: 2; }
             .right-sidebar {
                 display: none;
+            }
+
+            .left-sidebar {
+                display: grid;
+                grid-template-columns: 1fr;
+                gap: 15px;
+            }
+        }
+
+        @media (min-width: 600px) and (max-width: 1023px) {
+            /* Show the two sidebar cards side-by-side on tablet/landscape phones */
+            .left-sidebar {
+                grid-template-columns: 1fr 1fr;
+            }
+            .left-sidebar .sidebar-card {
+                margin-bottom: 0;
             }
         }
         
@@ -732,7 +754,7 @@
             </div>
         </div>
         
-        <div th:if="${activityTrackerEnabled}" class="card">
+        <div th:if="${activityTrackerEnabled}" class="card" id="leaderboard">
             <h2>🏆 Player Leaderboard</h2>
             <p style="color: var(--text-muted); margin-bottom: 15px;">Top 10 players by hours played</p>
             <div id="leaderboardTable">
@@ -745,10 +767,15 @@
             <p style="color: var(--text-muted); margin-bottom: 15px;">Historical server metrics</p>
             
             <div class="history-size-control">
-                <label for="historySizeSlider">History Size:</label>
-                <input type="range" id="historySizeSlider" min="5" max="50" value="10" step="1">
+                <label for="historySizeSlider">History size:</label>
+                <input type="range" id="historySizeSlider" min="5" max="50" value="10" step="1"
+                       aria-describedby="historySizeInfo">
                 <span class="history-size-value" id="historySizeValue">10</span>
-                <div class="history-size-info">Adjust to view more historical data points (session only)</div>
+                <span style="color: var(--text-muted); font-size: 14px;">points</span>
+                <div class="history-size-info" id="historySizeInfo">
+                    Each point is one status check (every <span id="historySizeIntervalText">…</span>).
+                    <span id="historySizeWindowText"></span>
+                </div>
             </div>
             
             <div style="margin-bottom: 30px;">
@@ -815,6 +842,9 @@
     </div>
     
     <script th:inline="javascript">
+        // Refresh interval (ms) is also used by the history-size hint, so hoist it.
+        const refreshInterval = /*[[${refreshIntervalMs}]]*/ 1800000;
+
         // Utility function to convert timestamp to relative time
         function getRelativeTime(timestamp) {
             if (!timestamp) return 'N/A';
@@ -1268,6 +1298,25 @@
         const historySizeSlider = document.getElementById('historySizeSlider');
         const historySizeValue = document.getElementById('historySizeValue');
         
+        function formatDuration(ms) {
+            const totalSeconds = Math.round(ms / 1000);
+            if (totalSeconds < 60) return `${totalSeconds} sec`;
+            const minutes = Math.floor(totalSeconds / 60);
+            const seconds = totalSeconds % 60;
+            if (minutes < 60) return seconds === 0 ? `${minutes} min` : `${minutes} min ${seconds} sec`;
+            const hours = Math.floor(minutes / 60);
+            const remMin = minutes % 60;
+            return remMin === 0 ? `${hours} hr` : `${hours} hr ${remMin} min`;
+        }
+
+        function updateHistorySizeHints(size) {
+            const intervalEl = document.getElementById('historySizeIntervalText');
+            const windowEl = document.getElementById('historySizeWindowText');
+            if (intervalEl) intervalEl.textContent = formatDuration(refreshInterval);
+            if (windowEl) windowEl.textContent =
+                `Covers about ${formatDuration(refreshInterval * size)} of history (session only).`;
+        }
+
         if (historySizeSlider && historySizeValue) {
             // Fetch current max size on load
             fetch('/api/history/max-size')
@@ -1276,14 +1325,16 @@
                     const currentSize = data.maxSize || 10;
                     historySizeSlider.value = currentSize;
                     historySizeValue.textContent = currentSize;
+                    updateHistorySizeHints(currentSize);
                 })
                 .catch(error => console.error('Failed to fetch current history size:', error));
-            
+
             // Update display value as slider moves
             historySizeSlider.addEventListener('input', (e) => {
                 historySizeValue.textContent = e.target.value;
+                updateHistorySizeHints(parseInt(e.target.value, 10));
             });
-            
+
             // Update backend when slider is released
             historySizeSlider.addEventListener('change', (e) => {
                 const newSize = parseInt(e.target.value, 10);
@@ -1362,8 +1413,8 @@
             loadActivityTrackerLeaderboard();
         }
         
-        // Auto-refresh status — partial DOM update so user state is preserved
-        const refreshInterval = /*[[${refreshIntervalMs}]]*/ 1800000;
+        // Auto-refresh status — partial DOM update so user state is preserved.
+        // refreshInterval is declared at the top of the script.
 
         async function refreshStatus() {
             try {

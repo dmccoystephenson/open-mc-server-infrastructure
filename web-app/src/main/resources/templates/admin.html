@@ -427,7 +427,7 @@
             </div>
             
             <div id="pluginsListContainer" style="margin-top: 20px;">
-                <div class="empty-state">Click "Refresh List" to load plugins</div>
+                <div class="empty-state">Enter credentials above, then click <strong>Refresh List</strong> to load installed plugins.</div>
             </div>
         </div>
     </div>
@@ -461,6 +461,26 @@
             }
             return creds;
         }
+
+        // Once the user has finished entering both fields, auto-load the plugin
+        // list so they don't have to also click "Refresh List". This removes a
+        // step without changing the underlying authentication model.
+        let pluginsAutoLoaded = false;
+        function maybeAutoLoadPlugins() {
+            if (pluginsAutoLoaded) return;
+            const { username, password } = getCredentials();
+            if (username && password) {
+                pluginsAutoLoaded = true;
+                refreshPlugins();
+            }
+        }
+        document.addEventListener('DOMContentLoaded', () => {
+            const pw = document.getElementById('passwordInput');
+            const un = document.getElementById('usernameInput');
+            // Trigger on the second field losing focus (typical "I'm done entering creds" signal).
+            pw.addEventListener('blur', maybeAutoLoadPlugins);
+            un.addEventListener('blur', maybeAutoLoadPlugins);
+        });
         
         async function sendCommand(event) {
             event.preventDefault();
