@@ -572,8 +572,8 @@
                 <div class="quick-stat">
                     <span class="quick-stat-label">Status</span>
                     <span class="quick-stat-value" id="sidebar-status">
-                        <span th:class="${status.online} ? 'status-indicator status-online' : 'status-indicator status-offline'"></span>
-                        <span th:text="${status.online} ? 'Online' : 'Offline'">Online</span>
+                        <span data-status-online th:class="${status.online} ? 'status-indicator status-online' : 'status-indicator status-offline'"></span>
+                        <span data-status-text th:text="${status.online} ? 'Online' : 'Offline'">Online</span>
                     </span>
                 </div>
                 <div class="quick-stat">
@@ -631,8 +631,8 @@
             <div class="info-row">
                 <span class="info-label">Status</span>
                 <span class="info-value">
-                    <span th:class="${status.online} ? 'status-indicator status-online' : 'status-indicator status-offline'"></span>
-                    <span th:text="${status.online} ? 'Online' : 'Offline'">Online</span>
+                    <span data-status-online th:class="${status.online} ? 'status-indicator status-online' : 'status-indicator status-offline'"></span>
+                    <span data-status-text th:text="${status.online} ? 'Online' : 'Offline'">Online</span>
                 </span>
             </div>
             <div class="info-row">
@@ -1362,21 +1362,39 @@
             loadActivityTrackerLeaderboard();
         }
         
-        // Auto-refresh status
+        // Auto-refresh status — partial DOM update so user state is preserved
         const refreshInterval = /*[[${refreshIntervalMs}]]*/ 1800000;
-        setInterval(async () => {
+
+        async function refreshStatus() {
             try {
                 const response = await fetch('/api/status');
+                if (!response.ok) throw new Error('HTTP ' + response.status);
                 const status = await response.json();
-                loadHistory(); // Refresh history chart
-                if (activityTrackerEnabled) {
-                    loadActivityTrackerStats();
-                    loadActivityTrackerLeaderboard();
-                }
-                location.reload();
+
+                document.querySelectorAll('[data-status-online]').forEach(el => {
+                    el.className = status.online
+                        ? 'status-indicator status-online'
+                        : 'status-indicator status-offline';
+                });
+                document.querySelectorAll('[data-status-text]').forEach(el => {
+                    el.textContent = status.online ? 'Online' : 'Offline';
+                });
+
+                // Update Last Updated relative timestamp (server-rendered value remains; recompute relative)
+                updateRelativeTime();
             } catch (error) {
                 console.error('Failed to refresh status:', error);
             }
+        }
+
+        setInterval(() => {
+            refreshStatus();
+            loadHistory();
+            if (activityTrackerEnabled) {
+                loadActivityTrackerStats();
+                loadActivityTrackerLeaderboard();
+            }
+            loadDeploymentHistory();
         }, refreshInterval);
     </script>
 </body>

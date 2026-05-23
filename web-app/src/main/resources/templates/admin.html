@@ -274,9 +274,60 @@
             text-align: center;
             color: var(--text-faint);
         }
+
+        .field {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            margin-bottom: 12px;
+        }
+
+        .field label {
+            font-weight: 600;
+            font-size: 0.9em;
+            color: var(--text-muted);
+        }
+
+        .toast-region {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            max-width: 360px;
+        }
+
+        .toast {
+            padding: 12px 16px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            color: white;
+            font-weight: 500;
+            animation: toastIn 0.25s ease-out;
+        }
+
+        .toast.success { background: #10b981; }
+        .toast.error { background: #ef4444; }
+        .toast.info { background: #3b82f6; }
+
+        @keyframes toastIn {
+            from { transform: translateX(20px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        @media (max-width: 600px) {
+            .toast-region {
+                left: 10px;
+                right: 10px;
+                max-width: none;
+            }
+        }
     </style>
 </head>
 <body>
+    <div id="toastRegion" class="toast-region" role="region" aria-label="Notifications" aria-live="polite"></div>
     <div class="container">
         <div class="header">
             <h1 th:text="'🎮 ' + ${dashboardTitle}">🎮 Minecraft Server Dashboard</h1>
@@ -298,17 +349,23 @@
         <div class="card">
             <h2>Authentication</h2>
             <p style="color: var(--text-muted); margin-bottom: 15px;">Enter your admin credentials to access all admin features</p>
-            <input type="text" 
-                   id="usernameInput" 
-                   class="command-input" 
-                   placeholder="Admin username" 
-                   style="margin-bottom: 10px;"
-                   required>
-            <input type="password" 
-                   id="passwordInput" 
-                   class="command-input" 
-                   placeholder="Admin password" 
-                   required>
+            <div class="field">
+                <label for="usernameInput">Admin username</label>
+                <input type="text"
+                       id="usernameInput"
+                       class="command-input"
+                       autocomplete="username"
+                       placeholder="e.g. admin"
+                       required>
+            </div>
+            <div class="field">
+                <label for="passwordInput">Admin password</label>
+                <input type="password"
+                       id="passwordInput"
+                       class="command-input"
+                       autocomplete="current-password"
+                       required>
+            </div>
         </div>
         
         <!-- Server Commands Card -->
@@ -316,16 +373,19 @@
             <h2>Server Commands</h2>
             <p style="color: var(--text-muted); margin-bottom: 15px;">Send commands to the server using RCON</p>
             <form class="command-form" onsubmit="sendCommand(event)">
-                <div class="command-row">
-                    <input type="text" 
-                           id="commandInput" 
-                           class="command-input" 
-                           placeholder="Enter server command (e.g., list, say Hello)" 
-                           required>
-                    <button type="submit" class="btn btn-primary">Send</button>
+                <div class="field">
+                    <label for="commandInput">Server command</label>
+                    <div class="command-row">
+                        <input type="text"
+                               id="commandInput"
+                               class="command-input"
+                               placeholder="e.g. list, say Hello"
+                               required>
+                        <button type="submit" class="btn btn-primary">Send</button>
+                    </div>
                 </div>
             </form>
-            <div id="commandOutput" class="command-output"></div>
+            <div id="commandOutput" class="command-output" role="log" aria-live="polite"></div>
         </div>
         
         <!-- Server Control Card -->
@@ -378,22 +438,41 @@
             const password = document.getElementById('passwordInput').value.trim();
             return { username, password };
         }
+
+        const toastRegion = document.getElementById('toastRegion');
+        function showToast(message, variant = 'info', durationMs = 4000) {
+            const toast = document.createElement('div');
+            toast.className = `toast ${variant}`;
+            toast.textContent = message;
+            toastRegion.appendChild(toast);
+            setTimeout(() => {
+                toast.style.transition = 'opacity 0.3s ease';
+                toast.style.opacity = '0';
+                setTimeout(() => toast.remove(), 300);
+            }, durationMs);
+        }
+
+        function requireCredentials() {
+            const creds = getCredentials();
+            if (!creds.username || !creds.password) {
+                showToast('Please enter your admin username and password above.', 'error');
+                document.getElementById('usernameInput').focus();
+                return null;
+            }
+            return creds;
+        }
         
         async function sendCommand(event) {
             event.preventDefault();
-            
+
             const commandInput = document.getElementById('commandInput');
             const output = document.getElementById('commandOutput');
-            
-            const { username, password } = getCredentials();
+
+            const creds = requireCredentials();
+            if (!creds) return;
+            const { username, password } = creds;
             const command = commandInput.value.trim();
-            
-            if (!username || !password) {
-                output.textContent = 'Error: Please enter username and password above';
-                output.classList.add('show');
-                return;
-            }
-            
+
             if (!command) return;
             
             output.textContent = 'Sending command...';
@@ -429,13 +508,10 @@
         }
         
         async function refreshPlugins() {
-            const { username, password } = getCredentials();
-            
-            if (!username || !password) {
-                alert('Please enter username and password above');
-                return;
-            }
-            
+            const creds = requireCredentials();
+            if (!creds) return;
+            const { username, password } = creds;
+
             const container = document.getElementById('pluginsListContainer');
             container.innerHTML = '<div class="empty-state">Loading plugins...</div>';
             
@@ -486,58 +562,51 @@
         }
         
         async function uploadPlugin() {
-            const { username, password } = getCredentials();
-            
-            if (!username || !password) {
-                alert('Please enter username and password above');
-                return;
-            }
-            
+            const creds = requireCredentials();
+            if (!creds) return;
+            const { username, password } = creds;
+
             const fileInput = document.getElementById('pluginFileInput');
             if (!fileInput.files.length) {
-                alert('Please select a plugin file');
+                showToast('Please select a plugin file first.', 'error');
                 return;
             }
-            
+
             const formData = new FormData();
             formData.append('username', username);
             formData.append('password', password);
             formData.append('file', fileInput.files[0]);
-            
+
             try {
                 const response = await fetch('/api/plugins/upload', {
                     method: 'POST',
                     body: formData
                 });
-                
+
                 const data = await response.json();
-                
+
                 if (data.success) {
-                    alert(data.message);
+                    showToast(data.message || 'Plugin uploaded.', 'success');
                     fileInput.value = '';
                     document.getElementById('selectedFileName').textContent = '';
                     refreshPlugins();
                 } else {
-                    alert(data.error || data.message);
+                    showToast(data.error || data.message || 'Upload failed.', 'error');
                 }
             } catch (error) {
-                alert('Error uploading plugin: ' + error.message);
+                showToast('Error uploading plugin: ' + error.message, 'error');
             }
         }
         
         async function deletePlugin(filename) {
-            const safeFilename = escapeHtml(String(filename));
-            if (!confirm(`Are you sure you want to delete ${safeFilename}?`)) {
+            if (!confirm(`Delete plugin "${filename}"? This cannot be undone.`)) {
                 return;
             }
-            
-            const { username, password } = getCredentials();
-            
-            if (!username || !password) {
-                alert('Please enter username and password above');
-                return;
-            }
-            
+
+            const creds = requireCredentials();
+            if (!creds) return;
+            const { username, password } = creds;
+
             try {
                 const response = await fetch('/api/plugins/delete', {
                     method: 'POST',
@@ -550,17 +619,17 @@
                         filename: filename
                     })
                 });
-                
+
                 const data = await response.json();
-                
+
                 if (data.success) {
-                    alert(data.message);
+                    showToast(data.message || `Deleted ${filename}.`, 'success');
                     refreshPlugins();
                 } else {
-                    alert(data.error || data.message);
+                    showToast(data.error || data.message || 'Delete failed.', 'error');
                 }
             } catch (error) {
-                alert('Error deleting plugin: ' + error.message);
+                showToast('Error deleting plugin: ' + error.message, 'error');
             }
         }
         
@@ -571,13 +640,10 @@
         }
         
         async function startServer() {
-            const { username, password } = getCredentials();
-            
-            if (!username || !password) {
-                alert('Please enter username and password above');
-                return;
-            }
-            
+            const creds = requireCredentials();
+            if (!creds) return;
+            const { username, password } = creds;
+
             const output = document.getElementById('serverControlOutput');
             output.textContent = 'Starting server...';
             output.classList.add('show');
@@ -602,14 +668,11 @@
         }
         
         async function stopServer() {
-            const { username, password } = getCredentials();
-            
-            if (!username || !password) {
-                alert('Please enter username and password above');
-                return;
-            }
-            
-            if (!confirm('Are you sure you want to stop the server?')) {
+            const creds = requireCredentials();
+            if (!creds) return;
+            const { username, password } = creds;
+
+            if (!confirm('Stop the Minecraft server? Connected players will be disconnected.')) {
                 return;
             }
             
@@ -637,14 +700,11 @@
         }
         
         async function restartServer() {
-            const { username, password } = getCredentials();
-            
-            if (!username || !password) {
-                alert('Please enter username and password above');
-                return;
-            }
-            
-            if (!confirm('Are you sure you want to restart the server?')) {
+            const creds = requireCredentials();
+            if (!creds) return;
+            const { username, password } = creds;
+
+            if (!confirm('Restart the Minecraft server? Connected players will be briefly disconnected.')) {
                 return;
             }
             
