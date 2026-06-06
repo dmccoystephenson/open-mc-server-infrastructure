@@ -55,6 +55,11 @@ jobs:
           # Version is validated above; simple assignment is safe here
           echo "version=${version}" >> "$GITHUB_OUTPUT"
 
+      # QEMU enables cross-building the arm64 image on the amd64 runner so the
+      # published manifest serves ARM hosts (e.g. Hetzner CAX, Oracle Ampere).
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -70,6 +75,8 @@ jobs:
         with:
           context: .
           file: Dockerfile
+          # Multi-arch manifest so the image runs on both x86 and ARM hosts.
+          platforms: linux/amd64,linux/arm64
           build-args: MINECRAFT_VERSION=${{ steps.mc_version.outputs.version }}
           push: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.push_images == 'true' }}
           tags: |
@@ -77,8 +84,10 @@ jobs:
             dmccoystephenson/open-mc-server:${{ steps.mc_version.outputs.version }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          # BuildTools downloads Spigot source and compiles it — this takes ~20 minutes.
-          # The GHA cache significantly reduces rebuild time on subsequent runs.
+          # BuildTools downloads Spigot source and compiles it — this takes ~20 minutes
+          # on amd64. The arm64 leg builds under QEMU emulation and is significantly
+          # slower; for faster builds, run this job on a native arm64 runner and drop
+          # QEMU. The GHA cache significantly reduces rebuild time on subsequent runs.
 
   build-supporting-images:
     name: Build supporting images
@@ -106,6 +115,11 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      # QEMU enables cross-building the arm64 images on the amd64 runner so the
+      # published manifests serve ARM hosts (e.g. Hetzner CAX, Oracle Ampere).
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -121,6 +135,8 @@ jobs:
         with:
           context: ${{ matrix.context }}
           file: ${{ matrix.dockerfile }}
+          # Multi-arch manifest so the image runs on both x86 and ARM hosts.
+          platforms: linux/amd64,linux/arm64
           push: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.push_images == 'true' }}
           tags: dmccoystephenson/${{ matrix.name }}:latest
           cache-from: type=gha

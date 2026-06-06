@@ -169,6 +169,9 @@ spec:
       targetPort: minecraft
       protocol: TCP
       name: minecraft
+      {{- if and (eq .Values.minecraftWrapper.service.type "NodePort") .Values.minecraftWrapper.service.nodePort }}
+      nodePort: {{ .Values.minecraftWrapper.service.nodePort }}
+      {{- end }}
   selector:
     {{- include "omcsi.selectorLabels" (dict "root" . "component" "minecraft-wrapper") | nindent 4 }}
 ---

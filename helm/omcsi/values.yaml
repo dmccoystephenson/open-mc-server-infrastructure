@@ -43,6 +43,13 @@ minecraftWrapper:
     # External service exposes only the Minecraft game port.
     type: NodePort
     minecraftPort: 25565
+    # Optional fixed NodePort for the Minecraft game port. Only applied when
+    # type is "NodePort". Leave empty to let Kubernetes auto-assign a port from
+    # the cluster's service-node-port-range (default 30000-32767). To serve the
+    # standard 25565 directly on the node IP (single-node / bare-VPS setups),
+    # set this to 25565 AND widen the apiserver --service-node-port-range to
+    # include it (e.g. 80-32767). See terraform/hetzner for a worked example.
+    nodePort: ""
   # Internal ClusterIP service for RCON, BlueMap, and wrapper API.
   internalService:
     rconPort: 25575
@@ -129,6 +136,13 @@ nginx:
     type: LoadBalancer
     httpPort: 80
     httpsPort: 443
+    # Optional fixed NodePorts for HTTP/HTTPS. Only applied when type is
+    # "NodePort". Leave empty to let Kubernetes auto-assign. To serve the
+    # dashboard on standard 80/443 directly on the node IP (single-node /
+    # bare-VPS setups), set these AND widen the apiserver
+    # --service-node-port-range to include them (e.g. 80-32767).
+    httpNodePort: ""
+    httpsNodePort: ""
   tls:
     # When true, a self-signed certificate is generated via an init container
     # (same behaviour as the Docker Compose setup).

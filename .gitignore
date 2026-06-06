@@ -38,3 +38,4 @@ terraform/**/*.tfstate
 terraform/**/*.tfstate.backup
 terraform/**/terraform.tfvars
 terraform/linode/kubeconfig.yaml
+terraform/hetzner/kubeconfig.yaml

@@ -1,0 +1,65 @@
+suite: nginx
+templates:
+  - templates/nginx.yaml
+set:
+  secrets.rconPassword: ci
+  secrets.adminPassword: ci
+tests:
+  - it: service is a LoadBalancer exposing HTTP and HTTPS by default
+    asserts:
+      - isKind:
+          of: Service
+        documentIndex: 1
+      - equal:
+          path: spec.type
+          value: LoadBalancer
+        documentIndex: 1
+      - equal:
+          path: spec.ports[0].port
+          value: 80
+        documentIndex: 1
+      - equal:
+          path: spec.ports[1].port
+          value: 443
+        documentIndex: 1
+
+  - it: service has no fixed nodePorts by default
+    asserts:
+      - notExists:
+          path: spec.ports[0].nodePort
+        documentIndex: 1
+      - notExists:
+          path: spec.ports[1].nodePort
+        documentIndex: 1
+
+  - it: nodePorts are pinned when set on a NodePort service
+    set:
+      nginx.service.type: NodePort
+      nginx.service.httpNodePort: 80
+      nginx.service.httpsNodePort: 443
+    asserts:
+      - equal:
+          path: spec.type
+          value: NodePort
+        documentIndex: 1
+      - equal:
+          path: spec.ports[0].nodePort
+          value: 80
+        documentIndex: 1
+      - equal:
+          path: spec.ports[1].nodePort
+          value: 443
+        documentIndex: 1
+
+  - it: nodePorts are ignored for non-NodePort service types
+    set:
+      nginx.service.type: LoadBalancer
+      nginx.service.httpNodePort: 80
+      nginx.service.httpsNodePort: 443
+    asserts:
+      - notExists:
+          path: spec.ports[0].nodePort
+        documentIndex: 1
+      - notExists:
+          path: spec.ports[1].nodePort
+        documentIndex: 1
