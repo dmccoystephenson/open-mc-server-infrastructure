@@ -150,7 +150,7 @@ resource "null_resource" "deploy" {
     type        = "ssh"
     host        = hcloud_server.omcsi.ipv4_address
     user        = "root"
-    private_key = file(var.ssh_private_key_path)
+    private_key = file(pathexpand(var.ssh_private_key_path))
     timeout     = "10m"
   }
 
@@ -196,7 +196,7 @@ resource "null_resource" "kubeconfig" {
   provisioner "local-exec" {
     interpreter = ["/bin/bash", "-c"]
     command     = <<-EOT
-      ssh -i '${var.ssh_private_key_path}' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+      ssh -i '${pathexpand(var.ssh_private_key_path)}' -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
         root@${hcloud_server.omcsi.ipv4_address} 'cat /etc/kubernetes/admin.conf' \
         | sed 's#server: https://[^:]*:6443#server: https://${hcloud_server.omcsi.ipv4_address}:6443#' \
         > '${path.module}/kubeconfig.yaml'
