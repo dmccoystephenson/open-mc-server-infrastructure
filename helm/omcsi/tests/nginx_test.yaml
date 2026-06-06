@@ -13,6 +13,7 @@ tests:
     documentSelector:
       path: kind
       value: Service
+      skipEmptyTemplates: true
     asserts:
       - equal:
           path: spec.type
@@ -28,6 +29,7 @@ tests:
     documentSelector:
       path: kind
       value: Service
+      skipEmptyTemplates: true
     asserts:
       - notExists:
           path: spec.ports[0].nodePort
@@ -42,6 +44,7 @@ tests:
     documentSelector:
       path: kind
       value: Service
+      skipEmptyTemplates: true
     asserts:
       - equal:
           path: spec.type
@@ -61,6 +64,7 @@ tests:
     documentSelector:
       path: kind
       value: Service
+      skipEmptyTemplates: true
     asserts:
       - notExists:
           path: spec.ports[0].nodePort
