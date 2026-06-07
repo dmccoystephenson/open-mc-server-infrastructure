@@ -96,6 +96,14 @@ spec:
         - podSelector:
             matchLabels:
               {{- include "omcsi.selectorLabels" (dict "root" . "component" "webapp") | nindent 14 }}
+    # Mojang authentication (online-mode=true) and any other external HTTPS
+    # Required for player login via api.minecraftservices.com / sessionserver.mojang.com
+    - ports:
+        - port: 443
+          protocol: TCP
+      to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
     # DNS — scoped to CoreDNS (adjust networkPolicy.dnsNamespaceSelector/dnsPodSelector for non-standard distros)
     - ports:
         - port: 53
