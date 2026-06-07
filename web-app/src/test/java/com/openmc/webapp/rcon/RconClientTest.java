@@ -40,9 +40,9 @@ class RconClientTest {
     @Test
     @DisplayName("Should close its socket when RCON authentication fails (no FD leak)")
     void shouldCloseSocketWhenAuthenticationFails() throws Exception {
+        ExecutorService executor = Executors.newSingleThreadExecutor();
         try (ServerSocket server = new ServerSocket(0)) {
             int port = server.getLocalPort();
-            ExecutorService executor = Executors.newSingleThreadExecutor();
 
             // The fake RCON server completes the auth handshake with a failure
             // (requestId == -1), then reports what it observes afterwards:
@@ -80,10 +80,11 @@ class RconClientTest {
             assertThrows(IOException.class, () -> new RconClient("localhost", port, "wrong-password"));
 
             int observed = postAuthRead.get(10, TimeUnit.SECONDS);
-            executor.shutdownNow();
             assertEquals(-1, observed,
                     "RconClient must close its socket after an auth failure; the server should "
                             + "observe EOF rather than a still-open connection.");
+        } finally {
+            executor.shutdownNow();
         }
     }
 
