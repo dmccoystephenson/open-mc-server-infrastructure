@@ -167,12 +167,35 @@
         
         .command-form {
             display: flex;
-            gap: 10px;
+            flex-direction: column;
+            gap: 12px;
             margin-top: 15px;
         }
-        
-        .command-input {
+
+        .field {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .field label {
+            font-weight: 600;
+            font-size: 0.9em;
+            color: var(--text-muted);
+        }
+
+        .command-row {
+            display: flex;
+            gap: 10px;
+            align-items: flex-end;
+        }
+
+        .command-row .field {
             flex: 1;
+        }
+
+        .command-input {
+            width: 100%;
             padding: 12px;
             border: 2px solid var(--input-border);
             border-radius: 8px;
@@ -208,6 +231,34 @@
             color: var(--text-faint);
             font-style: italic;
         }
+
+        .refresh-status {
+            text-align: center;
+            color: rgba(255,255,255,0.85);
+            font-size: 0.85em;
+            margin-bottom: 15px;
+        }
+
+        .refresh-status .refresh-dot {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.7);
+            margin-right: 6px;
+            vertical-align: middle;
+            transition: background 0.3s ease;
+        }
+
+        .refresh-status.refreshing .refresh-dot {
+            background: #fde68a;
+            animation: pulse 1s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
     </style>
 </head>
 <body>
@@ -216,27 +267,32 @@
             <h1>🎮 Minecraft Server Dashboard</h1>
             <p>Server Management & Information</p>
         </div>
-        
+
+        <div id="refreshStatus" class="refresh-status" role="status" aria-live="polite">
+            <span class="refresh-dot" aria-hidden="true"></span>
+            <span id="refreshStatusText">Status updates automatically</span>
+        </div>
+
         <div class="card">
             <h2>Server Status</h2>
             <div class="info-row">
                 <span class="info-label">Status</span>
                 <span class="info-value">
-                    <span th:class="${status.online} ? 'status-indicator status-online' : 'status-indicator status-offline'"></span>
-                    <span th:text="${status.online} ? 'Online' : 'Offline'">Online</span>
+                    <span id="statusIndicator" th:class="${status.online} ? 'status-indicator status-online' : 'status-indicator status-offline'"></span>
+                    <span id="statusText" th:text="${status.online} ? 'Online' : 'Offline'">Online</span>
                 </span>
             </div>
             <div class="info-row">
                 <span class="info-label">MOTD</span>
-                <span class="info-value" th:text="${status.motd}">A Private Minecraft Server</span>
+                <span class="info-value" id="motdValue" th:text="${status.motd}">A Private Minecraft Server</span>
             </div>
             <div class="info-row">
                 <span class="info-label">Max Players</span>
-                <span class="info-value" th:text="${status.maxPlayers}">20</span>
+                <span class="info-value" id="maxPlayersValue" th:text="${status.maxPlayers}">20</span>
             </div>
             <div class="info-row">
                 <span class="info-label">Current Players</span>
-                <span class="info-value" th:text="${status.playerList}">Loading...</span>
+                <span class="info-value" id="playerListValue" th:text="${status.playerList}">Loading...</span>
             </div>
         </div>
         
@@ -282,26 +338,40 @@
             <h2>Admin Console</h2>
             <p style="color: var(--text-muted); margin-bottom: 15px;">Send commands to the server using RCON</p>
             <form class="command-form" onsubmit="sendCommand(event)">
-                <input type="text" 
-                       id="usernameInput" 
-                       class="command-input" 
-                       placeholder="Admin username" 
-                       required
-                       style="margin-bottom: 10px;">
-                <input type="password" 
-                       id="passwordInput" 
-                       class="command-input" 
-                       placeholder="Admin password" 
-                       required
-                       style="margin-bottom: 10px;">
-                <input type="text" 
-                       id="commandInput" 
-                       class="command-input" 
-                       placeholder="Enter server command (e.g., list, say Hello)" 
-                       required>
-                <button type="submit" class="btn btn-primary">Send</button>
+                <div class="command-row">
+                    <div class="field">
+                        <label for="usernameInput">Admin username</label>
+                        <input type="text"
+                               id="usernameInput"
+                               class="command-input"
+                               autocomplete="username"
+                               placeholder="e.g. admin"
+                               required>
+                    </div>
+                    <div class="field">
+                        <label for="passwordInput">Admin password</label>
+                        <input type="password"
+                               id="passwordInput"
+                               class="command-input"
+                               autocomplete="current-password"
+                               required>
+                    </div>
+                </div>
+                <div class="field">
+                    <label for="commandInput">Server command</label>
+                    <div class="command-row">
+                        <div class="field" style="gap: 0;">
+                            <input type="text"
+                                   id="commandInput"
+                                   class="command-input"
+                                   placeholder="e.g. list, say Hello"
+                                   required>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Send</button>
+                    </div>
+                </div>
             </form>
-            <div id="commandOutput" class="command-output"></div>
+            <div id="commandOutput" class="command-output" role="log" aria-live="polite"></div>
         </div>
     </div>
     
@@ -343,17 +413,51 @@
             }
         }
         
-        // Auto-refresh status
+        // Auto-refresh status — partial DOM update so user input is preserved
         const refreshInterval = /*[[${refreshIntervalMs}]]*/ 1800000;
-        setInterval(async () => {
+        const refreshStatusEl = document.getElementById('refreshStatus');
+        const refreshStatusTextEl = document.getElementById('refreshStatusText');
+
+        function formatNextRefresh(ms) {
+            const totalSeconds = Math.round(ms / 1000);
+            if (totalSeconds < 60) return `${totalSeconds}s`;
+            const minutes = Math.floor(totalSeconds / 60);
+            const seconds = totalSeconds % 60;
+            return seconds === 0 ? `${minutes} min` : `${minutes} min ${seconds}s`;
+        }
+
+        function setRefreshStatus(text, refreshing) {
+            refreshStatusTextEl.textContent = text;
+            refreshStatusEl.classList.toggle('refreshing', !!refreshing);
+        }
+
+        async function refreshStatus() {
+            setRefreshStatus('Refreshing…', true);
             try {
                 const response = await fetch('/api/status');
+                if (!response.ok) throw new Error('HTTP ' + response.status);
                 const status = await response.json();
-                location.reload();
+
+                const indicator = document.getElementById('statusIndicator');
+                const statusText = document.getElementById('statusText');
+                indicator.className = status.online
+                    ? 'status-indicator status-online'
+                    : 'status-indicator status-offline';
+                statusText.textContent = status.online ? 'Online' : 'Offline';
+
+                if (status.motd != null) document.getElementById('motdValue').textContent = status.motd;
+                if (status.maxPlayers != null) document.getElementById('maxPlayersValue').textContent = status.maxPlayers;
+                if (status.playerList != null) document.getElementById('playerListValue').textContent = status.playerList;
+
+                setRefreshStatus(`Updated just now · next in ${formatNextRefresh(refreshInterval)}`, false);
             } catch (error) {
                 console.error('Failed to refresh status:', error);
+                setRefreshStatus('Update failed — will retry', false);
             }
-        }, refreshInterval);
+        }
+
+        setRefreshStatus(`Auto-refreshes every ${formatNextRefresh(refreshInterval)}`, false);
+        setInterval(refreshStatus, refreshInterval);
     </script>
 </body>
 </html>

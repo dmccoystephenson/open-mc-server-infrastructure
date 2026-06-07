@@ -37,15 +37,16 @@ Or use the provided docker-compose which handles this automatically.
 
 The application is configured via environment variables:
 
-- `MC_HOST`: Minecraft server hostname (default: `mcserver`)
+- `MC_HOST`: Minecraft server hostname (default: `minecraft-wrapper` — the wrapper service, not the raw mcserver)
 - `MC_RCON_PORT`: RCON port (default: `25575`)
-- `MC_RCON_PASSWORD`: RCON password (default: `minecraft`)
+- `MC_RCON_PASSWORD`: RCON password (default: `minecraft`). When running via Compose, this is sourced from the top-level `RCON_PASSWORD` in `.env`; see `compose.yml`.
 - `MC_MOTD`: Server MOTD
 - `MC_MAX_PLAYERS`: Maximum players
 - `ADMIN_USERNAME`: Username for admin console (default: `admin`)
 - `ADMIN_PASSWORD`: Password for admin console (default: `admin`)
 - `DYNMAP_URL`: Optional Dynmap URL
 - `BLUEMAP_URL`: Optional BlueMap URL
+- `ACCORDION_CHAT_URL`: Optional Accordion Chat URL (shown as a "Chat" link on the dashboard)
 
 **Security Note**: Change the admin username and password from defaults in production.
 
@@ -55,6 +56,8 @@ Run the application locally:
 
 ```bash
 # Set environment variables
+# (Point MC_HOST at wherever the minecraft-wrapper REST API is reachable;
+# use localhost when running both locally outside Docker.)
 export MC_HOST=localhost
 export MC_RCON_PORT=25575
 export MC_RCON_PASSWORD=minecraft

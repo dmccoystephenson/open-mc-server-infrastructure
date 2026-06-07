@@ -148,6 +148,31 @@ tests:
           value: LoadBalancer
         documentIndex: 1
 
+  - it: external service has no fixed nodePort by default
+    asserts:
+      - notExists:
+          path: spec.ports[0].nodePort
+        documentIndex: 1
+
+  - it: external service nodePort is pinned when set on a NodePort service
+    set:
+      minecraftWrapper.service.type: NodePort
+      minecraftWrapper.service.nodePort: 25565
+    asserts:
+      - equal:
+          path: spec.ports[0].nodePort
+          value: 25565
+        documentIndex: 1
+
+  - it: external service nodePort is ignored for non-NodePort service types
+    set:
+      minecraftWrapper.service.type: LoadBalancer
+      minecraftWrapper.service.nodePort: 25565
+    asserts:
+      - notExists:
+          path: spec.ports[0].nodePort
+        documentIndex: 1
+
   - it: uses emptyDir for mcserver volume when persistence is disabled
     set:
       persistence.mcserver.enabled: false

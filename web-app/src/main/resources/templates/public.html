@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title th:text="${dashboardTitle}">Minecraft Server Dashboard</title>
+    <title th:text="${dashboardTitle} + ' — Dashboard'">Minecraft Server Dashboard — Dashboard</title>
     <style>
         :root {
             --primary-color: /*[[${dashboardPrimaryColor}]]*/ #667eea;
@@ -75,28 +75,50 @@
                     "header header header"
                     "left-sidebar main right-sidebar";
             }
-            
+
             .header-section {
                 grid-area: header;
             }
-            
+
             .left-sidebar {
                 grid-area: left-sidebar;
             }
-            
+
             .main-content {
                 grid-area: main;
             }
-            
+
             .right-sidebar {
                 grid-area: right-sidebar;
             }
         }
-        
+
         @media (max-width: 1023px) {
-            .left-sidebar,
+            /* On small screens: keep header first, then put quick-stats/quick-links
+               above the main content (instead of hiding them entirely as before).
+               Hide the lower-priority Recent Activity sidebar to keep scroll
+               length reasonable. */
+            .header-section { order: 0; }
+            .left-sidebar { order: 1; }
+            .main-content { order: 2; }
             .right-sidebar {
                 display: none;
+            }
+
+            .left-sidebar {
+                display: grid;
+                grid-template-columns: 1fr;
+                gap: 15px;
+            }
+        }
+
+        @media (min-width: 600px) and (max-width: 1023px) {
+            /* Show the two sidebar cards side-by-side on tablet/landscape phones */
+            .left-sidebar {
+                grid-template-columns: 1fr 1fr;
+            }
+            .left-sidebar .sidebar-card {
+                margin-bottom: 0;
             }
         }
         
@@ -548,9 +570,44 @@
             text-align: center;
             color: var(--text-faint);
         }
+
+        .skip-link {
+            position: absolute;
+            top: -40px;
+            left: 8px;
+            background: var(--card-bg);
+            color: var(--primary-color);
+            padding: 8px 16px;
+            border-radius: 6px;
+            text-decoration: none;
+            font-weight: 600;
+            z-index: 1100;
+            transition: top 0.2s ease;
+        }
+        .skip-link:focus {
+            top: 8px;
+            outline: 3px solid var(--primary-color);
+            outline-offset: 2px;
+        }
+
+        .btn:focus-visible,
+        .nav a:focus-visible {
+            outline: 3px solid #fbbf24;
+            outline-offset: 2px;
+        }
+
+        /* Visually-hidden text for screen-readers only (used for chart summaries). */
+        .visually-hidden {
+            position: absolute;
+            width: 1px; height: 1px;
+            padding: 0; margin: -1px;
+            overflow: hidden; clip: rect(0,0,0,0);
+            white-space: nowrap; border: 0;
+        }
     </style>
 </head>
 <body>
+    <a href="#mainContent" class="skip-link">Skip to main content</a>
     <div class="dashboard-grid">
         <!-- Header Section -->
         <div class="header-section">
@@ -572,8 +629,8 @@
                 <div class="quick-stat">
                     <span class="quick-stat-label">Status</span>
                     <span class="quick-stat-value" id="sidebar-status">
-                        <span th:class="${status.online} ? 'status-indicator status-online' : 'status-indicator status-offline'"></span>
-                        <span th:text="${status.online} ? 'Online' : 'Offline'">Online</span>
+                        <span data-status-online th:class="${status.online} ? 'status-indicator status-online' : 'status-indicator status-offline'"></span>
+                        <span data-status-text th:text="${status.online} ? 'Online' : 'Offline'">Online</span>
                     </span>
                 </div>
                 <div class="quick-stat">
@@ -624,15 +681,15 @@
         </aside>
         
         <!-- Main Content -->
-        <main class="main-content">
+        <main class="main-content" id="mainContent">
         
         <div class="card">
             <h2>Server Status</h2>
             <div class="info-row">
                 <span class="info-label">Status</span>
                 <span class="info-value">
-                    <span th:class="${status.online} ? 'status-indicator status-online' : 'status-indicator status-offline'"></span>
-                    <span th:text="${status.online} ? 'Online' : 'Offline'">Online</span>
+                    <span data-status-online th:class="${status.online} ? 'status-indicator status-online' : 'status-indicator status-offline'"></span>
+                    <span data-status-text th:text="${status.online} ? 'Online' : 'Offline'">Online</span>
                 </span>
             </div>
             <div class="info-row">
@@ -732,7 +789,7 @@
             </div>
         </div>
         
-        <div th:if="${activityTrackerEnabled}" class="card">
+        <div th:if="${activityTrackerEnabled}" class="card" id="leaderboard">
             <h2>🏆 Player Leaderboard</h2>
             <p style="color: var(--text-muted); margin-bottom: 15px;">Top 10 players by hours played</p>
             <div id="leaderboardTable">
@@ -745,46 +802,60 @@
             <p style="color: var(--text-muted); margin-bottom: 15px;">Historical server metrics</p>
             
             <div class="history-size-control">
-                <label for="historySizeSlider">History Size:</label>
-                <input type="range" id="historySizeSlider" min="5" max="50" value="10" step="1">
+                <label for="historySizeSlider">History size:</label>
+                <input type="range" id="historySizeSlider" min="5" max="50" value="10" step="1"
+                       aria-describedby="historySizeInfo">
                 <span class="history-size-value" id="historySizeValue">10</span>
-                <div class="history-size-info">Adjust to view more historical data points (session only)</div>
+                <span style="color: var(--text-muted); font-size: 14px;">points</span>
+                <div class="history-size-info" id="historySizeInfo">
+                    Each point is one status check (every <span id="historySizeIntervalText">…</span>).
+                    <span id="historySizeWindowText"></span>
+                </div>
             </div>
             
             <div style="margin-bottom: 30px;">
-                <h3 class="chart-section-title">Player Activity Over Time</h3>
+                <h3 class="chart-section-title" id="playerChartTitle">Player Activity Over Time</h3>
                 <div class="chart-container">
-                    <canvas id="playerChart" class="chart-canvas"></canvas>
+                    <canvas id="playerChart" class="chart-canvas"
+                            role="img" aria-labelledby="playerChartTitle"
+                            aria-describedby="playerChartSummary"></canvas>
                 </div>
+                <div id="playerChartSummary" class="visually-hidden" aria-live="polite">Chart loading…</div>
                 <div class="chart-legend">
                     <div class="chart-legend-item">
-                        <div class="chart-legend-color" style="background: #22c55e;"></div>
+                        <div class="chart-legend-color" style="background: #22c55e;" aria-hidden="true"></div>
                         <span>Players Online</span>
                     </div>
                 </div>
             </div>
-            
+
             <div>
-                <h3 class="chart-section-title">Memory Usage Over Time</h3>
+                <h3 class="chart-section-title" id="memoryChartTitle">Memory Usage Over Time</h3>
                 <div class="chart-container">
-                    <canvas id="memoryChart" class="chart-canvas"></canvas>
+                    <canvas id="memoryChart" class="chart-canvas"
+                            role="img" aria-labelledby="memoryChartTitle"
+                            aria-describedby="memoryChartSummary"></canvas>
                 </div>
+                <div id="memoryChartSummary" class="visually-hidden" aria-live="polite">Chart loading…</div>
                 <div class="chart-legend">
                     <div class="chart-legend-item">
-                        <div class="chart-legend-color" style="background: #3b82f6;"></div>
+                        <div class="chart-legend-color" style="background: #3b82f6;" aria-hidden="true"></div>
                         <span>Memory Usage %</span>
                     </div>
                 </div>
             </div>
-            
+
             <div style="margin-top: 30px;">
-                <h3 class="chart-section-title">TPS (Ticks Per Second) Over Time</h3>
+                <h3 class="chart-section-title" id="tpsChartTitle">TPS (Ticks Per Second) Over Time</h3>
                 <div class="chart-container">
-                    <canvas id="tpsChart" class="chart-canvas"></canvas>
+                    <canvas id="tpsChart" class="chart-canvas"
+                            role="img" aria-labelledby="tpsChartTitle"
+                            aria-describedby="tpsChartSummary"></canvas>
                 </div>
+                <div id="tpsChartSummary" class="visually-hidden" aria-live="polite">Chart loading…</div>
                 <div class="chart-legend">
                     <div class="chart-legend-item">
-                        <div class="chart-legend-color" style="background: #f59e0b;"></div>
+                        <div class="chart-legend-color" style="background: #f59e0b;" aria-hidden="true"></div>
                         <span>TPS</span>
                     </div>
                 </div>
@@ -815,6 +886,9 @@
     </div>
     
     <script th:inline="javascript">
+        // Refresh interval (ms) is also used by the history-size hint, so hoist it.
+        const refreshInterval = /*[[${refreshIntervalMs}]]*/ 1800000;
+
         // Utility function to convert timestamp to relative time
         function getRelativeTime(timestamp) {
             if (!timestamp) return 'N/A';
@@ -1048,7 +1122,26 @@
                     yMin: 0,
                     yMax: 20
                 });
-                
+
+                // Accessible summaries — screen readers can't read a canvas.
+                function summarize(label, points, unit, decimals) {
+                    if (!points.length) return `${label}: no data available.`;
+                    const values = points.map(p => p.value);
+                    const min = Math.min(...values);
+                    const max = Math.max(...values);
+                    const latest = values[values.length - 1];
+                    const fmt = (n) => decimals != null ? n.toFixed(decimals) : Math.round(n);
+                    return `${label} over the last ${points.length} samples: ` +
+                        `latest ${fmt(latest)}${unit}, ` +
+                        `min ${fmt(min)}${unit}, max ${fmt(max)}${unit}.`;
+                }
+                const playerSummaryEl = document.getElementById('playerChartSummary');
+                const memorySummaryEl = document.getElementById('memoryChartSummary');
+                const tpsSummaryEl = document.getElementById('tpsChartSummary');
+                if (playerSummaryEl) playerSummaryEl.textContent = summarize('Players online', playerData, '', 0);
+                if (memorySummaryEl) memorySummaryEl.textContent = summarize('Memory usage', memoryData, '%', 1);
+                if (tpsSummaryEl) tpsSummaryEl.textContent = summarize('TPS', tpsData, '', 1);
+
                 // Update recent activity sidebar
                 updateRecentActivity(reversedHistory);
                 
@@ -1268,6 +1361,25 @@
         const historySizeSlider = document.getElementById('historySizeSlider');
         const historySizeValue = document.getElementById('historySizeValue');
         
+        function formatDuration(ms) {
+            const totalSeconds = Math.round(ms / 1000);
+            if (totalSeconds < 60) return `${totalSeconds} sec`;
+            const minutes = Math.floor(totalSeconds / 60);
+            const seconds = totalSeconds % 60;
+            if (minutes < 60) return seconds === 0 ? `${minutes} min` : `${minutes} min ${seconds} sec`;
+            const hours = Math.floor(minutes / 60);
+            const remMin = minutes % 60;
+            return remMin === 0 ? `${hours} hr` : `${hours} hr ${remMin} min`;
+        }
+
+        function updateHistorySizeHints(size) {
+            const intervalEl = document.getElementById('historySizeIntervalText');
+            const windowEl = document.getElementById('historySizeWindowText');
+            if (intervalEl) intervalEl.textContent = formatDuration(refreshInterval);
+            if (windowEl) windowEl.textContent =
+                `Covers about ${formatDuration(refreshInterval * size)} of history (session only).`;
+        }
+
         if (historySizeSlider && historySizeValue) {
             // Fetch current max size on load
             fetch('/api/history/max-size')
@@ -1276,14 +1388,16 @@
                     const currentSize = data.maxSize || 10;
                     historySizeSlider.value = currentSize;
                     historySizeValue.textContent = currentSize;
+                    updateHistorySizeHints(currentSize);
                 })
                 .catch(error => console.error('Failed to fetch current history size:', error));
-            
+
             // Update display value as slider moves
             historySizeSlider.addEventListener('input', (e) => {
                 historySizeValue.textContent = e.target.value;
+                updateHistorySizeHints(parseInt(e.target.value, 10));
             });
-            
+
             // Update backend when slider is released
             historySizeSlider.addEventListener('change', (e) => {
                 const newSize = parseInt(e.target.value, 10);
@@ -1362,21 +1476,39 @@
             loadActivityTrackerLeaderboard();
         }
         
-        // Auto-refresh status
-        const refreshInterval = /*[[${refreshIntervalMs}]]*/ 1800000;
-        setInterval(async () => {
+        // Auto-refresh status — partial DOM update so user state is preserved.
+        // refreshInterval is declared at the top of the script.
+
+        async function refreshStatus() {
             try {
                 const response = await fetch('/api/status');
+                if (!response.ok) throw new Error('HTTP ' + response.status);
                 const status = await response.json();
-                loadHistory(); // Refresh history chart
-                if (activityTrackerEnabled) {
-                    loadActivityTrackerStats();
-                    loadActivityTrackerLeaderboard();
-                }
-                location.reload();
+
+                document.querySelectorAll('[data-status-online]').forEach(el => {
+                    el.className = status.online
+                        ? 'status-indicator status-online'
+                        : 'status-indicator status-offline';
+                });
+                document.querySelectorAll('[data-status-text]').forEach(el => {
+                    el.textContent = status.online ? 'Online' : 'Offline';
+                });
+
+                // Update Last Updated relative timestamp (server-rendered value remains; recompute relative)
+                updateRelativeTime();
             } catch (error) {
                 console.error('Failed to refresh status:', error);
             }
+        }
+
+        setInterval(() => {
+            refreshStatus();
+            loadHistory();
+            if (activityTrackerEnabled) {
+                loadActivityTrackerStats();
+                loadActivityTrackerLeaderboard();
+            }
+            loadDeploymentHistory();
         }, refreshInterval);
     </script>
 </body>

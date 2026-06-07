@@ -368,6 +368,24 @@ jobs:
         terraform -chdir=terraform/existing-cluster validate
         echo "✓ Existing Cluster Terraform configuration is valid"
 
+    - name: Terraform fmt check (Hetzner)
+      run: |
+        echo "🔍 Checking Terraform formatting (Hetzner)..."
+        terraform -chdir=terraform/hetzner fmt -check -diff
+        echo "✓ Hetzner Terraform files are properly formatted"
+
+    - name: Terraform init (Hetzner)
+      run: |
+        echo "⚙️ Initializing Terraform (Hetzner)..."
+        terraform -chdir=terraform/hetzner init -backend=false
+        echo "✓ Hetzner Terraform initialized"
+
+    - name: Terraform validate (Hetzner)
+      run: |
+        echo "✅ Validating Terraform configuration (Hetzner)..."
+        terraform -chdir=terraform/hetzner validate
+        echo "✓ Hetzner Terraform configuration is valid"
+
   security-scan:
     name: Security Scanning
     runs-on: ubuntu-latest

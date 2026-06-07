@@ -32,6 +32,7 @@ Checklist for any PR touching services, config, or infrastructure:
 | `sample.env` | Template for all environment variables (Docker) |
 | `up.sh` / `down.sh` | Docker Compose lifecycle scripts |
 | `helm/omcsi/` | Helm chart for Kubernetes deployment |
+| `terraform/hetzner/` | Terraform config that provisions one Hetzner server, self-manages a single-node kubeadm cluster on it (cloud-init), and deploys the Helm chart — the cheapest cloud target (~$14/mo). Deploys via SSH from the node (not the Helm provider) since a kubeadm node has no API credentials as resource attributes at plan time. |
 | `terraform/linode/` | Terraform config that provisions LKE and deploys the Helm chart |
 | `<service>/` | One directory per service (source code, Dockerfile) |
 | `scripts/ci-local.sh` | Local CI validation script |
@@ -45,7 +46,7 @@ Checklist for any PR touching services, config, or infrastructure:
 | `nginx` | 80 / 443 | Reverse proxy |
 | `alert-manager` | 8090 | Discord webhook notifications |
 | `backup-manager` | 8091 | Scheduled backups |
-| `agent-manager` | 8093 / 8094 | Discord AI bot (disabled by default) |
+| `agent-manager` | 8093 (API), 8094 (Spring management/actuator, container-internal) | Discord AI bot (disabled by default) |
 
 ## Verification Before Marking Work Done
 

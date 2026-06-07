@@ -26,6 +26,13 @@ This guide provides a comprehensive process for upgrading your Minecraft server 
 - Access to the server host machine
 - Sufficient disk space for backups (at least 2x your current world size)
 - Knowledge of the target Minecraft version you want to upgrade to
+- A working JDK if you intend to rebuild any Spring Boot modules locally
+  (`web-app`, `minecraft-wrapper`, `agent-manager`, etc.) outside of Docker.
+  The service containers ship with **JDK 21** (`eclipse-temurin:21-jre`); the
+  main Minecraft server image builds Spigot with **JDK 25**
+  (`eclipse-temurin:25.0.3_9-jdk-noble`). If you only edit the `.env` file
+  and rebuild via `./upgrade.sh` or `docker compose build`, no host JDK is
+  required — Docker handles everything.
 
 ## Upgrade Process
 

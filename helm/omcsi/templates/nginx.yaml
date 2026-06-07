@@ -123,9 +123,15 @@ spec:
       targetPort: http
       protocol: TCP
       name: http
+      {{- if and (eq .Values.nginx.service.type "NodePort") .Values.nginx.service.httpNodePort }}
+      nodePort: {{ .Values.nginx.service.httpNodePort }}
+      {{- end }}
     - port: {{ .Values.nginx.service.httpsPort }}
       targetPort: https
       protocol: TCP
       name: https
+      {{- if and (eq .Values.nginx.service.type "NodePort") .Values.nginx.service.httpsNodePort }}
+      nodePort: {{ .Values.nginx.service.httpsNodePort }}
+      {{- end }}
   selector:
     {{- include "omcsi.selectorLabels" (dict "root" . "component" "nginx") | nindent 4 }}
