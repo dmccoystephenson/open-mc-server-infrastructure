@@ -158,11 +158,11 @@ tests:
   - it: all policies include a DNS egress rule scoped to CoreDNS
     asserts:
       - equal:
-          path: spec.egress[2].ports[0].port
+          path: spec.egress[3].ports[0].port
           value: 53
         documentIndex: 0
       - isNotNull:
-          path: spec.egress[2].to[0].namespaceSelector
+          path: spec.egress[3].to[0].namespaceSelector
         documentIndex: 0
       - equal:
           path: spec.egress[2].ports[0].port
