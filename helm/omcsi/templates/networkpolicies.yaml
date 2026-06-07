@@ -45,6 +45,9 @@ spec:
         - podSelector:
             matchLabels:
               {{- include "omcsi.selectorLabels" (dict "root" . "component" "agent-manager") | nindent 14 }}
+        - podSelector:
+            matchLabels:
+              {{- include "omcsi.selectorLabels" (dict "root" . "component" "nginx") | nindent 14 }}
         - ipBlock:
             cidr: {{ ((.Values.networkPolicy).kubeNodeCIDR) | default "0.0.0.0/0" | quote }}
     # Prometheus scrape of wrapper actuator metrics (cross-namespace)
@@ -214,6 +217,14 @@ spec:
         - podSelector:
             matchLabels:
               {{- include "omcsi.selectorLabels" (dict "root" . "component" "webapp") | nindent 14 }}
+    # minecraft-wrapper plugin deploy endpoint
+    - ports:
+        - port: {{ .Values.minecraftWrapper.internalService.wrapperPort }}
+          protocol: TCP
+      to:
+        - podSelector:
+            matchLabels:
+              {{- include "omcsi.selectorLabels" (dict "root" . "component" "minecraft-wrapper") | nindent 14 }}
     # DNS — scoped to CoreDNS (adjust networkPolicy.dnsNamespaceSelector/dnsPodSelector for non-standard distros)
     - ports:
         - port: 53
