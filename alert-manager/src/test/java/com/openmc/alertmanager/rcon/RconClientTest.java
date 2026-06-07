@@ -1,4 +1,4 @@
-package com.openmc.webapp.rcon;
+package com.openmc.alertmanager.rcon;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.DisplayName;
