@@ -8,6 +8,7 @@ import com.openmc.webapp.dto.PluginOperationResponse;
 import com.openmc.webapp.dto.WorldDeleteRequest;
 import com.openmc.webapp.dto.WorldListRequest;
 import com.openmc.webapp.dto.WorldListResponse;
+import com.openmc.webapp.dto.WorldOperationResponse;
 import com.openmc.webapp.model.ActivityTrackerStats;
 import com.openmc.webapp.model.DeploymentRecord;
 import com.openmc.webapp.model.LeaderboardEntry;
@@ -333,15 +334,15 @@ public class ServerController {
     
     @PostMapping(value = "/api/world/upload", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
-    public PluginOperationResponse uploadWorld(@RequestParam(required = false) String username,
+    public WorldOperationResponse uploadWorld(@RequestParam(required = false) String username,
                                                @RequestParam(required = false) String password,
                                                @RequestParam(value = "file", required = false) MultipartFile file) {
         if (username == null || username.isEmpty() || password == null || password.isEmpty()) {
-            return PluginOperationResponse.error("Missing username or password");
+            return WorldOperationResponse.error("Missing username or password");
         }
 
         if (file == null || file.isEmpty()) {
-            return PluginOperationResponse.error("No file provided");
+            return WorldOperationResponse.error("No file provided");
         }
 
         if (!validateCredentials(username, password)) {
@@ -349,12 +350,12 @@ public class ServerController {
                 "World Upload Authentication Failed",
                 "Failed authentication attempt for world upload endpoint"
             );
-            return PluginOperationResponse.error("Invalid username or password");
+            return WorldOperationResponse.error("Invalid username or password");
         }
 
         if (deployAuthToken == null || deployAuthToken.trim().isEmpty()) {
             logger.error("deploy.auth.token is not configured; world upload is unavailable");
-            return PluginOperationResponse.error("World upload is not configured on this server");
+            return WorldOperationResponse.error("World upload is not configured on this server");
         }
 
         boolean success = minecraftWrapperService.uploadWorld(file, deployAuthToken);
@@ -364,9 +365,9 @@ public class ServerController {
                 "World Uploaded Successfully",
                 String.format("User '%s' uploaded a new world map", username)
             );
-            return PluginOperationResponse.success("World uploaded successfully. Server is restarting.");
+            return WorldOperationResponse.success("World uploaded successfully. Server is restarting.");
         } else {
-            return PluginOperationResponse.error("World upload failed. Check server logs for details.");
+            return WorldOperationResponse.error("World upload failed. Check server logs for details.");
         }
     }
 
@@ -385,18 +386,18 @@ public class ServerController {
 
     @PostMapping(value = "/api/world/delete", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
-    public PluginOperationResponse deleteWorld(@RequestBody WorldDeleteRequest request) {
+    public WorldOperationResponse deleteWorld(@RequestBody WorldDeleteRequest request) {
         if (request.getUsername() == null || request.getUsername().isEmpty()
                 || request.getPassword() == null || request.getPassword().isEmpty()
                 || request.getName() == null || request.getName().isEmpty()) {
-            return PluginOperationResponse.error("Missing required parameters");
+            return WorldOperationResponse.error("Missing required parameters");
         }
         if (!validateCredentials(request.getUsername(), request.getPassword())) {
             alertNotificationService.sendWarningAlert(
                 "World Delete Authentication Failed",
                 "Failed authentication attempt for world delete endpoint"
             );
-            return PluginOperationResponse.error("Invalid username or password");
+            return WorldOperationResponse.error("Invalid username or password");
         }
 
         String result = worldService.deleteWorld(request.getName());
@@ -407,9 +408,9 @@ public class ServerController {
                 "World Deleted Successfully",
                 String.format("User '%s' deleted world: %s", request.getUsername(), request.getName())
             );
-            return PluginOperationResponse.success(result);
+            return WorldOperationResponse.success(result);
         } else {
-            return PluginOperationResponse.error(result);
+            return WorldOperationResponse.error(result);
         }
     }
 
