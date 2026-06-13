@@ -305,8 +305,12 @@ public class BackupService {
             HttpEntity<Map<String, String>> request = new HttpEntity<>(alertData, headers);
 
             log.info("Sending alert to {}: {} ({})", alertManagerUrl, title, level);
-            restTemplate.postForEntity(alertManagerUrl, request, String.class);
-            log.info("Alert sent successfully");
+            var response = restTemplate.postForEntity(alertManagerUrl, request, String.class);
+            if (response.getStatusCode().is2xxSuccessful()) {
+                log.info("Alert sent successfully");
+            } else {
+                log.warn("Alert manager returned non-2xx status {} for alert: {}", response.getStatusCode(), title);
+            }
         } catch (Exception e) {
             log.warn("Failed to send alert: {}", e.getMessage());
         }

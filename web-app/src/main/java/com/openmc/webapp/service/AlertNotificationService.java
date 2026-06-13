@@ -7,6 +7,7 @@ import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
@@ -63,9 +64,12 @@ public class AlertNotificationService {
             HttpEntity<Map<String, Object>> request = new HttpEntity<>(alert, headers);
             
             String url = alertManagerUrl + "/api/alerts";
-            restTemplate.postForObject(url, request, String.class);
-            
-            logger.info("Alert sent successfully: {}", title);
+            ResponseEntity<String> response = restTemplate.postForEntity(url, request, String.class);
+            if (response.getStatusCode().is2xxSuccessful()) {
+                logger.info("Alert sent successfully: {}", title);
+            } else {
+                logger.warn("Alert manager returned non-2xx status {} for alert: {}", response.getStatusCode(), title);
+            }
         } catch (Exception e) {
             logger.error("Failed to send alert to alert manager: {}", title, e);
         }
