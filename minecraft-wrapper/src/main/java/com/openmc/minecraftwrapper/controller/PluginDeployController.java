@@ -3,6 +3,7 @@ package com.openmc.minecraftwrapper.controller;
 import com.openmc.minecraftwrapper.service.AlertService;
 import com.openmc.minecraftwrapper.service.PluginDeployService;
 import com.openmc.minecraftwrapper.service.WebAppNotificationService;
+import com.openmc.minecraftwrapper.util.BearerTokenAuthenticator;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
@@ -12,16 +13,12 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
 
 @Slf4j
 @Validated
 @RestController
 @RequestMapping("/api/plugins")
 public class PluginDeployController {
-
-    private static final String BEARER_PREFIX = "Bearer ";
 
     @Value("${deploy.auth.token:}")
     private String deployAuthToken;
@@ -84,25 +81,7 @@ public class PluginDeployController {
         }
     }
 
-    /**
-     * Returns {@code true} if the provided {@code Authorization} header carries a Bearer
-     * token that matches the configured deploy token.
-     *
-     * <p>Uses a constant-time comparison to prevent timing attacks.
-     * Returns {@code false} when no token is configured to ensure the endpoint is always
-     * protected.
-     */
     private boolean isAuthorized(String authHeader) {
-        if (deployAuthToken == null || deployAuthToken.trim().isEmpty()) {
-            log.warn("deploy.auth.token is not configured; all deploy requests will be rejected");
-            return false;
-        }
-        if (authHeader == null || !authHeader.startsWith(BEARER_PREFIX)) {
-            return false;
-        }
-        String providedToken = authHeader.substring(BEARER_PREFIX.length());
-        return MessageDigest.isEqual(
-                deployAuthToken.getBytes(StandardCharsets.UTF_8),
-                providedToken.getBytes(StandardCharsets.UTF_8));
+        return BearerTokenAuthenticator.isAuthorized(authHeader, deployAuthToken, "plugin deploy");
     }
 }

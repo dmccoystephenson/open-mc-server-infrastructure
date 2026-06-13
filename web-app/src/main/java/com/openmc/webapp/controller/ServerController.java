@@ -50,6 +50,9 @@ public class ServerController {
     @org.springframework.beans.factory.annotation.Value("${deployment.auth.token:}")
     private String deploymentAuthToken;
 
+    @org.springframework.beans.factory.annotation.Value("${deploy.auth.token:}")
+    private String deployAuthToken;
+
     private volatile boolean deploymentTokenWarningLogged = false;
     
     public ServerController(RconService rconService, ServerConfig serverConfig, 
@@ -321,6 +324,45 @@ public class ServerController {
         }
     }
     
+    @PostMapping(value = "/api/world/upload", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public PluginOperationResponse uploadWorld(@RequestParam(required = false) String username,
+                                               @RequestParam(required = false) String password,
+                                               @RequestParam(value = "file", required = false) MultipartFile file) {
+        if (username == null || username.isEmpty() || password == null || password.isEmpty()) {
+            return PluginOperationResponse.error("Missing username or password");
+        }
+
+        if (file == null || file.isEmpty()) {
+            return PluginOperationResponse.error("No file provided");
+        }
+
+        if (!validateCredentials(username, password)) {
+            alertNotificationService.sendWarningAlert(
+                "World Upload Authentication Failed",
+                "Failed authentication attempt for world upload endpoint"
+            );
+            return PluginOperationResponse.error("Invalid username or password");
+        }
+
+        if (deployAuthToken == null || deployAuthToken.trim().isEmpty()) {
+            logger.error("deploy.auth.token is not configured; world upload is unavailable");
+            return PluginOperationResponse.error("World upload is not configured on this server");
+        }
+
+        boolean success = minecraftWrapperService.uploadWorld(file, deployAuthToken);
+
+        if (success) {
+            alertNotificationService.sendInfoAlert(
+                "World Uploaded Successfully",
+                String.format("User '%s' uploaded a new world map", username)
+            );
+            return PluginOperationResponse.success("World uploaded successfully. Server is restarting.");
+        } else {
+            return PluginOperationResponse.error("World upload failed. Check server logs for details.");
+        }
+    }
+
     @PostMapping("/api/server/start")
     @ResponseBody
     public Map<String, Object> startServer(@RequestBody Map<String, String> payload) {
