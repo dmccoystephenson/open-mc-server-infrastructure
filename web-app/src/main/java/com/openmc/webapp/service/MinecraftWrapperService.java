@@ -5,7 +5,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.web.client.RestTemplateBuilder;
-import org.springframework.core.io.ByteArrayResource;
+import org.springframework.core.io.InputStreamResource;
+import org.springframework.core.io.Resource;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -199,19 +200,17 @@ public class MinecraftWrapperService {
             String url = wrapperUrl + "/api/world/upload";
             log.info("Uploading world to wrapper");
 
-            byte[] bytes;
-            try {
-                bytes = file.getBytes();
-            } catch (IOException e) {
-                log.error("Failed to read world archive bytes: {}", e.getMessage());
-                return false;
-            }
-
             String filename = file.getOriginalFilename() != null ? file.getOriginalFilename() : "world.zip";
-            ByteArrayResource resource = new ByteArrayResource(bytes) {
+            long size = file.getSize();
+            Resource resource = new InputStreamResource(file.getInputStream()) {
                 @Override
                 public String getFilename() {
                     return filename;
+                }
+
+                @Override
+                public long contentLength() {
+                    return size;
                 }
             };
 

@@ -2,6 +2,7 @@ package com.openmc.minecraftwrapper.controller;
 
 import com.openmc.minecraftwrapper.service.AlertService;
 import com.openmc.minecraftwrapper.service.WorldUploadService;
+import com.openmc.minecraftwrapper.util.BearerTokenAuthenticator;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
@@ -10,15 +11,11 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
 
 @Slf4j
 @RestController
 @RequestMapping("/api/world")
 public class WorldUploadController {
-
-    private static final String BEARER_PREFIX = "Bearer ";
 
     @Value("${deploy.auth.token:}")
     private String deployAuthToken;
@@ -71,16 +68,6 @@ public class WorldUploadController {
     }
 
     private boolean isAuthorized(String authHeader) {
-        if (deployAuthToken == null || deployAuthToken.trim().isEmpty()) {
-            log.warn("deploy.auth.token is not configured; all world upload requests will be rejected");
-            return false;
-        }
-        if (authHeader == null || !authHeader.startsWith(BEARER_PREFIX)) {
-            return false;
-        }
-        String provided = authHeader.substring(BEARER_PREFIX.length());
-        return MessageDigest.isEqual(
-                deployAuthToken.getBytes(StandardCharsets.UTF_8),
-                provided.getBytes(StandardCharsets.UTF_8));
+        return BearerTokenAuthenticator.isAuthorized(authHeader, deployAuthToken, "world upload");
     }
 }

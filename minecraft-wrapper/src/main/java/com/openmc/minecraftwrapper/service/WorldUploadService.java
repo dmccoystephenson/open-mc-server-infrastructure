@@ -21,7 +21,6 @@ public class WorldUploadService {
     private static final long MAX_FILE_SIZE = 2L * 1024 * 1024 * 1024;
     private static final int MAX_ZIP_ENTRIES = 100_000;
     private static final long MAX_UNCOMPRESSED_BYTES = 10L * 1024 * 1024 * 1024;
-    private static final byte[] ZIP_MAGIC = {0x50, 0x4B, 0x03, 0x04};
 
     @Value("${world.directory:/mcserver/world}")
     private String worldDirectory;
@@ -40,19 +39,15 @@ public class WorldUploadService {
      * as a single top-level directory, or the world contents directly at the root of the archive.
      * Both structures are handled automatically.
      *
+     * <p>The existing world is renamed aside before installation. If the move fails, the old
+     * world is restored so the server is never left without a world directory.
+     *
      * @param file the ZIP archive to upload
-     * @throws IllegalArgumentException if the file fails validation
+     * @throws IllegalArgumentException if the file or archive contents fail validation
      * @throws IOException              if extraction or directory manipulation fails
      */
     public void replaceWorld(MultipartFile file) throws IOException {
         validateFile(file);
-
-        try (InputStream is = file.getInputStream()) {
-            byte[] magic = is.readNBytes(4);
-            if (!isZipMagic(magic)) {
-                throw new IllegalArgumentException("Uploaded file is not a valid ZIP archive");
-            }
-        }
 
         Path worldDir = Paths.get(worldDirectory).toAbsolutePath().normalize();
 
@@ -69,6 +64,8 @@ public class WorldUploadService {
         try {
             tempDir = Files.createTempDirectory("world-upload-");
 
+            // Single stream open — ZipInputStream validates the ZIP format itself;
+            // a non-ZIP payload will throw ZipException from getNextEntry().
             try (InputStream is = file.getInputStream();
                  ZipInputStream zis = new ZipInputStream(is)) {
                 extractZip(zis, tempDir);
@@ -76,14 +73,12 @@ public class WorldUploadService {
 
             Path worldRoot = detectWorldRoot(tempDir);
 
-            if (Files.exists(worldDir)) {
-                deleteDirectory(worldDir);
+            if (!Files.exists(worldRoot.resolve("level.dat"))) {
+                throw new IllegalArgumentException(
+                        "Archive does not contain a valid Minecraft world (level.dat not found)");
             }
-            if (worldDir.getParent() != null) {
-                Files.createDirectories(worldDir.getParent());
-            }
-            Files.move(worldRoot, worldDir, StandardCopyOption.REPLACE_EXISTING);
 
+            installWorld(worldRoot, worldDir);
             log.info("World replaced successfully at {}", worldDir);
         } finally {
             if (tempDir != null) {
@@ -102,6 +97,49 @@ public class WorldUploadService {
                 } catch (Exception e) {
                     log.error("Failed to restart server after world upload", e);
                 }
+            }
+        }
+    }
+
+    /**
+     * Install {@code worldRoot} as the new world directory using a rename-aside strategy:
+     * the existing world (if any) is moved to a backup path first. On success the backup is
+     * deleted; on failure the backup is restored so the server is never left without a world.
+     */
+    private void installWorld(Path worldRoot, Path worldDir) throws IOException {
+        Path backup = worldDir.getParent().resolve(worldDir.getFileName() + ".old");
+
+        // Move existing world aside
+        if (Files.exists(worldDir)) {
+            if (Files.exists(backup)) {
+                deleteDirectory(backup);
+            }
+            Files.move(worldDir, backup);
+        }
+
+        try {
+            Files.move(worldRoot, worldDir, StandardCopyOption.REPLACE_EXISTING);
+        } catch (IOException moveEx) {
+            // Restore old world so the server is not left without a world directory
+            if (Files.exists(backup)) {
+                try {
+                    Files.move(backup, worldDir, StandardCopyOption.REPLACE_EXISTING);
+                    log.info("World backup restored after failed installation");
+                } catch (IOException restoreEx) {
+                    log.error("Failed to restore world backup from {} to {}: {}",
+                            backup, worldDir, restoreEx.getMessage());
+                }
+            }
+            throw moveEx;
+        }
+
+        // Installation succeeded — clean up backup
+        if (Files.exists(backup)) {
+            try {
+                deleteDirectory(backup);
+            } catch (IOException e) {
+                log.warn("Could not delete world backup at {}; manual cleanup may be needed: {}",
+                        backup, e.getMessage());
             }
         }
     }
@@ -174,6 +212,7 @@ public class WorldUploadService {
 
             @Override
             public FileVisitResult postVisitDirectory(Path d, IOException exc) throws IOException {
+                if (exc != null) throw exc;
                 Files.delete(d);
                 return FileVisitResult.CONTINUE;
             }
@@ -187,13 +226,5 @@ public class WorldUploadService {
         if (file.getSize() > MAX_FILE_SIZE) {
             throw new IllegalArgumentException("File size exceeds the 2 GB limit");
         }
-    }
-
-    private boolean isZipMagic(byte[] bytes) {
-        if (bytes.length < ZIP_MAGIC.length) return false;
-        for (int i = 0; i < ZIP_MAGIC.length; i++) {
-            if (bytes[i] != ZIP_MAGIC[i]) return false;
-        }
-        return true;
     }
 }
