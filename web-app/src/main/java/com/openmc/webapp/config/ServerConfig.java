@@ -24,6 +24,7 @@ public class ServerConfig {
     private String dashboardPrimaryColor = "#667eea";
     private String dashboardSecondaryColor = "#764ba2";
     private String pluginsDirectory = "/mcserver/plugins";
+    private String worldDirectory = "/mcserver/world";
     private String accordionChatUrl = "";
     private boolean dashboardDarkMode = true;
     
@@ -159,11 +160,19 @@ public class ServerConfig {
     public String getPluginsDirectory() {
         return pluginsDirectory;
     }
-    
+
     public void setPluginsDirectory(String pluginsDirectory) {
         this.pluginsDirectory = pluginsDirectory;
     }
-    
+
+    public String getWorldDirectory() {
+        return worldDirectory;
+    }
+
+    public void setWorldDirectory(String worldDirectory) {
+        this.worldDirectory = worldDirectory;
+    }
+
     public String getAccordionChatUrl() {
         return accordionChatUrl;
     }

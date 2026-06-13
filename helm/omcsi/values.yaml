@@ -115,6 +115,7 @@ webapp:
     DASHBOARD_SECONDARY_COLOR: "#764ba2"
     ALERT_MANAGER_ENABLED: "true"
     ACCORDION_CHAT_URL: ""
+    WORLD_DIRECTORY: "/mcserver/world"
 
 # ---------------------------------------------------------------------------
 # Nginx Reverse Proxy
