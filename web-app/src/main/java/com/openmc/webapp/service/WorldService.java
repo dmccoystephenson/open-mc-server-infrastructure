@@ -1,9 +1,9 @@
 package com.openmc.webapp.service;
 
+import com.openmc.webapp.config.ServerConfig;
 import com.openmc.webapp.dto.WorldInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
@@ -23,8 +23,11 @@ public class WorldService {
     private static final DateTimeFormatter ISO = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm 'UTC'")
             .withZone(ZoneOffset.UTC);
 
-    @Value("${minecraft.server.world-directory:/mcserver/world}")
-    private String worldDirectory;
+    private final ServerConfig serverConfig;
+
+    public WorldService(ServerConfig serverConfig) {
+        this.serverConfig = serverConfig;
+    }
 
     /**
      * Scan the server directory for world directories (siblings of the active world that contain
@@ -32,7 +35,7 @@ public class WorldService {
      * marked.
      */
     public List<WorldInfo> listWorlds() {
-        Path worldDir = Paths.get(worldDirectory).toAbsolutePath().normalize();
+        Path worldDir = Paths.get(serverConfig.getWorldDirectory()).toAbsolutePath().normalize();
         Path serverDir = worldDir.getParent();
 
         if (serverDir == null || !Files.isDirectory(serverDir)) {
@@ -49,9 +52,8 @@ public class WorldService {
                 .forEach(p -> {
                     String name = p.getFileName().toString();
                     boolean active = p.equals(worldDir);
-                    long sizeMb = directorySize(p) / (1024 * 1024);
                     String lastModified = lastModified(p);
-                    result.add(new WorldInfo(name, sizeMb, lastModified, active));
+                    result.add(new WorldInfo(name, lastModified, active));
                 });
         } catch (IOException e) {
             log.error("Failed to list worlds in {}: {}", serverDir, e.getMessage());
@@ -74,7 +76,7 @@ public class WorldService {
             return "Error: Invalid world name";
         }
 
-        Path worldDir = Paths.get(worldDirectory).toAbsolutePath().normalize();
+        Path worldDir = Paths.get(serverConfig.getWorldDirectory()).toAbsolutePath().normalize();
         Path serverDir = worldDir.getParent();
         if (serverDir == null) {
             return "Error: Cannot resolve server directory";
@@ -108,19 +110,6 @@ public class WorldService {
         }
     }
 
-    private long directorySize(Path dir) {
-        try (Stream<Path> walk = Files.walk(dir)) {
-            return walk.filter(Files::isRegularFile)
-                    .mapToLong(p -> {
-                        try { return Files.size(p); } catch (IOException e) { return 0L; }
-                    })
-                    .sum();
-        } catch (IOException e) {
-            log.debug("Could not compute size of {}: {}", dir, e.getMessage());
-            return 0L;
-        }
-    }
-
     private String lastModified(Path dir) {
         try {
             Instant t = Files.getLastModifiedTime(dir).toInstant();
@@ -135,6 +124,12 @@ public class WorldService {
             @Override
             public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
                 Files.delete(file);
+                return FileVisitResult.CONTINUE;
+            }
+
+            @Override
+            public FileVisitResult visitFileFailed(Path file, IOException exc) throws IOException {
+                log.warn("Could not access {} during world delete, skipping: {}", file, exc.getMessage());
                 return FileVisitResult.CONTINUE;
             }
 

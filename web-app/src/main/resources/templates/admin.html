@@ -479,7 +479,7 @@
         <!-- World Management Card -->
         <div class="card">
             <h2>World Management</h2>
-            <p style="color: var(--text-muted); margin-bottom: 15px;">Upload and manage server worlds. Uploading replaces the active world — the server will stop, the world will be replaced, then restart.</p>
+            <p style="color: var(--text-muted); margin-bottom: 15px;">Upload and manage server worlds. The archive must be a ZIP containing a <code>level.dat</code> at its root. Uploading replaces the active world — the server will stop, the world will be replaced, then restart.</p>
 
             <div class="upload-section">
                 <div class="file-input-wrapper">
@@ -762,7 +762,7 @@
                     const badge = world.active
                         ? '<span style="font-size:0.75rem;background:#10b981;color:#fff;padding:1px 6px;border-radius:4px;margin-left:6px;">active</span>'
                         : '';
-                    const meta = `<span style="font-size:0.8rem;color:var(--text-muted);margin-left:8px;">${world.sizeMb} MB · ${escapeHtml(world.lastModified)}</span>`;
+                    const meta = `<span style="font-size:0.8rem;color:var(--text-muted);margin-left:8px;">${escapeHtml(world.lastModified)}</span>`;
                     const deleteBtn = world.active
                         ? ''
                         : `<button class="btn-danger" data-world-name="${escapeHtml(world.name)}">Delete</button>`;
@@ -865,7 +865,7 @@
         function escapeHtml(text) {
             const div = document.createElement('div');
             div.textContent = text;
-            return div.innerHTML;
+            return div.innerHTML.replace(/"/g, '&quot;');
         }
         
         // Lock all server-control buttons while any one is in flight so a user

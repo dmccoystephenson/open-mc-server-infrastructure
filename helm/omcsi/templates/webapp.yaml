@@ -115,6 +115,8 @@ spec:
               value: "http://{{ include "omcsi.minecraftWrapperHost" . }}-internal:{{ .Values.minecraftWrapper.internalService.wrapperPort }}"
             - name: ACCORDION_CHAT_URL
               value: {{ .Values.webapp.env.ACCORDION_CHAT_URL | quote }}
+            - name: WORLD_DIRECTORY
+              value: {{ .Values.webapp.env.WORLD_DIRECTORY | quote }}
             - name: DEPLOYMENT_AUTH_TOKEN
               valueFrom:
                 secretKeyRef:

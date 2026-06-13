@@ -5,6 +5,7 @@ import com.openmc.webapp.service.ActivityTrackerService;
 import com.openmc.webapp.service.AlertNotificationService;
 import com.openmc.webapp.service.PluginService;
 import com.openmc.webapp.service.RconService;
+import com.openmc.webapp.service.WorldService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.DisplayName;
@@ -47,6 +48,9 @@ class ServerControllerTest {
     
     @MockBean
     private PluginService pluginService;
+
+    @MockBean
+    private WorldService worldService;
     
     @MockBean
     private AlertNotificationService alertNotificationService;
