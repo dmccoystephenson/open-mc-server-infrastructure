@@ -42,84 +42,73 @@ public class ServerController {
 
     /**
      * Start the Minecraft server.
-     * Returns 202 Accepted immediately and starts the server asynchronously.
-     * Consider implementing proper authentication/authorization before exposing this endpoint.
+     * Returns 409 Conflict if the server is already running.
+     * Returns 202 Accepted and starts the server asynchronously otherwise.
      */
     @PostMapping("/start")
     public ResponseEntity<String> start() {
         log.info("Received start request");
-        
-        // Execute start asynchronously
+
+        if (minecraftServerService.getStatus().isRunning()) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body("Server is already running");
+        }
+
         CompletableFuture.runAsync(() -> {
             try {
                 minecraftServerService.start();
             } catch (IllegalStateException e) {
-                log.error("Server is already running", e);
+                log.warn("Start rejected: {}", e.getMessage());
             } catch (Exception e) {
                 log.error("Failed to start server", e);
             }
-        }).exceptionally(ex -> {
-            log.error("Unexpected error during start", ex);
-            return null;
         });
-        
-        // Return immediately with 202 Accepted
-        return ResponseEntity.status(HttpStatus.ACCEPTED)
-                .body("Server start initiated");
+
+        return ResponseEntity.status(HttpStatus.ACCEPTED).body("Server start initiated");
     }
 
     /**
      * Stop the Minecraft server.
-     * Returns 202 Accepted immediately and stops the server asynchronously.
-     * Consider implementing proper authentication/authorization before exposing this endpoint.
+     * Returns 409 Conflict if the server is not running.
+     * Returns 202 Accepted and stops the server asynchronously otherwise.
      */
     @PostMapping("/stop")
     public ResponseEntity<String> stop() {
         log.info("Received stop request");
-        
-        // Execute stop asynchronously
+
+        if (!minecraftServerService.getStatus().isRunning()) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body("Server is not running");
+        }
+
         CompletableFuture.runAsync(() -> {
             try {
                 minecraftServerService.stop();
             } catch (IllegalStateException e) {
-                log.error("Server is not running", e);
+                log.warn("Stop rejected: {}", e.getMessage());
             } catch (Exception e) {
                 log.error("Failed to stop server", e);
             }
-        }).exceptionally(ex -> {
-            log.error("Unexpected error during stop", ex);
-            return null;
         });
-        
-        // Return immediately with 202 Accepted
-        return ResponseEntity.status(HttpStatus.ACCEPTED)
-                .body("Server stop initiated");
+
+        return ResponseEntity.status(HttpStatus.ACCEPTED).body("Server stop initiated");
     }
 
     /**
      * Restart the Minecraft server.
      * Returns 202 Accepted immediately and restarts the server asynchronously.
-     * Consider implementing proper authentication/authorization before exposing this endpoint.
      */
     @PostMapping("/restart")
     public ResponseEntity<String> restart() {
         log.info("Received restart request");
-        
-        // Execute restart asynchronously
+
         CompletableFuture.runAsync(() -> {
             try {
                 minecraftServerService.restart();
             } catch (Exception e) {
                 log.error("Failed to restart server", e);
             }
-        }).exceptionally(ex -> {
-            log.error("Unexpected error during restart", ex);
-            return null;
         });
-        
-        // Return immediately with 202 Accepted
-        return ResponseEntity.status(HttpStatus.ACCEPTED)
-                .body("Server restart initiated");
+
+        return ResponseEntity.status(HttpStatus.ACCEPTED).body("Server restart initiated");
     }
 
     @PostMapping("/command")
@@ -154,17 +143,12 @@ public class ServerController {
     public ResponseEntity<String> shutdown() {
         log.info("Received shutdown request");
         
-        // Execute shutdown asynchronously to avoid blocking the HTTP request
-        // Note: Using default ForkJoinPool for simplicity. In production, consider a dedicated executor.
         CompletableFuture.runAsync(() -> {
             try {
                 minecraftServerService.shutdown();
             } catch (Exception e) {
                 log.error("Failed to shutdown server", e);
             }
-        }).exceptionally(ex -> {
-            log.error("Unexpected error during shutdown", ex);
-            return null;
         });
         
         // Return immediately with 202 Accepted
