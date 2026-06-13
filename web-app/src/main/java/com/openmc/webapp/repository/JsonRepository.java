@@ -8,6 +8,11 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.file.AtomicMoveNotSupportedException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -80,18 +85,32 @@ public abstract class JsonRepository<T> implements Repository<T> {
     
     @Override
     public void save(List<T> entities) {
+        Instant cutoff = Instant.now().minus(retentionPeriod);
+        List<T> entitiesToSave = entities.stream()
+                .filter(entity -> getEntityTimestamp(entity).isAfter(cutoff))
+                .collect(Collectors.toList());
+
+        // Write to a sibling temp file first, then rename atomically so a crash
+        // mid-write never leaves the data file partially written.
+        Path target = dataFile.toPath();
+        Path tmp = null;
         try {
-            // Filter out entities older than retention period
-            Instant cutoff = Instant.now().minus(retentionPeriod);
-            List<T> entitiesToSave = entities.stream()
-                    .filter(entity -> getEntityTimestamp(entity).isAfter(cutoff))
-                    .collect(Collectors.toList());
-            
-            objectMapper.writerWithDefaultPrettyPrinter()
-                    .writeValue(dataFile, entitiesToSave);
+            tmp = Files.createTempFile(target.getParent(), ".json-repo-", ".tmp");
+            objectMapper.writerWithDefaultPrettyPrinter().writeValue(tmp.toFile(), entitiesToSave);
+            try {
+                Files.move(tmp, target, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+            } catch (AtomicMoveNotSupportedException ignored) {
+                Files.move(tmp, target, StandardCopyOption.REPLACE_EXISTING);
+            }
+            tmp = null; // successfully moved; skip deletion in finally
             logger.debug("Saved {} entities to {}", entitiesToSave.size(), dataFile.getAbsolutePath());
         } catch (IOException e) {
             logger.error("Failed to save entities to {}: {}", dataFile.getAbsolutePath(), e.getMessage());
+            throw new UncheckedIOException("Failed to save entities to " + dataFile.getAbsolutePath(), e);
+        } finally {
+            if (tmp != null) {
+                try { Files.deleteIfExists(tmp); } catch (IOException ignored) {}
+            }
         }
     }
     
