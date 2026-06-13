@@ -455,14 +455,14 @@
         <div class="card">
             <h2>Plugin Management</h2>
             <p style="color: var(--text-muted); margin-bottom: 15px;">Upload and manage server plugins</p>
-            
+
             <div class="upload-section">
                 <div class="file-input-wrapper">
                     <label for="pluginFileInput" class="file-input-label">
                         Choose Plugin File (.jar)
                     </label>
-                    <input type="file" 
-                           id="pluginFileInput" 
+                    <input type="file"
+                           id="pluginFileInput"
                            accept=".jar"
                            onchange="updateFileName(this)">
                 </div>
@@ -470,10 +470,34 @@
                 <button onclick="uploadPlugin()" class="btn btn-primary">Upload Plugin</button>
                 <button onclick="refreshPlugins()" class="btn btn-primary">Refresh List</button>
             </div>
-            
+
             <div id="pluginsListContainer" style="margin-top: 20px;">
                 <div class="empty-state">Enter credentials above, then click <strong>Refresh List</strong> to load installed plugins.</div>
             </div>
+        </div>
+
+        <!-- World Map Upload Card -->
+        <div class="card">
+            <h2>World Map Upload</h2>
+            <p style="color: var(--text-muted); margin-bottom: 15px;">
+                Replace the server world with a new map. The server will stop, the world will be replaced, then the server will restart.
+                Upload a <strong>.zip</strong> archive containing the world folder (with <code>level.dat</code> inside).
+            </p>
+
+            <div class="upload-section">
+                <div class="file-input-wrapper">
+                    <label for="worldFileInput" class="file-input-label">
+                        Choose World Archive (.zip)
+                    </label>
+                    <input type="file"
+                           id="worldFileInput"
+                           accept=".zip"
+                           onchange="updateWorldFileName(this)">
+                </div>
+                <span id="selectedWorldFileName" style="color: var(--text-muted);"></span>
+                <button id="btnUploadWorld" onclick="uploadWorld()" class="btn btn-primary">Upload World</button>
+            </div>
+            <div id="worldUploadOutput" class="command-output" role="status" aria-live="polite"></div>
         </div>
         </main>
     </div>
@@ -699,6 +723,60 @@
             }
         }
         
+        function updateWorldFileName(input) {
+            const span = document.getElementById('selectedWorldFileName');
+            span.textContent = input.files.length > 0 ? input.files[0].name : '';
+        }
+
+        async function uploadWorld() {
+            const creds = requireCredentials();
+            if (!creds) return;
+            const { username, password } = creds;
+
+            const fileInput = document.getElementById('worldFileInput');
+            if (!fileInput.files.length) {
+                showToast('Please select a world archive file first.', 'error');
+                return;
+            }
+
+            const output = document.getElementById('worldUploadOutput');
+            const btn = document.getElementById('btnUploadWorld');
+            output.textContent = 'Uploading world… this may take a while. The server will stop and restart automatically.';
+            output.classList.add('show');
+            btn.setAttribute('aria-busy', 'true');
+            btn.disabled = true;
+
+            const formData = new FormData();
+            formData.append('username', username);
+            formData.append('password', password);
+            formData.append('file', fileInput.files[0]);
+
+            try {
+                const response = await fetch('/api/world/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    output.textContent = '✓ ' + (data.message || 'World uploaded successfully.');
+                    showToast(data.message || 'World uploaded.', 'success');
+                    fileInput.value = '';
+                    document.getElementById('selectedWorldFileName').textContent = '';
+                } else {
+                    output.textContent = '✗ ' + (data.error || data.message || 'Upload failed.');
+                    showToast(data.error || data.message || 'Upload failed.', 'error');
+                }
+            } catch (error) {
+                output.textContent = '✗ Error: ' + error.message;
+                showToast('Error uploading world: ' + error.message, 'error');
+            } finally {
+                btn.removeAttribute('aria-busy');
+                btn.disabled = false;
+            }
+        }
+
         function escapeHtml(text) {
             const div = document.createElement('div');
             div.textContent = text;
