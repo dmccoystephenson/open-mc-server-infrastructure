@@ -63,9 +63,25 @@
         .dashboard-grid {
             display: grid;
             grid-template-columns: 1fr;
+            grid-template-areas:
+                "header"
+                "left-sidebar"
+                "main";
             gap: 20px;
             max-width: 1400px;
             margin: 0 auto;
+        }
+
+        .header-section {
+            grid-area: header;
+        }
+
+        .left-sidebar {
+            grid-area: left-sidebar;
+        }
+
+        .main-content {
+            grid-area: main;
         }
         
         @media (min-width: 1024px) {
@@ -74,18 +90,6 @@
                 grid-template-areas:
                     "header header header"
                     "left-sidebar main right-sidebar";
-            }
-
-            .header-section {
-                grid-area: header;
-            }
-
-            .left-sidebar {
-                grid-area: left-sidebar;
-            }
-
-            .main-content {
-                grid-area: main;
             }
 
             .right-sidebar {
@@ -98,9 +102,6 @@
                above the main content (instead of hiding them entirely as before).
                Hide the lower-priority Recent Activity sidebar to keep scroll
                length reasonable. */
-            .header-section { order: 0; }
-            .left-sidebar { order: 1; }
-            .main-content { order: 2; }
             .right-sidebar {
                 display: none;
             }
