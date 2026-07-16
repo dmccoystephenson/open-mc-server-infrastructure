@@ -32,6 +32,9 @@ public class AlertService {
     @Value("${alerts.plugin.deploy:true}")
     private boolean alertsPluginDeploy;
 
+    @Value("${alerts.world.upload:true}")
+    private boolean alertsWorldUpload;
+
     private final RestTemplate restTemplate;
 
     public AlertService(RestTemplate restTemplate) {
@@ -88,6 +91,7 @@ public class AlertService {
             case "ALERTS_SERVER_STOP" -> alertsServerStop;
             case "ALERTS_SERVER_CRASH" -> alertsServerCrash;
             case "ALERTS_PLUGIN_DEPLOY" -> alertsPluginDeploy;
+            case "ALERTS_WORLD_UPLOAD" -> alertsWorldUpload;
             default -> true;
         };
     }
@@ -147,6 +151,18 @@ public class AlertService {
             sb.append("\nRepository: ").append(repoUrl);
         }
         return sb.toString();
+    }
+
+    public void sendWorldUploadSuccessAlert() {
+        sendAlert("World Uploaded Successfully",
+                "The server world was replaced and the server has been restarted.",
+                "INFO", "ALERTS_WORLD_UPLOAD");
+    }
+
+    public void sendWorldUploadFailureAlert(String reason) {
+        sendAlert("World Upload Failed",
+                String.format("World upload failed: %s", reason),
+                "ERROR", "ALERTS_WORLD_UPLOAD");
     }
 
     private static boolean isNullOrBlank(String value) {

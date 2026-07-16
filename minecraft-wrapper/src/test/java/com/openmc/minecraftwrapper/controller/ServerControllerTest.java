@@ -48,19 +48,47 @@ class ServerControllerTest {
     }
 
     @Test
-    @DisplayName("Should return 202 for start request")
+    @DisplayName("Should return 202 for start request when server is stopped")
     void shouldReturn202ForStartRequest() throws Exception {
+        when(minecraftServerService.getStatus())
+                .thenReturn(ServerStatus.builder().running(false).build());
+
         mockMvc.perform(post("/api/server/start"))
                 .andExpect(status().isAccepted())
                 .andExpect(content().string("Server start initiated"));
     }
 
     @Test
-    @DisplayName("Should return 202 for stop request")
+    @DisplayName("Should return 409 when server is already running on start")
+    void shouldReturn409WhenServerAlreadyRunningOnStart() throws Exception {
+        when(minecraftServerService.getStatus())
+                .thenReturn(ServerStatus.builder().running(true).build());
+
+        mockMvc.perform(post("/api/server/start"))
+                .andExpect(status().isConflict())
+                .andExpect(content().string("Server is already running"));
+    }
+
+    @Test
+    @DisplayName("Should return 202 for stop request when server is running")
     void shouldReturn202ForStopRequest() throws Exception {
+        when(minecraftServerService.getStatus())
+                .thenReturn(ServerStatus.builder().running(true).build());
+
         mockMvc.perform(post("/api/server/stop"))
                 .andExpect(status().isAccepted())
                 .andExpect(content().string("Server stop initiated"));
+    }
+
+    @Test
+    @DisplayName("Should return 409 when server is not running on stop")
+    void shouldReturn409WhenServerNotRunningOnStop() throws Exception {
+        when(minecraftServerService.getStatus())
+                .thenReturn(ServerStatus.builder().running(false).build());
+
+        mockMvc.perform(post("/api/server/stop"))
+                .andExpect(status().isConflict())
+                .andExpect(content().string("Server is not running"));
     }
 
     @Test

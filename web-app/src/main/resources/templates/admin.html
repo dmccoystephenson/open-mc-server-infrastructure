@@ -274,9 +274,98 @@
             text-align: center;
             color: var(--text-faint);
         }
+
+        .field {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            margin-bottom: 12px;
+        }
+
+        .field label {
+            font-weight: 600;
+            font-size: 0.9em;
+            color: var(--text-muted);
+        }
+
+        .toast-region {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            max-width: 360px;
+        }
+
+        .toast {
+            padding: 12px 16px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            color: white;
+            font-weight: 500;
+            animation: toastIn 0.25s ease-out;
+        }
+
+        .toast.success { background: #10b981; }
+        .toast.error { background: #ef4444; }
+        .toast.info { background: #3b82f6; }
+
+        @keyframes toastIn {
+            from { transform: translateX(20px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        @media (max-width: 600px) {
+            .toast-region {
+                left: 10px;
+                right: 10px;
+                max-width: none;
+            }
+        }
+
+        .skip-link {
+            position: absolute;
+            top: -40px;
+            left: 8px;
+            background: var(--card-bg);
+            color: var(--primary-color);
+            padding: 8px 16px;
+            border-radius: 6px;
+            text-decoration: none;
+            font-weight: 600;
+            z-index: 1100;
+            transition: top 0.2s ease;
+        }
+        .skip-link:focus {
+            top: 8px;
+            outline: 3px solid var(--primary-color);
+            outline-offset: 2px;
+        }
+
+        /* Visible focus rings everywhere — the global `outline: none` on inputs
+           is fine since we add a border-color focus state, but buttons and nav
+           links also need a visible focus indicator for keyboard users. */
+        .btn:focus-visible,
+        .nav a:focus-visible,
+        .btn-danger:focus-visible,
+        .file-input-label:focus-within {
+            outline: 3px solid #fbbf24;
+            outline-offset: 2px;
+        }
+
+        .btn[aria-busy="true"],
+        .btn-danger[aria-busy="true"] {
+            opacity: 0.7;
+            cursor: progress;
+            pointer-events: none;
+        }
     </style>
 </head>
 <body>
+    <a href="#mainContent" class="skip-link">Skip to main content</a>
+    <div id="toastRegion" class="toast-region" role="region" aria-label="Notifications" aria-live="polite"></div>
     <div class="container">
         <div class="header">
             <h1 th:text="'🎮 ' + ${dashboardTitle}">🎮 Minecraft Server Dashboard</h1>
@@ -294,21 +383,28 @@
             </a>
         </div>
         
+        <main id="mainContent">
         <!-- Credentials Card -->
         <div class="card">
             <h2>Authentication</h2>
             <p style="color: var(--text-muted); margin-bottom: 15px;">Enter your admin credentials to access all admin features</p>
-            <input type="text" 
-                   id="usernameInput" 
-                   class="command-input" 
-                   placeholder="Admin username" 
-                   style="margin-bottom: 10px;"
-                   required>
-            <input type="password" 
-                   id="passwordInput" 
-                   class="command-input" 
-                   placeholder="Admin password" 
-                   required>
+            <div class="field">
+                <label for="usernameInput">Admin username</label>
+                <input type="text"
+                       id="usernameInput"
+                       class="command-input"
+                       autocomplete="username"
+                       placeholder="e.g. admin"
+                       required>
+            </div>
+            <div class="field">
+                <label for="passwordInput">Admin password</label>
+                <input type="password"
+                       id="passwordInput"
+                       class="command-input"
+                       autocomplete="current-password"
+                       required>
+            </div>
         </div>
         
         <!-- Server Commands Card -->
@@ -316,16 +412,19 @@
             <h2>Server Commands</h2>
             <p style="color: var(--text-muted); margin-bottom: 15px;">Send commands to the server using RCON</p>
             <form class="command-form" onsubmit="sendCommand(event)">
-                <div class="command-row">
-                    <input type="text" 
-                           id="commandInput" 
-                           class="command-input" 
-                           placeholder="Enter server command (e.g., list, say Hello)" 
-                           required>
-                    <button type="submit" class="btn btn-primary">Send</button>
+                <div class="field">
+                    <label for="commandInput">Server command</label>
+                    <div class="command-row">
+                        <input type="text"
+                               id="commandInput"
+                               class="command-input"
+                               placeholder="e.g. list, say Hello"
+                               required>
+                        <button type="submit" class="btn btn-primary">Send</button>
+                    </div>
                 </div>
             </form>
-            <div id="commandOutput" class="command-output"></div>
+            <div id="commandOutput" class="command-output" role="log" aria-live="polite"></div>
         </div>
         
         <!-- Server Control Card -->
@@ -333,31 +432,37 @@
             <h2>Server Control</h2>
             <p style="color: var(--text-muted); margin-bottom: 15px;">Start, stop, or restart the Minecraft server</p>
             <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                <button onclick="startServer()" class="btn btn-primary" style="background: #10b981;">
+                <button type="button" id="btnStartServer" onclick="startServer()"
+                        class="btn btn-primary" style="background: #10b981;"
+                        aria-label="Start the Minecraft server">
                     ▶ Start Server
                 </button>
-                <button onclick="stopServer()" class="btn btn-primary" style="background: #ef4444;">
+                <button type="button" id="btnStopServer" onclick="stopServer()"
+                        class="btn btn-primary" style="background: #ef4444;"
+                        aria-label="Stop the Minecraft server (disconnects players)">
                     ⏹ Stop Server
                 </button>
-                <button onclick="restartServer()" class="btn btn-primary" style="background: #f59e0b;">
+                <button type="button" id="btnRestartServer" onclick="restartServer()"
+                        class="btn btn-primary" style="background: #f59e0b;"
+                        aria-label="Restart the Minecraft server (briefly disconnects players)">
                     🔄 Restart Server
                 </button>
             </div>
-            <div id="serverControlOutput" class="command-output"></div>
+            <div id="serverControlOutput" class="command-output" role="status" aria-live="polite"></div>
         </div>
         
         <!-- Plugin Management Card -->
         <div class="card">
             <h2>Plugin Management</h2>
             <p style="color: var(--text-muted); margin-bottom: 15px;">Upload and manage server plugins</p>
-            
+
             <div class="upload-section">
                 <div class="file-input-wrapper">
                     <label for="pluginFileInput" class="file-input-label">
                         Choose Plugin File (.jar)
                     </label>
-                    <input type="file" 
-                           id="pluginFileInput" 
+                    <input type="file"
+                           id="pluginFileInput"
                            accept=".jar"
                            onchange="updateFileName(this)">
                 </div>
@@ -365,35 +470,102 @@
                 <button onclick="uploadPlugin()" class="btn btn-primary">Upload Plugin</button>
                 <button onclick="refreshPlugins()" class="btn btn-primary">Refresh List</button>
             </div>
-            
+
             <div id="pluginsListContainer" style="margin-top: 20px;">
-                <div class="empty-state">Click "Refresh List" to load plugins</div>
+                <div class="empty-state">Enter credentials above, then click <strong>Refresh List</strong> to load installed plugins.</div>
             </div>
         </div>
+
+        <!-- World Management Card -->
+        <div class="card">
+            <h2>World Management</h2>
+            <p style="color: var(--text-muted); margin-bottom: 15px;">Upload and manage server worlds. The archive must be a ZIP containing a <code>level.dat</code> at its root. Uploading replaces the active world — the server will stop, the world will be replaced, then restart.</p>
+
+            <div class="upload-section">
+                <div class="file-input-wrapper">
+                    <label for="worldFileInput" class="file-input-label">
+                        Choose World Archive (.zip)
+                    </label>
+                    <input type="file"
+                           id="worldFileInput"
+                           accept=".zip"
+                           onchange="updateWorldFileName(this)">
+                </div>
+                <span id="selectedWorldFileName" style="color: var(--text-muted);"></span>
+                <button id="btnUploadWorld" onclick="uploadWorld()" class="btn btn-primary">Upload World</button>
+                <button onclick="refreshWorlds()" class="btn btn-primary">Refresh List</button>
+            </div>
+            <div id="worldUploadOutput" class="command-output" role="status" aria-live="polite"></div>
+
+            <div id="worldsListContainer" style="margin-top: 20px;">
+                <div class="empty-state">Enter credentials above, then click <strong>Refresh List</strong> to load worlds.</div>
+            </div>
+        </div>
+        </main>
     </div>
-    
+
     <script>
         function getCredentials() {
             const username = document.getElementById('usernameInput').value.trim();
             const password = document.getElementById('passwordInput').value.trim();
             return { username, password };
         }
+
+        const toastRegion = document.getElementById('toastRegion');
+        function showToast(message, variant = 'info', durationMs = 4000) {
+            const toast = document.createElement('div');
+            toast.className = `toast ${variant}`;
+            toast.textContent = message;
+            toastRegion.appendChild(toast);
+            setTimeout(() => {
+                toast.style.transition = 'opacity 0.3s ease';
+                toast.style.opacity = '0';
+                setTimeout(() => toast.remove(), 300);
+            }, durationMs);
+        }
+
+        function requireCredentials() {
+            const creds = getCredentials();
+            if (!creds.username || !creds.password) {
+                showToast('Please enter your admin username and password above.', 'error');
+                document.getElementById('usernameInput').focus();
+                return null;
+            }
+            return creds;
+        }
+
+        // Once the user has finished entering both fields, auto-load lists so they
+        // don't have to also click "Refresh List". This removes a step without
+        // changing the underlying authentication model.
+        let listsAutoLoaded = false;
+        function maybeAutoLoadLists() {
+            if (listsAutoLoaded) return;
+            const { username, password } = getCredentials();
+            if (username && password) {
+                listsAutoLoaded = true;
+                refreshPlugins();
+                refreshWorlds();
+            }
+        }
+        document.addEventListener('DOMContentLoaded', () => {
+            const pw = document.getElementById('passwordInput');
+            const un = document.getElementById('usernameInput');
+            // Trigger on the second field losing focus (typical "I'm done entering creds" signal).
+            pw.addEventListener('blur', maybeAutoLoadLists);
+            un.addEventListener('blur', maybeAutoLoadLists);
+        });
         
         async function sendCommand(event) {
             event.preventDefault();
-            
+
             const commandInput = document.getElementById('commandInput');
             const output = document.getElementById('commandOutput');
-            
-            const { username, password } = getCredentials();
+
+            const creds = requireCredentials();
+            if (!creds) return;
+            const { username, password } = creds;
             const command = commandInput.value.trim();
-            
-            if (!username || !password) {
-                output.textContent = 'Error: Please enter username and password above';
-                output.classList.add('show');
-                return;
-            }
-            
+
             if (!command) return;
             
             output.textContent = 'Sending command...';
@@ -429,13 +601,10 @@
         }
         
         async function refreshPlugins() {
-            const { username, password } = getCredentials();
-            
-            if (!username || !password) {
-                alert('Please enter username and password above');
-                return;
-            }
-            
+            const creds = requireCredentials();
+            if (!creds) return;
+            const { username, password } = creds;
+
             const container = document.getElementById('pluginsListContainer');
             container.innerHTML = '<div class="empty-state">Loading plugins...</div>';
             
@@ -486,58 +655,51 @@
         }
         
         async function uploadPlugin() {
-            const { username, password } = getCredentials();
-            
-            if (!username || !password) {
-                alert('Please enter username and password above');
-                return;
-            }
-            
+            const creds = requireCredentials();
+            if (!creds) return;
+            const { username, password } = creds;
+
             const fileInput = document.getElementById('pluginFileInput');
             if (!fileInput.files.length) {
-                alert('Please select a plugin file');
+                showToast('Please select a plugin file first.', 'error');
                 return;
             }
-            
+
             const formData = new FormData();
             formData.append('username', username);
             formData.append('password', password);
             formData.append('file', fileInput.files[0]);
-            
+
             try {
                 const response = await fetch('/api/plugins/upload', {
                     method: 'POST',
                     body: formData
                 });
-                
+
                 const data = await response.json();
-                
+
                 if (data.success) {
-                    alert(data.message);
+                    showToast(data.message || 'Plugin uploaded.', 'success');
                     fileInput.value = '';
                     document.getElementById('selectedFileName').textContent = '';
                     refreshPlugins();
                 } else {
-                    alert(data.error || data.message);
+                    showToast(data.error || data.message || 'Upload failed.', 'error');
                 }
             } catch (error) {
-                alert('Error uploading plugin: ' + error.message);
+                showToast('Error uploading plugin: ' + error.message, 'error');
             }
         }
         
         async function deletePlugin(filename) {
-            const safeFilename = escapeHtml(String(filename));
-            if (!confirm(`Are you sure you want to delete ${safeFilename}?`)) {
+            if (!confirm(`Delete plugin "${filename}"? This cannot be undone.`)) {
                 return;
             }
-            
-            const { username, password } = getCredentials();
-            
-            if (!username || !password) {
-                alert('Please enter username and password above');
-                return;
-            }
-            
+
+            const creds = requireCredentials();
+            if (!creds) return;
+            const { username, password } = creds;
+
             try {
                 const response = await fetch('/api/plugins/delete', {
                     method: 'POST',
@@ -550,38 +712,188 @@
                         filename: filename
                     })
                 });
-                
+
                 const data = await response.json();
-                
+
                 if (data.success) {
-                    alert(data.message);
+                    showToast(data.message || `Deleted ${filename}.`, 'success');
                     refreshPlugins();
                 } else {
-                    alert(data.error || data.message);
+                    showToast(data.error || data.message || 'Delete failed.', 'error');
                 }
             } catch (error) {
-                alert('Error deleting plugin: ' + error.message);
+                showToast('Error deleting plugin: ' + error.message, 'error');
             }
         }
         
+        function updateWorldFileName(input) {
+            const span = document.getElementById('selectedWorldFileName');
+            span.textContent = input.files.length > 0 ? input.files[0].name : '';
+        }
+
+        async function refreshWorlds() {
+            const creds = requireCredentials();
+            if (!creds) return;
+            const { username, password } = creds;
+
+            const container = document.getElementById('worldsListContainer');
+            container.innerHTML = '<div class="empty-state">Loading worlds...</div>';
+
+            try {
+                const response = await fetch('/api/world/list', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+                const data = await response.json();
+
+                if (!data.success) {
+                    container.innerHTML = `<div class="empty-state" style="color: #ef4444;">${escapeHtml(data.error)}</div>`;
+                    return;
+                }
+
+                if (!data.worlds || data.worlds.length === 0) {
+                    container.innerHTML = '<div class="empty-state">No worlds found</div>';
+                    return;
+                }
+
+                let html = '<div class="plugins-list">';
+                data.worlds.forEach(world => {
+                    const badge = world.active
+                        ? '<span style="font-size:0.75rem;background:#10b981;color:#fff;padding:1px 6px;border-radius:4px;margin-left:6px;">active</span>'
+                        : '';
+                    const meta = `<span style="font-size:0.8rem;color:var(--text-muted);margin-left:8px;">${escapeHtml(world.lastModified)}</span>`;
+                    const deleteBtn = world.active
+                        ? ''
+                        : `<button class="btn-danger" data-world-name="${escapeHtml(world.name)}">Delete</button>`;
+                    html += `
+                        <div class="plugin-item">
+                            <span class="plugin-name">${escapeHtml(world.name)}${badge}${meta}</span>
+                            ${deleteBtn}
+                        </div>
+                    `;
+                });
+                html += '</div>';
+                container.innerHTML = html;
+
+                container.querySelectorAll('.btn-danger').forEach(btn => {
+                    btn.addEventListener('click', function () {
+                        deleteWorld(this.getAttribute('data-world-name'));
+                    });
+                });
+            } catch (error) {
+                container.innerHTML = `<div class="empty-state" style="color: #ef4444;">Error: ${escapeHtml(error.message)}</div>`;
+            }
+        }
+
+        async function deleteWorld(name) {
+            if (!confirm(`Delete world "${name}"? This cannot be undone.`)) return;
+
+            const creds = requireCredentials();
+            if (!creds) return;
+            const { username, password } = creds;
+
+            try {
+                const response = await fetch('/api/world/delete', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password, name })
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    showToast(data.message || `Deleted ${name}.`, 'success');
+                    refreshWorlds();
+                } else {
+                    showToast(data.error || data.message || 'Delete failed.', 'error');
+                }
+            } catch (error) {
+                showToast('Error deleting world: ' + error.message, 'error');
+            }
+        }
+
+        async function uploadWorld() {
+            const creds = requireCredentials();
+            if (!creds) return;
+            const { username, password } = creds;
+
+            const fileInput = document.getElementById('worldFileInput');
+            if (!fileInput.files.length) {
+                showToast('Please select a world archive file first.', 'error');
+                return;
+            }
+
+            const output = document.getElementById('worldUploadOutput');
+            const btn = document.getElementById('btnUploadWorld');
+            output.textContent = 'Uploading world… this may take a while. The server will stop and restart automatically.';
+            output.classList.add('show');
+            btn.setAttribute('aria-busy', 'true');
+            btn.disabled = true;
+
+            const formData = new FormData();
+            formData.append('username', username);
+            formData.append('password', password);
+            formData.append('file', fileInput.files[0]);
+
+            try {
+                const response = await fetch('/api/world/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    output.textContent = '✓ ' + (data.message || 'World uploaded successfully.');
+                    showToast(data.message || 'World uploaded.', 'success');
+                    fileInput.value = '';
+                    document.getElementById('selectedWorldFileName').textContent = '';
+                    refreshWorlds();
+                } else {
+                    output.textContent = '✗ ' + (data.error || data.message || 'Upload failed.');
+                    showToast(data.error || data.message || 'Upload failed.', 'error');
+                }
+            } catch (error) {
+                output.textContent = '✗ Error: ' + error.message;
+                showToast('Error uploading world: ' + error.message, 'error');
+            } finally {
+                btn.removeAttribute('aria-busy');
+                btn.disabled = false;
+            }
+        }
+
         function escapeHtml(text) {
             const div = document.createElement('div');
             div.textContent = text;
-            return div.innerHTML;
+            return div.innerHTML.replace(/"/g, '&quot;');
         }
         
+        // Lock all server-control buttons while any one is in flight so a user
+        // can't click Stop and Restart concurrently and confuse the wrapper.
+        function setServerControlsBusy(busy) {
+            ['btnStartServer', 'btnStopServer', 'btnRestartServer'].forEach(id => {
+                const el = document.getElementById(id);
+                if (!el) return;
+                if (busy) {
+                    el.setAttribute('aria-busy', 'true');
+                    el.disabled = true;
+                } else {
+                    el.removeAttribute('aria-busy');
+                    el.disabled = false;
+                }
+            });
+        }
+
         async function startServer() {
-            const { username, password } = getCredentials();
-            
-            if (!username || !password) {
-                alert('Please enter username and password above');
-                return;
-            }
-            
+            const creds = requireCredentials();
+            if (!creds) return;
+            const { username, password } = creds;
+
             const output = document.getElementById('serverControlOutput');
-            output.textContent = 'Starting server...';
+            output.textContent = 'Starting server…';
             output.classList.add('show');
-            
+            setServerControlsBusy(true);
+
             try {
                 const response = await fetch('/api/server/start', {
                     method: 'POST',
@@ -593,30 +905,30 @@
                         password: password
                     })
                 });
-                
+
                 const data = await response.json();
                 output.textContent = data.success ? '✓ ' + data.message : '✗ ' + data.message;
             } catch (error) {
                 output.textContent = '✗ Error: ' + error.message;
+            } finally {
+                setServerControlsBusy(false);
             }
         }
         
         async function stopServer() {
-            const { username, password } = getCredentials();
-            
-            if (!username || !password) {
-                alert('Please enter username and password above');
+            const creds = requireCredentials();
+            if (!creds) return;
+            const { username, password } = creds;
+
+            if (!confirm('Stop the Minecraft server? Connected players will be disconnected.')) {
                 return;
             }
-            
-            if (!confirm('Are you sure you want to stop the server?')) {
-                return;
-            }
-            
+
             const output = document.getElementById('serverControlOutput');
-            output.textContent = 'Stopping server...';
+            output.textContent = 'Stopping server…';
             output.classList.add('show');
-            
+            setServerControlsBusy(true);
+
             try {
                 const response = await fetch('/api/server/stop', {
                     method: 'POST',
@@ -628,30 +940,30 @@
                         password: password
                     })
                 });
-                
+
                 const data = await response.json();
                 output.textContent = data.success ? '✓ ' + data.message : '✗ ' + data.message;
             } catch (error) {
                 output.textContent = '✗ Error: ' + error.message;
+            } finally {
+                setServerControlsBusy(false);
             }
         }
         
         async function restartServer() {
-            const { username, password } = getCredentials();
-            
-            if (!username || !password) {
-                alert('Please enter username and password above');
+            const creds = requireCredentials();
+            if (!creds) return;
+            const { username, password } = creds;
+
+            if (!confirm('Restart the Minecraft server? Connected players will be briefly disconnected.')) {
                 return;
             }
-            
-            if (!confirm('Are you sure you want to restart the server?')) {
-                return;
-            }
-            
+
             const output = document.getElementById('serverControlOutput');
-            output.textContent = 'Restarting server...';
+            output.textContent = 'Restarting server…';
             output.classList.add('show');
-            
+            setServerControlsBusy(true);
+
             try {
                 const response = await fetch('/api/server/restart', {
                     method: 'POST',
@@ -663,11 +975,13 @@
                         password: password
                     })
                 });
-                
+
                 const data = await response.json();
                 output.textContent = data.success ? '✓ ' + data.message : '✗ ' + data.message;
             } catch (error) {
                 output.textContent = '✗ Error: ' + error.message;
+            } finally {
+                setServerControlsBusy(false);
             }
         }
     </script>

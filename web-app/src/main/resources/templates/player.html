@@ -271,14 +271,22 @@
         
         <div class="card" th:if="${profile == null}">
             <div class="error-message">
-                <div class="error-icon">❌</div>
-                <div th:text="${error}">Player not found</div>
-                <p style="margin-top: 10px; font-size: 0.9em; color: var(--text-muted);">
-                    This player may not have any recorded activity yet.
+                <div class="error-icon" aria-hidden="true">❌</div>
+                <h2 style="border-bottom: none; padding-bottom: 0; color: var(--text-primary); margin-bottom: 10px;">
+                    Player not found
+                </h2>
+                <p th:if="${playerName != null}" style="color: var(--text-secondary); font-size: 1em; margin-bottom: 8px;">
+                    We couldn't find a player named
+                    <strong style="font-family: 'Courier New', monospace;" th:text="${playerName}">PlayerName</strong>.
+                </p>
+                <p style="margin-top: 6px; font-size: 0.9em; color: var(--text-muted);">
+                    Players appear here once they've logged into the server at least once with activity tracking enabled.
+                    Double-check the spelling — names are case-sensitive.
                 </p>
             </div>
             <div class="nav-buttons">
-                <a href="/public" class="btn btn-primary">← Back to Dashboard</a>
+                <a href="/public" class="btn btn-primary">← Back to dashboard</a>
+                <a href="/public#leaderboard" class="btn btn-secondary">View leaderboard</a>
             </div>
         </div>
     </div>

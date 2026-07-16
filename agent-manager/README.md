@@ -298,7 +298,18 @@ At DEBUG level, the agent-manager logs additional detail at each step:
 - Only the user who requested an action can confirm it via reaction
 - Pending confirmations expire after 5 minutes to prevent stale actions
 - The Discord bot only listens in the configured channel
-- The Actuator management endpoints (`/loggers`, `/health`) run on a separate port (8094). In Docker Compose this port is not mapped to the host, so it is only reachable from within the Docker network. In Kubernetes it is not exposed via any Service or Ingress, but it remains reachable on the cluster network via the pod IP (including by the kubelet for health probes). Use NetworkPolicies to restrict access if required
+- The Actuator management endpoints (`/loggers`, `/health`) run on a separate
+  port (8094). In Docker Compose this port is not published to the host, so it
+  is only reachable from within the Docker network. In Kubernetes the chart
+  *does* expose 8094 as a Service port named `management`
+  (`helm/omcsi/templates/agent-manager.yaml`) — the kubelet uses it for health
+  probes and Prometheus uses it for metric scraping. It is **not** exposed via
+  any Ingress, and the bundled NetworkPolicy restricts ingress to 8094 to the
+  kubelet (via the node CIDR) and to the Prometheus pod in the monitoring
+  namespace. If you disable NetworkPolicies, use a CNI that does not enforce
+  them, or modify the bundled policies, harden access yourself before treating
+  the actuator as private — by default Service IPs are reachable from every
+  pod on the cluster.
 
 ## Troubleshooting
 

@@ -44,6 +44,9 @@ The Self-Hosting Guide covers:
 - Monitoring and maintenance
 - Advanced security configurations
 
+### Cheapest Cloud Hosting (Hetzner, ~$14/month)
+If you want to run OMCSI in the cloud for the lowest possible cost, the **[Hetzner single-node Terraform module](#deploying-to-hetzner-cloud-cheapest-single-node)** provisions one server, self-manages a `kubeadm` Kubernetes cluster on it, and deploys the Helm chart — all under the $20/month target with no managed-control-plane fee, cloud LoadBalancer, or NAT gateway. See the [Cost Analysis](terraform/COST_ANALYSIS.md) for how this compares to managed Kubernetes (LKE ~$109/mo, EKS ~$248/mo).
+
 ### Kubernetes (Helm)
 OMCSI ships with a Helm chart in [`helm/omcsi/`](helm/omcsi/) for deploying to any Kubernetes cluster (k3s, kind, EKS, GKE, etc.).
 
@@ -341,6 +344,76 @@ minikube delete
 | PVC stuck in `Pending` | No default storage class | Minikube ships with a default `StorageClass`; verify with `kubectl get sc` |
 | Cannot reach services | Minikube tunnel not running | Run `minikube tunnel` for `LoadBalancer` services, or use `minikube service <name> -n omcsi` for `NodePort` |
 | Pods `CrashLoopBackOff` | Application startup failure | Check logs with `kubectl logs -n omcsi <pod-name>` |
+
+#### Deploying to Hetzner Cloud (cheapest, single node)
+
+The [`terraform/hetzner/`](terraform/hetzner/) directory contains Terraform configuration that provisions a **single Hetzner Cloud server**, bootstraps a self-managed single-node Kubernetes cluster on it with `kubeadm`, and deploys the OMCSI Helm chart — in one `terraform apply`. It is the **lowest-cost cloud option (~$14/month on the default `cax31`)** because it carries none of the managed-Kubernetes charges:
+
+- **No control-plane fee** — the control plane runs on the same node (untainted so workloads schedule on it)
+- **No cloud LoadBalancer** — services are exposed via fixed NodePorts (25565/80/443) on the node's public IP (the API server's `--service-node-port-range` is widened to `80-32767`)
+- **No NAT gateway** — the node has a public IP directly
+- **No separate block storage** — the [Rancher local-path provisioner](https://github.com/rancher/local-path-provisioner) backs PVCs with the node's included NVMe
+
+The cluster uses **containerd**, **Calico** (so the chart's NetworkPolicies are enforced), and Helm. See [Cost Analysis](terraform/COST_ANALYSIS.md) for the full comparison.
+
+> **Trade-off:** You self-manage the cluster (upgrades, etcd backups, node maintenance) and there is no HA — this is the explicit deal for the lower price. The setup maps directly onto CKA-style skills (kubeadm, CNI, taints, NodePort ranges, StorageClasses).
+
+**Prerequisites**
+- [Terraform](https://developer.hashicorp.com/terraform/install) >= 1.3
+- A [Hetzner Cloud API token](https://docs.hetzner.com/cloud/api/getting-started/generating-api-token/) (Read & Write)
+- An SSH key pair (Terraform bootstraps and deploys over SSH)
+
+**Quick Start**
+
+```bash
+cd terraform/hetzner
+
+# Copy the example tfvars and fill in your values
+cp terraform.tfvars.example terraform.tfvars
+# Edit terraform.tfvars – set hcloud_token, ssh_public_key, ssh_private_key_path,
+# rcon_password, and admin_password at minimum
+
+terraform init
+terraform plan
+terraform apply
+```
+
+`terraform apply` prints the connection details when it finishes:
+
+```bash
+terraform output minecraft_address   # e.g. 203.0.113.10:25565 – connect your client here
+terraform output dashboard_url       # https://203.0.113.10 – self-signed cert (expect a warning)
+terraform output kubectl_hint        # export KUBECONFIG=... && kubectl get pods -n omcsi
+```
+
+> **First-boot time:** The server spends several minutes on first boot bootstrapping Kubernetes (cloud-init) before Helm deploys. Terraform waits for this automatically. Watch progress with `ssh -i <key> root@<ip> 'tail -f /var/log/omcsi-bootstrap.log'`.
+
+**Key Variables**
+
+| Variable | Description | Default |
+|---|---|---|
+| `hcloud_token` | Hetzner Cloud API token | *(required)* |
+| `ssh_public_key` | SSH public key contents added to the server | *(required)* |
+| `ssh_private_key_path` | Path to the matching private key (used for provisioning) | *(required)* |
+| `rcon_password` / `admin_password` | OMCSI secrets | *(required)* |
+| `server_type` | Hetzner server type | `cax31` (ARM, 16 GB) |
+| `location` | Hetzner location (CAX/ARM is EU-only: `fsn1`/`nbg1`/`hel1`) | `fsn1` |
+| `allowed_ssh_cidr` | CIDR allowed to reach SSH (22) and the K8s API (6443) | `0.0.0.0/0` *(restrict this)* |
+| `kubernetes_version` | Kubernetes minor version | `1.34` |
+| `java_opts` | Minecraft JVM heap (sized for 16 GB) | `-Xmx6G -Xms4G` |
+| `image_registry` | Container image registry prefix | `dmccoystephenson` |
+
+See [`terraform/hetzner/variables.tf`](terraform/hetzner/variables.tf) for the full list (operator identity, MOTD, Discord, agent-manager, NodePort overrides, etc.).
+
+> **ARM images:** `cax31` is ARM64. The default `dmccoystephenson` images are published multi-arch (amd64 + arm64), so they run as-is. For an x86 server, set `server_type = "cpx31"` and `location` to any region.
+
+**Tear Down**
+
+```bash
+terraform destroy
+```
+
+This removes the server, firewall, and SSH key. **All world data on the node is destroyed** — back up first (the backup-manager writes to a PVC on the node; copy it off before destroying).
 
 #### Deploying to Linode with Terraform
 
@@ -677,9 +750,10 @@ These settings allow you to run multiple server instances in parallel without co
 - `HOST_PORT`: Host port for Minecraft server (default: `25565`)
 - `HOST_RCON_PORT`: Host port for RCON (default: `25575`)
 - `HOST_BLUEMAP_PORT`: Host port for BlueMap (default: `8100`)
+- `WRAPPER_PORT`: Host port for the minecraft-wrapper REST API (default: `8092`)
 - `VOLUME_NAME`: Docker volume name for persistent data (default: `mcserver`)
 
-To run multiple servers simultaneously (e.g., for testing different configurations), create separate `.env` files with unique values for `CONTAINER_NAME`, `HOST_PORT`, `HOST_RCON_PORT`, `HOST_BLUEMAP_PORT`, `VOLUME_NAME`, `WEB_CONTAINER_NAME`, `NGINX_CONTAINER_NAME`, `BACKUP_CONTAINER_NAME`, `ALERT_CONTAINER_NAME`, `ALERT_PORT`, `WEB_HTTP_PORT`, and `WEB_HTTPS_PORT`, then start each with:
+To run multiple servers simultaneously (e.g., for testing different configurations), create separate `.env` files with unique values for `CONTAINER_NAME`, `HOST_PORT`, `HOST_RCON_PORT`, `HOST_BLUEMAP_PORT`, `WRAPPER_PORT`, `VOLUME_NAME`, `WEB_CONTAINER_NAME`, `NGINX_CONTAINER_NAME`, `BACKUP_CONTAINER_NAME`, `ALERT_CONTAINER_NAME`, `BACKUP_PORT`, `ALERT_PORT`, `AGENT_PORT`, `WEB_HTTP_PORT`, and `WEB_HTTPS_PORT`, then start each with:
 
 ```bash
 docker compose --env-file .env.dev2 up -d --build
@@ -740,7 +814,7 @@ See [alert-manager/README.md](alert-manager/README.md) for detailed configuratio
 ### Agent Manager Configuration
 
 - `AGENT_CONTAINER_NAME`: Agent manager container name (default: `open-mc-agent-manager`)
-- `AGENT_PORT`: Agent manager API port (default: `8093`)
+- `AGENT_PORT`: Agent manager API port (default: `8093`). The Spring Boot management/actuator endpoint also listens on `8094` inside the container but is not published to the host by default — see `agent-manager/README.md` for details.
 - `AGENT_DISCORD_BOT_TOKEN`: Discord bot token (required for agent manager)
 - `AGENT_DISCORD_CHANNEL_ID`: Discord channel ID to listen on (required for agent manager)
 - `AGENT_ANTHROPIC_API_KEY`: Anthropic API key (required for agent manager)

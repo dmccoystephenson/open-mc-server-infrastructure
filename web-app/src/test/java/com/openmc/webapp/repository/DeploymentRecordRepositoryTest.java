@@ -3,8 +3,13 @@ package com.openmc.webapp.repository;
 import com.openmc.webapp.config.TestDataStorageConfig;
 import com.openmc.webapp.model.DeploymentRecord;
 import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.io.TempDir;
 
 import java.io.File;
+import java.io.UncheckedIOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.attribute.PosixFilePermissions;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -105,6 +110,55 @@ class DeploymentRecordRepositoryTest {
 
         assertEquals(1, loadedRecords.size());
         assertEquals("RecentPlugin.jar", loadedRecords.get(0).getPluginName());
+    }
+
+    @Test
+    @DisplayName("Should throw UncheckedIOException when data directory is not writable")
+    void shouldThrowWhenDirectoryNotWritable(@TempDir Path tempDir) throws Exception {
+        Path readOnlyDir = tempDir.resolve("ro");
+        Files.createDirectory(readOnlyDir);
+
+        TestDataStorageConfig cfg = new TestDataStorageConfig(readOnlyDir.toString());
+        DeploymentRecordRepository repo = new DeploymentRecordRepository(cfg);
+
+        // Seed a record so there is something to save
+        List<DeploymentRecord> records = createTestRecords(1);
+
+        // Make the directory read-only so Files.createTempFile fails
+        Files.setPosixFilePermissions(readOnlyDir, PosixFilePermissions.fromString("r-xr-xr-x"));
+        try {
+            assertThrows(UncheckedIOException.class, () -> repo.save(records));
+        } finally {
+            Files.setPosixFilePermissions(readOnlyDir, PosixFilePermissions.fromString("rwxr-xr-x"));
+        }
+    }
+
+    @Test
+    @DisplayName("Should leave existing data intact when a save fails")
+    void shouldPreserveExistingDataOnSaveFailure(@TempDir Path tempDir) throws Exception {
+        Path dataDir = tempDir.resolve("data");
+        Files.createDirectory(dataDir);
+
+        TestDataStorageConfig cfg = new TestDataStorageConfig(dataDir.toString());
+        DeploymentRecordRepository repo = new DeploymentRecordRepository(cfg);
+
+        // Write an initial record successfully
+        List<DeploymentRecord> initial = createTestRecords(1);
+        repo.save(initial);
+        assertEquals(1, repo.findAll().size());
+
+        // Now make the directory read-only so the next save fails
+        Files.setPosixFilePermissions(dataDir, PosixFilePermissions.fromString("r-xr-xr-x"));
+        try {
+            assertThrows(UncheckedIOException.class, () -> repo.save(createTestRecords(2)));
+        } finally {
+            Files.setPosixFilePermissions(dataDir, PosixFilePermissions.fromString("rwxr-xr-x"));
+        }
+
+        // Original data must still be intact
+        List<DeploymentRecord> afterFailure = repo.findAll();
+        assertEquals(1, afterFailure.size());
+        assertEquals(initial.get(0).getPluginName(), afterFailure.get(0).getPluginName());
     }
 
     private List<DeploymentRecord> createTestRecords(int count) {

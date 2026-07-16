@@ -20,15 +20,27 @@ public class RconClient implements AutoCloseable {
     
     public RconClient(String host, int port, String password) throws IOException {
         socket = new Socket(host, port);
-        socket.setSoTimeout(5000);
-        out = new DataOutputStream(socket.getOutputStream());
-        in = new DataInputStream(socket.getInputStream());
-        
-        // Authenticate
-        sendPacket(SERVERDATA_AUTH, password);
-        RconPacket response = receivePacket();
-        if (response.getRequestId() == -1) {
-            throw new IOException("Authentication failed");
+        try {
+            socket.setSoTimeout(5000);
+            out = new DataOutputStream(socket.getOutputStream());
+            in = new DataInputStream(socket.getInputStream());
+
+            // Authenticate
+            sendPacket(SERVERDATA_AUTH, password);
+            RconPacket response = receivePacket();
+            if (response.getRequestId() == -1) {
+                throw new IOException("Authentication failed");
+            }
+        } catch (IOException e) {
+            // Construction failed after the socket was opened. Close it so the
+            // file descriptor isn't leaked: the caller's try-with-resources
+            // never runs close() on an instance whose constructor threw.
+            try {
+                socket.close();
+            } catch (IOException closeError) {
+                e.addSuppressed(closeError);
+            }
+            throw e;
         }
     }
     
