@@ -4,8 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>OMCSI — Plugin Deployment Lifecycle</title>
-  <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+  <script src="./vendor/mermaid-11.6.0.min.js"></script>
+  <script src="./vendor/svg-pan-zoom-3.6.1.min.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -56,6 +56,13 @@
     }
     @keyframes spin { to { transform: rotate(360deg); } }
     #loading p { color: var(--text-dim); font-size: 0.85rem; }
+    #loading.error .spinner { display: none; }
+    #loading.error p {
+      color: #fca5a5;
+      max-width: 28rem;
+      text-align: center;
+      line-height: 1.5;
+    }
 
     /* ── Shared button ───────────────────────────────────────────────── */
     .btn {
@@ -437,7 +444,7 @@
 <!-- Loading overlay -->
 <div id="loading" role="status" aria-label="Loading diagram">
   <div class="spinner"></div>
-  <p>Rendering diagram…</p>
+  <p id="loading-message">Rendering diagram…</p>
 </div>
 
 <!-- ════════════════════════════════════════════════════════════════
@@ -615,7 +622,7 @@ players -->|"Minecraft protocol  :25565"| spigot
 <div id="sheet-backdrop" role="presentation"></div>
 
 <!-- Bottom sheet (mobile legend) -->
-<div id="bottom-sheet" aria-label="Diagram legend" role="dialog">
+<div id="bottom-sheet" aria-label="Diagram legend" role="dialog" aria-modal="true" tabindex="-1">
   <div class="sheet-handle-wrap" id="sheet-handle">
     <div class="sheet-handle"></div>
   </div>
@@ -813,11 +820,27 @@ function setZoomLabel(z) {
 }
 
 // ── Desktop legend ──────────────────────────────────────────────────
-let legendOpen = localStorage.getItem("legend-open") === "true"; // default closed
+function readLegendPreference() {
+  try {
+    return localStorage.getItem("legend-open") === "true";
+  } catch {
+    return false;
+  }
+}
+
+function writeLegendPreference(open) {
+  try {
+    localStorage.setItem("legend-open", open);
+  } catch {
+    // Ignore storage failures and fall back to the in-memory state.
+  }
+}
+
+let legendOpen = readLegendPreference(); // default closed
 
 function setDesktopLegend(open, panZoom) {
   legendOpen = open;
-  localStorage.setItem("legend-open", open);
+  writeLegendPreference(open);
   const leg = $("legend"), btn = $("btn-legend");
   if (open) { leg.classList.remove("closed"); btn.classList.add("active"); btn.setAttribute("aria-expanded","true"); }
   else       { leg.classList.add("closed");    btn.classList.remove("active"); btn.setAttribute("aria-expanded","false"); }
@@ -827,18 +850,29 @@ setDesktopLegend(legendOpen, null);
 
 // ── Mobile bottom sheet ─────────────────────────────────────────────
 let sheetOpen = false;
+let sheetReturnFocusEl = null;
 
-function openSheet() {
+function openSheet(trigger = document.activeElement) {
   sheetOpen = true;
+  sheetReturnFocusEl = trigger instanceof HTMLElement ? trigger : null;
   $("bottom-sheet").classList.add("open");
   $("sheet-backdrop").classList.add("open");
   $("fab-legend").classList.add("active");
+  requestAnimationFrame(() => {
+    $("bottom-sheet").focus();
+    $("sheet-search").focus();
+  });
 }
-function closeSheet() {
+function closeSheet({ restoreFocus = true } = {}) {
   sheetOpen = false;
   $("bottom-sheet").classList.remove("open");
   $("sheet-backdrop").classList.remove("open");
   $("fab-legend").classList.remove("active");
+  if (restoreFocus) {
+    const focusTarget = sheetReturnFocusEl && sheetReturnFocusEl.isConnected ? sheetReturnFocusEl : $("fab-legend");
+    focusTarget.focus();
+  }
+  sheetReturnFocusEl = null;
 }
 
 // Sheet drag-to-dismiss
@@ -880,25 +914,43 @@ $("btn-close-shortcuts").addEventListener("click", closeShortcuts);
 $("shortcuts-modal").addEventListener("click", e => { if (e.target === $("shortcuts-modal")) closeShortcuts(); });
 
 // ── Mermaid + pan-zoom ──────────────────────────────────────────────
-mermaid.initialize({
-  startOnLoad: false,
-  theme: "dark",
-  flowchart: { curve: "basis", padding: 24, nodeSpacing: 50, rankSpacing: 70 },
-  themeVariables: { fontSize: "14px" },
-});
+function showLoadingError(message) {
+  const loading = $("loading");
+  loading.classList.remove("hidden");
+  loading.classList.add("error");
+  loading.setAttribute("role", "alert");
+  $("loading-message").textContent = message;
+}
 
-mermaid.run().then(() => {
-  // Dismiss loading
+function hideLoading() {
   const loading = $("loading");
   loading.classList.add("hidden");
   setTimeout(() => loading.remove(), 450);
+}
 
-  const svg = document.querySelector("#diagram-container svg");
-  if (!svg) return;
-  svg.removeAttribute("width"); svg.removeAttribute("height");
-  svg.style.width = "100%"; svg.style.height = "100%";
+if (!window.mermaid || !window.svgPanZoom) {
+  showLoadingError("Diagram assets failed to load. Open this file from the repository checkout so the vendored scripts are available.");
+} else {
+  mermaid.initialize({
+    startOnLoad: false,
+    theme: "dark",
+    flowchart: { curve: "basis", padding: 24, nodeSpacing: 50, rankSpacing: 70 },
+    themeVariables: { fontSize: "14px" },
+  });
 
-  const panZoom = svgPanZoom(svg, {
+  mermaid.run().then(() => {
+    const svg = document.querySelector("#diagram-container svg");
+    if (!svg) {
+      showLoadingError("Diagram rendering completed without producing an SVG.");
+      return;
+    }
+
+    hideLoading();
+
+    svg.removeAttribute("width"); svg.removeAttribute("height");
+    svg.style.width = "100%"; svg.style.height = "100%";
+
+    const panZoom = svgPanZoom(svg, {
     zoomEnabled: true, panEnabled: true,
     controlIconsEnabled: false,
     fit: true, center: true,
@@ -928,7 +980,7 @@ mermaid.run().then(() => {
   $("fab-zoom-in").addEventListener("click",  () => panZoom.zoomIn());
   $("fab-zoom-out").addEventListener("click", () => panZoom.zoomOut());
   $("fab-fit").addEventListener("click", fitView);
-  $("fab-legend").addEventListener("click", () => sheetOpen ? closeSheet() : openSheet());
+  $("fab-legend").addEventListener("click", () => sheetOpen ? closeSheet() : openSheet($("fab-legend")));
 
   // Double-click / double-tap to fit
   let lastTap = 0;
@@ -949,14 +1001,18 @@ mermaid.run().then(() => {
     }
     if (e.key === "?" || e.key === "/") { e.preventDefault(); openShortcuts(); return; }
     if (e.key === "l" || e.key === "L") {
-      isMobile() ? (sheetOpen ? closeSheet() : openSheet()) : setDesktopLegend(!legendOpen, panZoom);
+      isMobile() ? (sheetOpen ? closeSheet() : openSheet($("fab-legend"))) : setDesktopLegend(!legendOpen, panZoom);
       return;
     }
     if (e.key === "+" || e.key === "=") { panZoom.zoomIn(); return; }
     if (e.key === "-")                   { panZoom.zoomOut(); return; }
     if (e.key === "0" || e.key === "f" || e.key === "F") fitView();
   });
-});
+  }).catch(err => {
+    console.error("Failed to render Mermaid diagram.", err);
+    showLoadingError("Failed to render the Mermaid diagram. Check the browser console for details.");
+  });
+}
 </script>
 </body>
 </html>
