@@ -1,10 +1,49 @@
-# Kubernetes Cost Analysis: LKE (Linode) vs EKS (AWS)
+# Kubernetes Cost Analysis: Hetzner vs LKE (Linode) vs EKS (AWS)
 
-This document summarizes the monthly cost difference between the two supported Terraform deployment targets: Linode Kubernetes Engine (LKE) and AWS Elastic Kubernetes Service (EKS).
+This document summarizes the monthly cost difference between the supported Terraform deployment targets: a **self-managed single node on Hetzner Cloud** (`terraform/hetzner/`), Linode Kubernetes Engine (LKE), and AWS Elastic Kubernetes Service (EKS).
 
 ## TL;DR
 
-For equivalent workloads, **LKE is roughly 2–3× cheaper than EKS** at small-to-medium cluster sizes. The primary driver is EKS's mandatory $73/month control plane fee per cluster, which LKE does not charge.
+OMCSI is a **single Minecraft server plus a handful of small Spring Boot services** — its real footprint is roughly 5 GB of RAM, not the 16 GB the managed-cluster defaults provision. Most of the cost on managed Kubernetes is *infrastructure tax* that the workload never asked for: a control-plane fee, a cloud LoadBalancer, a NAT gateway, and oversized nodes.
+
+If you are willing to self-manage the cluster (kubeadm), a **single Hetzner CAX31 runs the whole stack for ~$14/month — under the $20 target and ~8–18× cheaper than the managed options.** It carries none of the managed-Kubernetes line items: no control-plane fee, no cloud LoadBalancer (services are exposed via NodePorts on the node's public IP), and no NAT gateway.
+
+For equivalent *managed* workloads, **LKE is roughly 2–3× cheaper than EKS**, driven mainly by EKS's mandatory $73/month control-plane fee per cluster, which LKE does not charge.
+
+| Deployment target | Control plane | What you manage | Est. total |
+|---|---|---|---|
+| **Hetzner CAX31 (self-managed kubeadm)** | $0 (on the node) | The cluster (CKA-style) | **~$14/mo** |
+| LKE (managed) | $0 | Apps only | ~$109/mo |
+| EKS (managed) | $73 | Apps only | ~$248/mo |
+
+---
+
+## Self-Managed Single Node (Hetzner) — Cheapest
+
+The `terraform/hetzner/` module provisions one Hetzner Cloud server, bootstraps a single-node Kubernetes cluster with `kubeadm` (containerd, Calico CNI, `local-path` default StorageClass, control-plane untainted), and deploys the same OMCSI Helm chart all targets share.
+
+| Component | Cost | Notes |
+|---|---|---|
+| Control plane | **$0** | Runs on the same node (untainted control plane) |
+| Server (1× cax31) | **~€12.49 (~$14)** | Ampere ARM64, 8 vCPU / 16 GB / 160 GB NVMe |
+| Load balancer | **$0** | NodePorts pinned to 25565/80/443 on the node's public IP (apiserver `--service-node-port-range` widened to `80-32767`) |
+| NAT gateway | **$0** | Node has a public IP directly |
+| Egress | **$0** | Hetzner bundles 20 TB/mo |
+| Block storage | **$0** | `local-path` provisioner uses the node's included NVMe |
+| **Estimated total** | **~$14/mo** | |
+
+**Cheaper / alternative hosts** (the module's `server_type` / `location` cover Hetzner; the same kubeadm approach applies elsewhere):
+
+| Host | Specs | Cost | Notes |
+|---|---|---|---|
+| Oracle Cloud Always Free (Ampere A1) | 4 OCPU / 24 GB | **$0** | Free forever, but ARM + frequent "Out of Capacity"; needs multi-arch images |
+| Hetzner CAX31 (default) | 8 vCPU / 16 GB | ~$14 | Best price/performance; ARM |
+| Hetzner CPX31 | 4 vCPU / 8 GB | ~$9–18 | x86; tighter RAM but sufficient |
+| Contabo VPS 10 | 4 vCPU / 8 GB | ~$5–7 | Cheapest; weaker CPU/disk (fine for 5–10 players) |
+
+> **ARM note:** The cheapest Hetzner (CAX) and the free Oracle tier are ARM64. The project's published images are multi-arch (`linux/amd64,linux/arm64`), so they run on ARM out of the box. If you fork and publish your own images, keep the `platforms:` flag in `.github/workflows/docker-publish.yml`.
+
+> **Trade-off:** You own cluster operations — upgrades, etcd backups, node maintenance, and single-node availability (no HA). This is the explicit deal for the lower price, and it maps cleanly onto CKA-style skills (kubeadm, CNI, taints, NodePort/`service-node-port-range`, StorageClasses).
 
 ---
 
@@ -72,6 +111,12 @@ Linode shared instances are significantly cheaper than AWS on-demand instances f
 ---
 
 ## When to Choose Each Provider
+
+### Choose Hetzner self-managed (`terraform/hetzner/`) when:
+- Cost is the top priority and you want to stay under ~$20/month
+- You're comfortable operating the cluster yourself (kubeadm, upgrades, backups)
+- A single node without HA is acceptable for your community size
+- You want the cheapest path that still uses the standard OMCSI Helm chart
 
 ### Choose LKE (Linode) when:
 - Cost is the primary concern

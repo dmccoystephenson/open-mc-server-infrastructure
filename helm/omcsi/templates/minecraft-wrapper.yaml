@@ -57,6 +57,10 @@ spec:
               value: {{ .Values.minecraftWrapper.env.OPERATOR_LEVEL | quote }}
             - name: OVERWRITE_EXISTING_SERVER
               value: {{ .Values.minecraftWrapper.env.OVERWRITE_EXISTING_SERVER | quote }}
+            - name: MINECRAFT_AUTO_START
+              value: {{ .Values.minecraftWrapper.env.MINECRAFT_AUTO_START | quote }}
+            - name: MINECRAFT_AUTO_RESTART
+              value: {{ .Values.minecraftWrapper.env.MINECRAFT_AUTO_RESTART | quote }}
             - name: SERVER_MOTD
               value: {{ .Values.minecraftWrapper.env.SERVER_MOTD | quote }}
             - name: MAX_PLAYERS
@@ -88,6 +92,8 @@ spec:
               value: {{ .Values.minecraftWrapper.env.ALERTS_CONFIG_WARNING | quote }}
             - name: ALERTS_PLUGIN_DEPLOY
               value: {{ .Values.minecraftWrapper.env.ALERTS_PLUGIN_DEPLOY | quote }}
+            - name: ALERTS_WORLD_UPLOAD
+              value: {{ .Values.minecraftWrapper.env.ALERTS_WORLD_UPLOAD | quote }}
             - name: ALERTS_UPGRADE_START
               value: {{ .Values.minecraftWrapper.env.ALERTS_UPGRADE_START | quote }}
             - name: ALERTS_UPGRADE_COMPLETE
@@ -169,6 +175,9 @@ spec:
       targetPort: minecraft
       protocol: TCP
       name: minecraft
+      {{- if and (eq .Values.minecraftWrapper.service.type "NodePort") .Values.minecraftWrapper.service.nodePort }}
+      nodePort: {{ .Values.minecraftWrapper.service.nodePort }}
+      {{- end }}
   selector:
     {{- include "omcsi.selectorLabels" (dict "root" . "component" "minecraft-wrapper") | nindent 4 }}
 ---

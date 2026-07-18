@@ -5,13 +5,19 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.web.client.RestTemplateBuilder;
+import org.springframework.core.io.InputStreamResource;
+import org.springframework.core.io.Resource;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
@@ -29,11 +35,16 @@ public class MinecraftWrapperService {
     private String wrapperUrl;
 
     private final RestTemplate restTemplate;
+    private final RestTemplate uploadRestTemplate;
 
     public MinecraftWrapperService(RestTemplateBuilder restTemplateBuilder) {
         this.restTemplate = restTemplateBuilder
                 .setConnectTimeout(Duration.ofSeconds(5))
                 .setReadTimeout(Duration.ofSeconds(10))
+                .build();
+        this.uploadRestTemplate = restTemplateBuilder
+                .setConnectTimeout(Duration.ofSeconds(5))
+                .setReadTimeout(Duration.ofMinutes(10))
                 .build();
     }
 
@@ -172,6 +183,49 @@ public class MinecraftWrapperService {
             return response.getStatusCode().is2xxSuccessful();
         } catch (Exception e) {
             log.error("Failed to initiate shutdown via wrapper: {}", e.getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Upload a world ZIP archive to the wrapper, which stops the server, replaces the world,
+     * and restarts the server.
+     *
+     * @param file            the ZIP archive containing the world
+     * @param deployAuthToken the Bearer token for the wrapper's deploy endpoint
+     * @return true if the upload was accepted successfully
+     */
+    public boolean uploadWorld(MultipartFile file, String deployAuthToken) {
+        try {
+            String url = wrapperUrl + "/api/world/upload";
+            log.info("Uploading world to wrapper");
+
+            String filename = file.getOriginalFilename() != null ? file.getOriginalFilename() : "world.zip";
+            long size = file.getSize();
+            Resource resource = new InputStreamResource(file.getInputStream()) {
+                @Override
+                public String getFilename() {
+                    return filename;
+                }
+
+                @Override
+                public long contentLength() {
+                    return size;
+                }
+            };
+
+            MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
+            body.add("file", resource);
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.MULTIPART_FORM_DATA);
+            headers.set("Authorization", "Bearer " + deployAuthToken);
+
+            HttpEntity<MultiValueMap<String, Object>> request = new HttpEntity<>(body, headers);
+            ResponseEntity<String> response = uploadRestTemplate.postForEntity(url, request, String.class);
+            return response.getStatusCode().is2xxSuccessful();
+        } catch (Exception e) {
+            log.error("Failed to upload world to wrapper: {}", e.getMessage());
             return false;
         }
     }

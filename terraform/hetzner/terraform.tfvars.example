@@ -1,0 +1,57 @@
+# =============================================================================
+# Example Terraform variables for OMCSI on a single Hetzner Cloud server
+# =============================================================================
+# Copy to terraform.tfvars and fill in the values:
+#   cp terraform.tfvars.example terraform.tfvars
+#
+# Or export the token and pass the rest via -var:
+#   export TF_VAR_hcloud_token="your-hetzner-api-token"
+#   terraform apply -var rcon_password=changeme -var admin_password=strongpass \
+#     -var ssh_public_key="$(cat ~/.ssh/id_ed25519.pub)" \
+#     -var ssh_private_key_path="$HOME/.ssh/id_ed25519"
+# =============================================================================
+
+# Hetzner Cloud API token (required) — Project → Security → API Tokens (Read & Write)
+hcloud_token = "your-hetzner-api-token"
+
+# SSH access (required) — Terraform bootstraps and deploys over SSH
+ssh_public_key       = "ssh-ed25519 AAAA... you@host"
+ssh_private_key_path = "~/.ssh/id_ed25519"
+
+# Lock SSH + Kubernetes API to your own IP (strongly recommended).
+# Game (25565) and web (80/443) stay public regardless.
+# allowed_ssh_cidr = "203.0.113.4/32"
+
+# Server sizing — cax31 (ARM, 16 GB) is the recommended default (~EUR 12.49/mo).
+# server_type = "cax31"
+# location    = "fsn1"
+
+# OMCSI secrets (required)
+rcon_password  = "changeme"
+admin_password = "strongpassword"
+
+# Server identity / gameplay
+# operator_uuid = "your-minecraft-uuid"   # from https://mcuuid.net/
+# operator_name = "YourMinecraftName"
+# server_motd   = "An Open Minecraft Server"
+# max_players   = 20
+
+# JVM heap — defaults suit cax31's 16 GB. Lower for smaller types:
+#   cax21 (8 GB):  java_opts = "-Xmx4G -Xms2G"
+# java_opts = "-Xmx6G -Xms4G"
+
+# Container image registry — defaults to "dmccoystephenson" (Docker Hub).
+# The default images are multi-arch (amd64 + arm64), so they run on CAX (ARM).
+# image_registry = "dmccoystephenson"
+
+# Optional: Discord alerts (enables Discord automatically when set)
+# discord_webhook_url = "https://discord.com/api/webhooks/..."
+
+# Optional: plugin hot-deploy bearer token
+# deploy_auth_token = "your-secret-token"
+
+# Optional: agent-manager (Discord AI bot)
+# agent_manager_enabled    = true
+# agent_discord_bot_token  = "BOT_TOKEN"
+# agent_discord_channel_id = "CHANNEL_ID"
+# agent_anthropic_api_key  = "API_KEY"

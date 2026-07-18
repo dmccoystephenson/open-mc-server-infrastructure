@@ -1,0 +1,117 @@
+#!/bin/bash
+# =============================================================================
+# OMCSI single-node Kubernetes bootstrap (kubeadm) for Hetzner Cloud
+# =============================================================================
+# Rendered by Terraform (templatefile) and passed as the server's user_data.
+# Brings up a single-node cluster suitable for one OMCSI deployment:
+#   - containerd + kubeadm/kubelet/kubectl (pinned minor version)
+#   - Calico CNI (supports NetworkPolicy, which the OMCSI chart relies on)
+#   - control-plane node untainted so workloads schedule on it
+#   - local-path-provisioner as the default StorageClass (PVCs need this)
+#   - service-node-port-range widened so NodePort can bind 25565/80/443
+#   - Helm installed for the Terraform-driven app deploy that follows
+#
+# On success it writes /var/lib/omcsi-bootstrap-complete; Terraform polls for
+# that sentinel before deploying the Helm chart. Full log: /var/log/omcsi-bootstrap.log
+# =============================================================================
+set -euxo pipefail
+exec > >(tee -a /var/log/omcsi-bootstrap.log) 2>&1
+
+export DEBIAN_FRONTEND=noninteractive
+KUBERNETES_VERSION="${kubernetes_version}"
+POD_CIDR="${pod_cidr}"
+SERVICE_NODE_PORT_RANGE="${service_node_port_range}"
+CALICO_VERSION="${calico_version}"
+LOCAL_PATH_PROVISIONER_VERSION="${local_path_provisioner_version}"
+
+# Hetzner metadata service exposes the public IPv4 so we can add it to the API
+# server certificate SANs — this makes the fetched kubeconfig valid remotely.
+PUBLIC_IP="$(curl -fsS --retry 6 --retry-delay 5 http://169.254.169.254/hetzner/v1/metadata/public-ipv4)"
+
+# --- Kernel prerequisites -----------------------------------------------------
+swapoff -a || true
+sed -i '/ swap / s/^/#/' /etc/fstab || true
+cat <<'EOF' >/etc/modules-load.d/k8s.conf
+overlay
+br_netfilter
+EOF
+modprobe overlay
+modprobe br_netfilter
+cat <<'EOF' >/etc/sysctl.d/k8s.conf
+net.bridge.bridge-nf-call-iptables  = 1
+net.bridge.bridge-nf-call-ip6tables = 1
+net.ipv4.ip_forward                 = 1
+EOF
+sysctl --system
+
+# --- Container runtime (containerd) ------------------------------------------
+apt-get update
+apt-get install -y apt-transport-https ca-certificates curl gpg containerd
+mkdir -p /etc/containerd
+containerd config default >/etc/containerd/config.toml
+# kubelet and containerd must agree on the systemd cgroup driver.
+sed -i 's/SystemdCgroup = false/SystemdCgroup = true/' /etc/containerd/config.toml
+systemctl restart containerd
+systemctl enable containerd
+
+# --- kubeadm / kubelet / kubectl ---------------------------------------------
+mkdir -p /etc/apt/keyrings
+curl -fsSL "https://pkgs.k8s.io/core:/stable:/v$${KUBERNETES_VERSION}/deb/Release.key" |
+  gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+echo "deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v$${KUBERNETES_VERSION}/deb/ /" \
+  >/etc/apt/sources.list.d/kubernetes.list
+apt-get update
+apt-get install -y kubelet kubeadm kubectl
+apt-mark hold kubelet kubeadm kubectl
+systemctl enable kubelet
+
+# --- Initialise the control plane --------------------------------------------
+cat <<EOF >/root/kubeadm-config.yaml
+apiVersion: kubeadm.k8s.io/v1beta4
+kind: InitConfiguration
+nodeRegistration:
+  criSocket: unix:///run/containerd/containerd.sock
+---
+apiVersion: kubeadm.k8s.io/v1beta4
+kind: ClusterConfiguration
+kubernetesVersion: stable-$${KUBERNETES_VERSION}
+networking:
+  podSubnet: $${POD_CIDR}
+apiServer:
+  certSANs:
+    - $${PUBLIC_IP}
+  extraArgs:
+    - name: service-node-port-range
+      value: "$${SERVICE_NODE_PORT_RANGE}"
+EOF
+kubeadm init --config /root/kubeadm-config.yaml
+
+# --- kubectl access for root --------------------------------------------------
+mkdir -p /root/.kube
+cp -f /etc/kubernetes/admin.conf /root/.kube/config
+export KUBECONFIG=/etc/kubernetes/admin.conf
+
+# --- Calico CNI (NetworkPolicy-capable; required by the OMCSI chart) ----------
+kubectl create -f "https://raw.githubusercontent.com/projectcalico/calico/$${CALICO_VERSION}/manifests/tigera-operator.yaml"
+# custom-resources.yaml defaults its IP pool to 192.168.0.0/16 — keep POD_CIDR
+# aligned with that (the Terraform default does).
+curl -fsSL "https://raw.githubusercontent.com/projectcalico/calico/$${CALICO_VERSION}/manifests/custom-resources.yaml" \
+  | sed "s#192.168.0.0/16#$${POD_CIDR}#g" | kubectl create -f -
+
+# --- Single node: allow workloads on the control plane ------------------------
+kubectl taint nodes --all node-role.kubernetes.io/control-plane- || true
+
+# --- Default StorageClass (PVCs stay Pending without one) ---------------------
+kubectl apply -f "https://raw.githubusercontent.com/rancher/local-path-provisioner/$${LOCAL_PATH_PROVISIONER_VERSION}/deploy/local-path-storage.yaml"
+kubectl patch storageclass local-path \
+  -p '{"metadata":{"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}'
+
+# --- Helm ---------------------------------------------------------------------
+curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+
+# --- Wait for the node and core services to be Ready --------------------------
+kubectl wait --for=condition=Ready node --all --timeout=600s
+kubectl -n kube-system rollout status deployment/coredns --timeout=600s
+
+touch /var/lib/omcsi-bootstrap-complete
+echo "OMCSI bootstrap complete on $${PUBLIC_IP}"

@@ -85,9 +85,22 @@ tests:
       - isNull:
           path: spec.ingress[1].from[0].ipBlock
         documentIndex: 0
-      - isNotNull:
+      - isNull:
           path: spec.ingress[1].from[2].ipBlock
         documentIndex: 0
+      - isNotNull:
+          path: spec.ingress[1].from[3].ipBlock
+        documentIndex: 0
+
+  - it: nginx can reach minecraft-wrapper plugin deploy endpoint
+    asserts:
+      - equal:
+          path: spec.egress[1].ports[0].port
+          value: 8092
+        documentIndex: 2
+      - isNull:
+          path: spec.egress[1].to[0].ipBlock
+        documentIndex: 2
 
   - it: minecraft-wrapper policy restricts RCON to specific pods only
     asserts:
@@ -145,11 +158,11 @@ tests:
   - it: all policies include a DNS egress rule scoped to CoreDNS
     asserts:
       - equal:
-          path: spec.egress[2].ports[0].port
+          path: spec.egress[3].ports[0].port
           value: 53
         documentIndex: 0
       - isNotNull:
-          path: spec.egress[2].to[0].namespaceSelector
+          path: spec.egress[3].to[0].namespaceSelector
         documentIndex: 0
       - equal:
           path: spec.egress[2].ports[0].port

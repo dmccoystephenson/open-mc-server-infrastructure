@@ -1,0 +1,77 @@
+# =============================================================================
+# OMCSI Helm values for a single-node Hetzner cluster (rendered by Terraform)
+# =============================================================================
+# Uploaded to the server and applied with `helm upgrade --install`. Contains
+# secrets, so it is written with 0600 permissions. Tuned for one self-managed
+# node: services exposed via fixed NodePorts on the node's public IP, the
+# local-path StorageClass for PVCs, and PodDisruptionBudgets disabled (a single
+# node cannot satisfy minAvailable during drains).
+# =============================================================================
+
+minecraftWrapper:
+  image:
+    repository: ${image_registry}/open-mc-server
+  service:
+    type: NodePort
+    minecraftPort: 25565
+    # Served directly on the node IP — requires the widened
+    # service-node-port-range configured by cloud-init.
+    nodePort: ${minecraft_nodeport}
+  env:
+    MINECRAFT_VERSION: "${minecraft_version}"
+    OPERATOR_UUID: "${operator_uuid}"
+    OPERATOR_NAME: "${operator_name}"
+    SERVER_MOTD: "${server_motd}"
+    MAX_PLAYERS: "${max_players}"
+    JAVA_OPTS: "${java_opts}"
+
+webapp:
+  image:
+    repository: ${image_registry}/open-mc-server-webapp
+
+nginx:
+  image:
+    repository: ${image_registry}/open-mc-server-nginx
+  service:
+    type: NodePort
+    httpNodePort: ${http_nodeport}
+    httpsNodePort: ${https_nodeport}
+
+backupManager:
+  image:
+    repository: ${image_registry}/open-mc-server-backup-manager
+
+alertManager:
+  image:
+    repository: ${image_registry}/open-mc-server-alert-manager
+  env:
+    DISCORD_ENABLED: "${discord_enabled}"
+
+agentManager:
+  enabled: ${agent_manager_enabled}
+  image:
+    repository: ${image_registry}/open-mc-server-agent-manager
+
+# Single-node: a PodDisruptionBudget with minAvailable: 1 would block node
+# drains, so disable PDBs here.
+podDisruptionBudgets:
+  enabled: false
+
+persistence:
+  mcserver:
+    storageClass: "${storage_class}"
+  webappData:
+    storageClass: "${storage_class}"
+  alertManagerData:
+    storageClass: "${storage_class}"
+  backups:
+    storageClass: "${storage_class}"
+
+secrets:
+  rconPassword: "${rcon_password}"
+  adminPassword: "${admin_password}"
+  discordWebhookUrl: "${discord_webhook_url}"
+  deployAuthToken: "${deploy_auth_token}"
+  agentDiscordBotToken: "${agent_discord_bot_token}"
+  agentDiscordChannelId: "${agent_discord_channel_id}"
+  agentAnthropicApiKey: "${agent_anthropic_api_key}"

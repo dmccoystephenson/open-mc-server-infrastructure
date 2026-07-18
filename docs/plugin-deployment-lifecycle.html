@@ -1,0 +1,1018 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>OMCSI — Plugin Deployment Lifecycle</title>
+  <script src="./vendor/mermaid-11.6.0.min.js"></script>
+  <script src="./vendor/svg-pan-zoom-3.6.1.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0d1017;
+      --surface:   #161b27;
+      --surface2:  #1e2535;
+      --border:    #2a3347;
+      --border2:   #364057;
+      --text:      #dde3ee;
+      --text-mute: #5c6a84;
+      --text-dim:  #8896ad;
+      --accent:    #3b82f6;
+      --accent-dim:#1d4ed8;
+      --tag-bg:    #0f172a;
+      --tag-text:  #7dd3fc;
+      --radius:    7px;
+      --header-h:  52px;
+      --status-h:  30px;
+      --legend-w:  360px;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      height: 100vh;
+      height: 100dvh;
+      overflow: hidden;
+      font-size: 13px;
+    }
+
+    /* ── Loading overlay ─────────────────────────────────────────────── */
+    #loading {
+      position: fixed; inset: 0; z-index: 999;
+      background: var(--bg);
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 1rem;
+      transition: opacity 0.4s;
+    }
+    #loading.hidden { opacity: 0; pointer-events: none; }
+    .spinner {
+      width: 36px; height: 36px;
+      border: 3px solid var(--border2);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    #loading p { color: var(--text-dim); font-size: 0.85rem; }
+    #loading.error .spinner { display: none; }
+    #loading.error p {
+      color: #fca5a5;
+      max-width: 28rem;
+      text-align: center;
+      line-height: 1.5;
+    }
+
+    /* ── Shared button ───────────────────────────────────────────────── */
+    .btn {
+      display: inline-flex; align-items: center; gap: 0.3rem;
+      padding: 0.3rem 0.65rem;
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: var(--radius);
+      color: var(--text); font-size: 0.78rem; font-family: inherit;
+      cursor: pointer; white-space: nowrap; line-height: 1;
+      transition: background 0.12s, border-color 0.12s, color 0.12s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .btn:hover  { background: #27304a; border-color: var(--border2); color: #fff; }
+    .btn:active { background: #313c57; }
+    .btn.icon   { padding: 0.3rem 0.5rem; font-size: 1rem; font-weight: 300; }
+    .btn.active { background: var(--accent-dim); border-color: var(--accent); color: #fff; }
+
+    kbd {
+      font-family: "SFMono-Regular", Consolas, monospace;
+      font-size: 0.65rem;
+      background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 3px; padding: 0 0.3em;
+      color: var(--text-dim); line-height: 1.5;
+    }
+
+    /* ════════════════════════════════════════════════════════════════
+       DESKTOP LAYOUT  (> 768px)
+    ════════════════════════════════════════════════════════════════ */
+    .desktop-shell {
+      display: flex; flex-direction: column;
+      height: 100vh; height: 100dvh;
+    }
+
+    /* Header */
+    header {
+      flex-shrink: 0; height: var(--header-h);
+      display: grid; grid-template-columns: auto 1fr auto;
+      align-items: center; gap: 0.75rem; padding: 0 0.75rem;
+      background: var(--surface); border-bottom: 1px solid var(--border);
+    }
+    .header-title h1 {
+      font-size: 0.85rem; font-weight: 600; color: #f1f5f9; white-space: nowrap;
+    }
+    .header-title p {
+      font-size: 0.68rem; color: var(--text-mute); white-space: nowrap; margin-top: 1px;
+    }
+
+    /* Zoom cluster */
+    .zoom-cluster {
+      display: flex; align-items: center; gap: 0.35rem; justify-content: center; min-width: 0;
+    }
+    .zoom-cluster input[type="range"] {
+      -webkit-appearance: none; appearance: none;
+      width: 110px; height: 4px;
+      background: var(--border2); border-radius: 2px; outline: none; cursor: pointer;
+    }
+    .zoom-cluster input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 14px; height: 14px; border-radius: 50%;
+      background: var(--accent); cursor: pointer; transition: transform 0.1s;
+    }
+    .zoom-cluster input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.2); }
+    .zoom-cluster input[type="range"]::-moz-range-thumb {
+      width: 14px; height: 14px; border-radius: 50%;
+      background: var(--accent); border: none; cursor: pointer;
+    }
+    #zoom-pct {
+      min-width: 3.8rem; text-align: center;
+      font-size: 0.78rem; font-variant-numeric: tabular-nums;
+      color: var(--text-dim);
+      background: var(--tag-bg); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 0.2rem 0.5rem;
+      cursor: pointer; user-select: none;
+      transition: color 0.15s, border-color 0.15s;
+    }
+    #zoom-pct:hover { color: var(--text); border-color: var(--accent); }
+
+    .header-actions { display: flex; align-items: center; gap: 0.4rem; }
+    #btn-legend.active .legend-arrow { transform: rotate(180deg); }
+    .legend-arrow { display: inline-block; transition: transform 0.2s; }
+
+    /* Main split */
+    .main {
+      flex: 1; display: flex; overflow: hidden; min-height: 0; position: relative;
+    }
+
+    /* Diagram */
+    #diagram-container {
+      flex: 1; overflow: hidden; position: relative;
+      cursor: grab; background: var(--bg); min-height: 0; min-width: 0;
+    }
+    #diagram-container:active { cursor: grabbing; }
+    #diagram-container .mermaid { width: 100%; height: 100%; }
+    #diagram-container svg { width: 100% !important; height: 100% !important; }
+
+    /* Desktop legend (side panel) */
+    #legend {
+      width: var(--legend-w); flex-shrink: 0;
+      display: flex; flex-direction: column;
+      background: var(--surface); border-left: 1px solid var(--border);
+      transition: width 0.25s ease; overflow: hidden;
+    }
+    #legend.closed { width: 0; border-left-width: 0; }
+
+    /* Status bar */
+    #status-bar {
+      flex-shrink: 0; height: var(--status-h);
+      display: flex; align-items: center; gap: 1.5rem;
+      padding: 0 1rem; overflow: hidden;
+      background: var(--surface); border-top: 1px solid var(--border);
+    }
+    .status-tip {
+      font-size: 0.7rem; color: var(--text-mute);
+      display: flex; align-items: center; gap: 0.3rem; white-space: nowrap;
+    }
+    .status-tip kbd { font-size: 0.6rem; padding: 0 0.25em; }
+
+    /* ════════════════════════════════════════════════════════════════
+       MOBILE LAYOUT  (≤ 768px)
+    ════════════════════════════════════════════════════════════════ */
+    @media (max-width: 768px) {
+      /* Hide desktop chrome */
+      header, #status-bar { display: none !important; }
+      /* Desktop legend hidden in mobile mode (replaced by bottom sheet) */
+      #legend { display: none !important; }
+
+      /* Diagram fills full screen */
+      .desktop-shell { display: block; height: 100vh; height: 100dvh; }
+      .main { height: 100vh; height: 100dvh; display: block; }
+      #diagram-container { width: 100%; height: 100%; }
+
+      /* Show mobile elements */
+      #mobile-title    { display: flex !important; }
+      #mobile-zoom-pill{ display: flex !important; }
+      #mobile-fabs     { display: flex !important; }
+      #sheet-backdrop  { display: block; }
+      #bottom-sheet    { display: flex !important; }
+    }
+
+    /* ── Mobile: floating title chip (top-left) ──────────────────────── */
+    #mobile-title {
+      display: none;
+      position: fixed; top: max(0.75rem, env(safe-area-inset-top, 0.75rem)); left: 0.75rem;
+      z-index: 150;
+      background: rgba(22,27,39,0.88); border: 1px solid var(--border);
+      border-radius: 20px; padding: 0.35rem 0.85rem;
+      font-size: 0.72rem; font-weight: 600; color: var(--text-dim);
+      backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+      pointer-events: none; user-select: none;
+      align-items: center; gap: 0.4rem;
+    }
+
+    /* ── Mobile: zoom indicator (top-center, fades after zoom) ──────── */
+    #mobile-zoom-pill {
+      display: none;
+      position: fixed; top: max(0.75rem, env(safe-area-inset-top, 0.75rem)); left: 50%;
+      transform: translateX(-50%);
+      z-index: 150;
+      background: rgba(22,27,39,0.85); border: 1px solid var(--border);
+      border-radius: 12px; padding: 0.25rem 0.7rem;
+      font-size: 0.75rem; font-variant-numeric: tabular-nums; color: var(--text-dim);
+      backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+      pointer-events: none;
+      align-items: center;
+      transition: opacity 0.6s;
+    }
+    #mobile-zoom-pill.hidden { opacity: 0; }
+
+    /* ── Mobile: FAB cluster (bottom-right) ─────────────────────────── */
+    #mobile-fabs {
+      display: none;
+      position: fixed;
+      right: max(1.25rem, env(safe-area-inset-right, 1.25rem));
+      bottom: max(1.5rem, env(safe-area-inset-bottom, 1.5rem));
+      z-index: 150;
+      flex-direction: column-reverse; gap: 0.65rem;
+      align-items: center;
+    }
+
+    .fab {
+      width: 52px; height: 52px; border-radius: 50%;
+      background: rgba(30,37,53,0.92); border: 1px solid var(--border2);
+      color: var(--text); font-size: 1.4rem; font-weight: 300;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.45);
+      backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+      transition: background 0.15s, transform 0.1s, box-shadow 0.15s;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+      user-select: none;
+    }
+    .fab:active { background: var(--accent-dim); transform: scale(0.9); box-shadow: none; }
+    .fab.fab-legend { font-size: 1rem; background: rgba(59,130,246,0.18); border-color: var(--accent); }
+    .fab.fab-legend.active { background: var(--accent-dim); }
+
+    /* ── Bottom sheet ────────────────────────────────────────────────── */
+    #sheet-backdrop {
+      display: none;
+      position: fixed; inset: 0; z-index: 195;
+      background: rgba(0,0,0,0);
+      transition: background 0.3s;
+      pointer-events: none;
+    }
+    #sheet-backdrop.open {
+      background: rgba(0,0,0,0.55);
+      pointer-events: auto;
+    }
+
+    #bottom-sheet {
+      display: none;
+      position: fixed; bottom: 0; left: 0; right: 0; z-index: 200;
+      height: 78vh;
+      max-height: calc(100dvh - 60px);
+      flex-direction: column;
+      background: var(--surface);
+      border-radius: 18px 18px 0 0;
+      border-top: 1px solid var(--border2);
+      box-shadow: 0 -8px 40px rgba(0,0,0,0.5);
+      transform: translateY(100%);
+      transition: transform 0.35s cubic-bezier(0.32, 0.72, 0, 1);
+      will-change: transform;
+      padding-bottom: env(safe-area-inset-bottom, 0);
+    }
+    #bottom-sheet.open { transform: translateY(0); }
+    #bottom-sheet.dragging { transition: none; }
+
+    /* Drag handle */
+    .sheet-handle-wrap {
+      flex-shrink: 0; padding: 0.6rem 0 0.3rem;
+      display: flex; justify-content: center; cursor: grab;
+      touch-action: none;
+    }
+    .sheet-handle-wrap:active { cursor: grabbing; }
+    .sheet-handle {
+      width: 38px; height: 4px;
+      background: var(--border2); border-radius: 2px;
+    }
+
+    /* Sheet header */
+    .sheet-header {
+      flex-shrink: 0; padding: 0 0.9rem 0.55rem;
+      border-bottom: 1px solid var(--border);
+      display: flex; flex-direction: column; gap: 0.45rem;
+    }
+    .sheet-header-row {
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .sheet-header h2 {
+      font-size: 0.7rem; font-weight: 600;
+      letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-mute);
+    }
+    #sheet-search {
+      width: 100%; background: var(--bg); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 0.4rem 0.65rem;
+      color: var(--text); font-size: 0.82rem; font-family: inherit;
+      outline: none; transition: border-color 0.15s;
+    }
+    #sheet-search::placeholder { color: var(--text-mute); }
+    #sheet-search:focus { border-color: var(--accent); }
+
+    /* Sheet scrollable body */
+    .sheet-body {
+      flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch;
+      overscroll-behavior: contain; padding: 0.25rem 0;
+    }
+    .sheet-body::-webkit-scrollbar { width: 4px; }
+    .sheet-body::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+    /* ── Legend content (shared between panel and sheet) ─────────────── */
+    .legend-header {
+      flex-shrink: 0; padding: 0.75rem 0.85rem 0.6rem;
+      border-bottom: 1px solid var(--border);
+      display: flex; flex-direction: column; gap: 0.5rem;
+    }
+    .legend-header h2 {
+      font-size: 0.7rem; font-weight: 600;
+      letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-mute);
+    }
+    #legend-search {
+      width: 100%; background: var(--bg); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 0.35rem 0.6rem;
+      color: var(--text); font-size: 0.78rem; font-family: inherit;
+      outline: none; transition: border-color 0.15s;
+    }
+    #legend-search::placeholder { color: var(--text-mute); }
+    #legend-search:focus { border-color: var(--accent); }
+    .legend-body {
+      flex: 1; overflow-y: auto; padding: 0.5rem 0;
+    }
+    .legend-body::-webkit-scrollbar { width: 5px; }
+    .legend-body::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+
+    .legend-section { border-bottom: 1px solid var(--border); }
+    .legend-section-toggle {
+      width: 100%; background: none; border: none;
+      color: var(--text-dim); font-size: 0.68rem; font-weight: 600;
+      letter-spacing: 0.07em; text-transform: uppercase;
+      text-align: left; padding: 0.6rem 0.85rem;
+      cursor: pointer; display: flex; align-items: center;
+      justify-content: space-between; font-family: inherit;
+      transition: color 0.15s; -webkit-tap-highlight-color: transparent;
+    }
+    .legend-section-toggle:hover { color: var(--text); }
+    .legend-section-toggle .chevron { font-size: 0.6rem; transition: transform 0.2s; color: var(--text-mute); }
+    .legend-section.collapsed .chevron { transform: rotate(-90deg); }
+    .legend-section-body { padding: 0 0.85rem 0.5rem; }
+    .legend-section.collapsed .legend-section-body { display: none; }
+
+    .legend-entry { padding: 0.5rem 0; border-bottom: 1px solid rgba(42,51,71,0.5); }
+    .legend-entry:last-child { border-bottom: none; }
+    .legend-entry[hidden] { display: none; }
+
+    .entry-tag {
+      font-family: "SFMono-Regular", Consolas, monospace; font-size: 0.68rem;
+      background: var(--tag-bg); border: 1px solid var(--border); border-radius: 4px;
+      padding: 0.1em 0.45em; color: var(--tag-text); display: inline-block; margin-bottom: 0.2rem;
+    }
+    .entry-name { font-weight: 600; color: #c8d3e8; margin-bottom: 0.2rem; font-size: 0.8rem; }
+    .entry-desc { color: var(--text-dim); line-height: 1.55; font-size: 0.76rem; }
+    .entry-desc code, .assumption-list code {
+      font-family: "SFMono-Regular", Consolas, monospace; font-size: 0.72em;
+      background: var(--tag-bg); border: 1px solid var(--border); border-radius: 3px;
+      padding: 0.05em 0.35em; color: var(--tag-text);
+    }
+    .entry-path {
+      font-family: "SFMono-Regular", Consolas, monospace; font-size: 0.7rem;
+      color: var(--text-dim); background: var(--bg); border: 1px solid var(--border);
+      border-radius: 4px; padding: 0.3rem 0.5rem; margin-top: 0.3rem;
+      line-height: 1.7; white-space: pre-wrap; word-break: break-all;
+    }
+    .assumption-list { list-style: none; }
+    .assumption-list li {
+      position: relative; padding-left: 1rem;
+      color: var(--text-dim); font-size: 0.76rem; line-height: 1.6; margin-bottom: 0.3rem;
+    }
+    .assumption-list li::before { content: "·"; position: absolute; left: 0; color: var(--text-mute); }
+
+    #legend-empty, #sheet-empty {
+      display: none; padding: 1.5rem 0.85rem;
+      text-align: center; color: var(--text-mute); font-size: 0.78rem;
+    }
+
+    /* ── Shortcuts modal ─────────────────────────────────────────────── */
+    #shortcuts-modal {
+      position: fixed; inset: 0; z-index: 500;
+      background: rgba(0,0,0,0.6);
+      display: flex; align-items: center; justify-content: center;
+      backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
+    }
+    #shortcuts-modal[hidden] { display: none; }
+    .modal-box {
+      background: var(--surface2); border: 1px solid var(--border2);
+      border-radius: 12px; padding: 1.5rem;
+      width: min(360px, 92vw);
+      box-shadow: 0 24px 60px rgba(0,0,0,0.5);
+    }
+    .modal-box h2 {
+      font-size: 0.85rem; font-weight: 600; color: #f1f5f9;
+      margin-bottom: 1rem;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .shortcut-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0.38rem 0; border-bottom: 1px solid var(--border); font-size: 0.8rem;
+    }
+    .shortcut-row:last-child { border-bottom: none; }
+    .shortcut-label { color: var(--text-dim); }
+    .shortcut-keys { display: flex; gap: 0.25rem; }
+    .shortcut-keys kbd { font-size: 0.72rem; padding: 0.1em 0.4em; color: var(--text); }
+    .modal-footer {
+      margin-top: 1rem; text-align: center;
+      font-size: 0.72rem; color: var(--text-mute);
+    }
+  </style>
+</head>
+<body>
+
+<!-- Loading overlay -->
+<div id="loading" role="status" aria-label="Loading diagram">
+  <div class="spinner"></div>
+  <p id="loading-message">Rendering diagram…</p>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════
+     DESKTOP SHELL
+════════════════════════════════════════════════════════════════ -->
+<div class="desktop-shell">
+
+  <header>
+    <div class="header-title">
+      <h1>OMCSI — Plugin Deployment Lifecycle</h1>
+      <p>End-to-end flow: developer action → Spigot plugin load</p>
+    </div>
+    <div class="zoom-cluster" role="group" aria-label="Zoom controls">
+      <button class="btn icon" id="btn-zoom-out" title="Zoom out (−)" aria-label="Zoom out">−</button>
+      <input type="range" id="zoom-slider" min="0" max="100" value="50" aria-label="Zoom level">
+      <button class="btn icon" id="btn-zoom-in"  title="Zoom in (+)"  aria-label="Zoom in">+</button>
+      <button class="btn" id="zoom-pct" title="Click to reset view (0)" aria-label="Reset zoom">100%</button>
+    </div>
+    <div class="header-actions">
+      <button class="btn" id="btn-legend"
+              title="Toggle legend (L)" aria-expanded="false" aria-controls="legend">
+        Legend <span class="legend-arrow">▸</span> <kbd>L</kbd>
+      </button>
+      <button class="btn" id="btn-shortcuts" title="Keyboard shortcuts (?)" aria-haspopup="dialog">
+        ? <kbd>?</kbd>
+      </button>
+    </div>
+  </header>
+
+  <div class="main">
+    <!-- Diagram -->
+    <div id="diagram-container" role="img" aria-label="Plugin deployment lifecycle flowchart">
+      <div class="mermaid">
+flowchart TD
+
+subgraph DEV["Developer / Operator  (local machine)"]
+  devPush(["git push\n(plugin source code)"])
+  devBrowser(["Browser\n(open admin dashboard)"])
+end
+
+subgraph GITHUB["GitHub  (github.com)"]
+  pluginRepo[/"Plugin Repository\n(source code + workflow)"/]
+  subgraph GHA["GitHub Actions Runner  (ubuntu-latest)"]
+    ghaBuild["① Checkout + Build JAR\n./gradlew build"]
+    ghaLocate["② Locate JAR\nbuild/libs/*.jar"]
+    ghaPost["③ HTTP POST\ncurl multipart/form-data"]
+  end
+end
+
+subgraph OMCSI["OMCSI Stack  (Docker Compose / Kubernetes)"]
+
+  subgraph NGINX["nginx  :80 / :443"]
+    proxy("Reverse Proxy\nTLS termination")
+  end
+
+  subgraph WEBAPP["webapp  Spring Boot  :8080"]
+    webUI("Admin Dashboard UI\nThymeleaf")
+    webUpload("POST /api/plugins/upload\nServerController\n— admin credential check")
+    webPluginSvc("PluginService\nvalidate JAR + write")
+    webServerEndpoint("POST /api/server/restart\nServerController\n— admin credential check")
+    webWrapperClient("MinecraftWrapperService\nHTTP client → wrapper")
+    webDeployEndpoint("POST /api/deployment-history\nServerController\n— Bearer token check")
+    webDeploySvc("DeploymentHistoryService\nrecord event")
+    webAlertSvc("AlertNotificationService")
+    webRconSvc("RconService\n@Scheduled background poll\nvia RCON TCP :25575")
+  end
+
+  subgraph WRAPPER["minecraft-wrapper  Spring Boot  :8092"]
+    wrapDeploy("POST /api/plugins/deploy\nPluginDeployController\n— Bearer token check")
+    wrapPluginSvc("PluginDeployService\nvalidate JAR\npath traversal guard\natomic write")
+    wrapAlertSvc("AlertService")
+    wrapWebNotif("WebAppNotificationService\nHTTP client → webapp")
+    wrapServerEndpoint("POST /api/server/restart\nServerController")
+    wrapMcSvc("MinecraftServerService\nSpigot process manager")
+  end
+
+  subgraph ALERTMGR["alert-manager  Spring Boot  :8090"]
+    alertIn("POST /api/alerts\nAlertService\n— routes to each destination")
+    alertDiscord("DiscordAlertService\nwebhook dispatch")
+    alertMinecraft("MinecraftMessageService\nRCON client → Spigot")
+  end
+
+  mcVol[("mcserver volume\n/mcserver/plugins")]
+  webVol[("webapp-data volume\n/app/data  — deploy history")]
+
+end
+
+subgraph SPIGOT["Spigot Server  (child process inside wrapper container)"]
+  pluginsDir[/"plugins/\n(scanned at JVM startup)"/]
+  spigot("Spigot JVM\n:25565  game port\n:25575  RCON")
+end
+
+discordSvc(["Discord\n(external webhook endpoint)"])
+players(["Minecraft Clients\n:25565"])
+
+devPush -->|"git push"| pluginRepo
+pluginRepo -->|"push event → workflow trigger"| ghaBuild
+ghaBuild -->|"produces *.jar artifact"| ghaLocate
+ghaLocate -->|"resolved JAR path"| ghaPost
+ghaPost -->|"POST :8092/api/plugins/deploy\nmultipart: pluginName · branch · repoUrl · file\nAuthorization: Bearer DEPLOY_AUTH_TOKEN"| wrapDeploy
+wrapDeploy -->|"replacePlugin(name, file)"| wrapPluginSvc
+wrapPluginSvc -->|"atomic file write\n*.jar → /mcserver/plugins/"| mcVol
+wrapDeploy -->|"sendPluginDeploySuccessAlert()"| wrapAlertSvc
+wrapDeploy -->|"notifyDeploymentSuccess()"| wrapWebNotif
+wrapWebNotif -->|"POST /api/deployment-history\nJSON: pluginName · status · branch · repoUrl\nAuthorization: Bearer DEPLOYMENT_AUTH_TOKEN"| webDeployEndpoint
+webDeployEndpoint -->|"recordDeployment()"| webDeploySvc
+webDeploySvc -->|"persist JSON record"| webVol
+devBrowser -->|"HTTPS browser request"| proxy
+proxy -->|"proxy_pass webapp:8080"| webUI
+webUI -->|"multipart/form-data\nusername · password · file"| webUpload
+webUpload -->|"uploadPlugin(file)"| webPluginSvc
+webPluginSvc -->|"write *.jar to /mcserver/plugins/"| mcVol
+webUpload -->|"sendInfoAlert()"| webAlertSvc
+wrapAlertSvc -->|"POST /api/alerts\nJSON: title · message · level · destinations:[DISCORD]"| alertIn
+webAlertSvc -->|"POST /api/alerts\nJSON: title · message · level\n(no destinations → all)"| alertIn
+alertIn -->|"destination: DISCORD"| alertDiscord
+alertIn -->|"destination: MINECRAFT"| alertMinecraft
+alertDiscord -->|"POST webhook payload\nembed: event · plugin · status · branch"| discordSvc
+alertMinecraft -->|"RCON TCP  :25575\nsend message to in-game chat"| spigot
+webUI -->|"POST /api/server/restart\nadmin credentials"| webServerEndpoint
+webServerEndpoint -->|"minecraftWrapperService.restartServer()"| webWrapperClient
+webWrapperClient -->|"POST :8092/api/server/restart"| wrapServerEndpoint
+wrapServerEndpoint -->|"restart()"| wrapMcSvc
+webWrapperClient -->|"GET :8092/api/server/status\n(server running · PID · uptime)"| wrapServerEndpoint
+wrapMcSvc -->|"write 'stop' to named FIFO pipe\n→ graceful shutdown"| spigot
+wrapMcSvc -->|"ProcessBuilder.start()\njava -jar spigot.jar nogui"| spigot
+mcVol -->|"volume mounted at /mcserver"| pluginsDir
+pluginsDir -->|"classload all *.jar on JVM startup"| spigot
+webRconSvc -->|"RCON TCP  :25575\n@Scheduled poll: player list · TPS"| spigot
+players -->|"Minecraft protocol  :25565"| spigot
+      </div>
+    </div>
+
+    <!-- Desktop legend (side panel) -->
+    <aside id="legend" class="closed" aria-label="Diagram legend">
+      <div class="legend-header">
+        <h2>Legend</h2>
+        <input id="legend-search" type="search" placeholder="Filter entries…"
+               aria-label="Filter legend entries" autocomplete="off">
+      </div>
+      <div class="legend-body">
+        <div id="legend-empty">No entries match your filter.</div>
+        <!-- sections injected by JS from template -->
+      </div>
+    </aside>
+  </div>
+
+  <div id="status-bar" role="status">
+    <span class="status-tip">Scroll to zoom</span>
+    <span class="status-tip">Drag to pan</span>
+    <span class="status-tip">Double-click to fit</span>
+    <span class="status-tip">Press <kbd>?</kbd> for shortcuts</span>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════
+     MOBILE ELEMENTS  (hidden on desktop via CSS)
+════════════════════════════════════════════════════════════════ -->
+
+<!-- Title chip -->
+<div id="mobile-title" aria-hidden="true">OMCSI Lifecycle</div>
+
+<!-- Zoom pill (fades after interaction) -->
+<div id="mobile-zoom-pill" aria-live="polite">100%</div>
+
+<!-- FAB cluster -->
+<div id="mobile-fabs" role="group" aria-label="Diagram controls">
+  <button class="fab fab-legend" id="fab-legend" aria-label="Open legend" title="Legend">☰</button>
+  <button class="fab" id="fab-fit"      aria-label="Fit view"  title="Fit (double-tap)">⊡</button>
+  <button class="fab" id="fab-zoom-in"  aria-label="Zoom in"   title="Zoom in">+</button>
+  <button class="fab" id="fab-zoom-out" aria-label="Zoom out"  title="Zoom out">−</button>
+</div>
+
+<!-- Sheet backdrop -->
+<div id="sheet-backdrop" role="presentation"></div>
+
+<!-- Bottom sheet (mobile legend) -->
+<div id="bottom-sheet" aria-label="Diagram legend" role="dialog" aria-modal="true" tabindex="-1">
+  <div class="sheet-handle-wrap" id="sheet-handle">
+    <div class="sheet-handle"></div>
+  </div>
+  <div class="sheet-header">
+    <div class="sheet-header-row">
+      <h2>Legend</h2>
+      <button class="btn" id="btn-close-sheet" aria-label="Close legend">✕</button>
+    </div>
+    <input id="sheet-search" type="search" placeholder="Filter entries…"
+           aria-label="Filter legend entries" autocomplete="off">
+  </div>
+  <div class="sheet-body" id="sheet-body">
+    <div id="sheet-empty">No entries match your filter.</div>
+    <!-- sections injected by JS from template -->
+  </div>
+</div>
+
+<!-- Shortcuts modal -->
+<div id="shortcuts-modal" hidden role="dialog" aria-modal="true" aria-labelledby="shortcuts-title">
+  <div class="modal-box">
+    <h2 id="shortcuts-title">
+      Keyboard shortcuts
+      <button class="btn" id="btn-close-shortcuts" aria-label="Close">✕</button>
+    </h2>
+    <div class="shortcut-row"><span class="shortcut-label">Zoom in</span>
+      <div class="shortcut-keys"><kbd>+</kbd></div></div>
+    <div class="shortcut-row"><span class="shortcut-label">Zoom out</span>
+      <div class="shortcut-keys"><kbd>−</kbd></div></div>
+    <div class="shortcut-row"><span class="shortcut-label">Reset / fit</span>
+      <div class="shortcut-keys"><kbd>0</kbd> <kbd>F</kbd></div></div>
+    <div class="shortcut-row"><span class="shortcut-label">Double-click diagram</span>
+      <div class="shortcut-keys"><kbd>fit view</kbd></div></div>
+    <div class="shortcut-row"><span class="shortcut-label">Toggle legend</span>
+      <div class="shortcut-keys"><kbd>L</kbd></div></div>
+    <div class="shortcut-row"><span class="shortcut-label">Show shortcuts</span>
+      <div class="shortcut-keys"><kbd>?</kbd></div></div>
+    <div class="shortcut-row"><span class="shortcut-label">Close</span>
+      <div class="shortcut-keys"><kbd>Esc</kbd></div></div>
+    <div class="modal-footer">On mobile: pinch to zoom · drag to pan · double-tap to fit</div>
+  </div>
+</div>
+
+<!-- Legend content template (rendered into both panel and sheet via JS) -->
+<template id="legend-content-tpl">
+  <div class="legend-section">
+    <button class="legend-section-toggle" aria-expanded="true">Volumes <span class="chevron">▾</span></button>
+    <div class="legend-section-body">
+      <div class="legend-entry" data-terms="mcvol mcserver volume plugins">
+        <div class="entry-tag">mcVol</div>
+        <div class="entry-name">mcserver volume</div>
+        <div class="entry-desc">Shared Docker/K8s volume mounted by both <code>minecraft-wrapper</code> and <code>webapp</code>. Plugin JARs live at <code>/mcserver/plugins/</code> — the single source of truth for what Spigot loads.</div>
+      </div>
+      <div class="legend-entry" data-terms="webvol webapp-data volume deploy history">
+        <div class="entry-tag">webVol</div>
+        <div class="entry-name">webapp-data volume</div>
+        <div class="entry-desc">Persists deployment history records written by <code>DeploymentHistoryService</code> as JSON at <code>/app/data</code>.</div>
+      </div>
+    </div>
+  </div>
+  <div class="legend-section">
+    <button class="legend-section-toggle" aria-expanded="true">Key services <span class="chevron">▾</span></button>
+    <div class="legend-section-body">
+      <div class="legend-entry" data-terms="wrappluginSvc plugindeployservice jar validate atomic write">
+        <div class="entry-tag">wrapPluginSvc</div>
+        <div class="entry-name">PluginDeployService</div>
+        <div class="entry-desc">Validates the JAR (ZIP magic bytes + <code>META-INF/MANIFEST.MF</code>), prevents path traversal, writes atomically via temp-file-then-move. Rejects files over 100 MB.</div>
+      </div>
+      <div class="legend-entry" data-terms="wrapwebnotif webappnotificationservice deployment history notify">
+        <div class="entry-tag">wrapWebNotif</div>
+        <div class="entry-name">WebAppNotificationService</div>
+        <div class="entry-desc">After a CI/CD deploy, the wrapper notifies the webapp so the event appears in the dashboard deployment history tab.</div>
+      </div>
+      <div class="legend-entry" data-terms="wrapmcsvc minecraftserverservice process manager fifo">
+        <div class="entry-tag">wrapMcSvc</div>
+        <div class="entry-name">MinecraftServerService</div>
+        <div class="entry-desc">Owns the Spigot <code>Process</code> object. Sends stdin commands via a Unix named FIFO pipe (<code>/mcserver/server_input</code>) to avoid needing a TTY.</div>
+      </div>
+      <div class="legend-entry" data-terms="webrconSvc rconservice scheduled poll player list tps">
+        <div class="entry-tag">webRconSvc</div>
+        <div class="entry-name">RconService (@Scheduled)</div>
+        <div class="entry-desc">Server-side background service in the webapp. Polls Spigot via RCON TCP on a configurable schedule (<code>WEB_REFRESH_INTERVAL_MS</code>, default 30 min) for player count and server status. Not browser-triggered.</div>
+      </div>
+      <div class="legend-entry" data-terms="alertdiscord alertminecraft alertdestination discord minecraft rcon">
+        <div class="entry-tag">alertDiscord / alertMinecraft</div>
+        <div class="entry-name">AlertService destinations</div>
+        <div class="entry-desc"><code>AlertDestination</code> has two values: <code>DISCORD</code> (webhook) and <code>MINECRAFT</code> (RCON → in-game chat). When no <code>destinations</code> field is sent — as the webapp does — the alert-manager fans out to both. The wrapper explicitly sends to <code>[DISCORD]</code> only.</div>
+      </div>
+    </div>
+  </div>
+  <div class="legend-section">
+    <button class="legend-section-toggle" aria-expanded="true">Authentication tokens <span class="chevron">▾</span></button>
+    <div class="legend-section-body">
+      <div class="legend-entry" data-terms="deploy auth token cicd github actions secret">
+        <div class="entry-tag">DEPLOY_AUTH_TOKEN</div>
+        <div class="entry-name">CI/CD deploy secret</div>
+        <div class="entry-desc">Shared between GitHub Actions (<code>OMCSI_DEPLOY_TOKEN</code> repo secret) and <code>minecraft-wrapper</code>. Guards <code>POST /api/plugins/deploy</code> via Bearer token with constant-time comparison.</div>
+      </div>
+      <div class="legend-entry" data-terms="deployment auth token wrapper webapp history">
+        <div class="entry-tag">DEPLOYMENT_AUTH_TOKEN</div>
+        <div class="entry-name">Wrapper → webapp secret</div>
+        <div class="entry-desc">Shared between <code>minecraft-wrapper</code> and <code>webapp</code>. Guards <code>POST /api/deployment-history</code> so only the wrapper can write deploy records.</div>
+      </div>
+    </div>
+  </div>
+  <div class="legend-section">
+    <button class="legend-section-toggle" aria-expanded="true">Deployment paths <span class="chevron">▾</span></button>
+    <div class="legend-section-body">
+      <div class="legend-entry" data-terms="path a cicd github actions automated">
+        <div class="entry-name">Path A — CI/CD (automated)</div>
+        <div class="entry-path">devPush
+→ GitHub repo (push event)
+→ GHA runner: checkout + ./gradlew build
+→ POST :8092/api/plugins/deploy  (Bearer token)
+→ PluginDeployService: validate + atomic write
+→ mcserver volume /mcserver/plugins/
+→ Spigot loads JAR on next restart</div>
+      </div>
+      <div class="legend-entry" data-terms="path b manual upload web dashboard admin">
+        <div class="entry-name">Path B — Manual (web dashboard)</div>
+        <div class="entry-path">devBrowser
+→ nginx (TLS termination)
+→ webapp Admin Dashboard UI
+→ POST /api/plugins/upload  (admin credentials)
+→ PluginService: validate + write
+→ mcserver volume /mcserver/plugins/
+→ Spigot loads JAR on next restart</div>
+      </div>
+    </div>
+  </div>
+  <div class="legend-section">
+    <button class="legend-section-toggle" aria-expanded="true">Assumptions <span class="chevron">▾</span></button>
+    <div class="legend-section-body">
+      <ul class="assumption-list">
+        <li>GitHub Actions reaches <code>minecraft-wrapper</code> directly on <code>:8092</code> — nginx is not in the CI/CD path.</li>
+        <li>Spigot does not hot-reload plugins — a server restart is required to pick up a newly written JAR.</li>
+        <li><code>nginx</code> proxies only to <code>webapp</code>; the wrapper's <code>:8092</code> is exposed directly to the host.</li>
+        <li>The wrapper's <code>/api/server/start|stop|restart</code> endpoints have no auth — authentication is enforced by the webapp before forwarding.</li>
+        <li><code>agent-manager</code> and <code>backup-manager</code> omitted — not part of the plugin deployment lifecycle.</li>
+      </ul>
+    </div>
+  </div>
+</template>
+
+<script>
+const $ = id => document.getElementById(id);
+const isMobile = () => window.matchMedia("(max-width: 768px)").matches;
+
+// ── Populate legend content from template into both containers ──────
+function populateLegend(container, emptyEl, searchEl) {
+  const tpl = $("legend-content-tpl");
+  container.prepend(tpl.content.cloneNode(true));
+
+  // Section toggles
+  container.querySelectorAll(".legend-section-toggle").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const s = btn.closest(".legend-section");
+      const collapsed = s.classList.toggle("collapsed");
+      btn.setAttribute("aria-expanded", !collapsed);
+    });
+  });
+
+  // Search/filter
+  searchEl.addEventListener("input", e => {
+    const q = e.target.value.toLowerCase().trim();
+    let n = 0;
+    container.querySelectorAll(".legend-entry").forEach(entry => {
+      const match = !q || ((entry.dataset.terms || "") + " " + entry.textContent).toLowerCase().includes(q);
+      entry.hidden = !match;
+      if (match) n++;
+    });
+    emptyEl.style.display = n === 0 ? "block" : "none";
+    if (q) container.querySelectorAll(".legend-section").forEach(s => s.classList.remove("collapsed"));
+  });
+}
+
+populateLegend($("legend").querySelector(".legend-body"), $("legend-empty"), $("legend-search"));
+populateLegend($("sheet-body"), $("sheet-empty"), $("sheet-search"));
+
+// ── Zoom helpers ────────────────────────────────────────────────────
+const ZOOM_MIN = 0.05, ZOOM_MAX = 8;
+const zoomToSlider = z => Math.round(100 * (Math.log(z) - Math.log(ZOOM_MIN)) / (Math.log(ZOOM_MAX) - Math.log(ZOOM_MIN)));
+const sliderToZoom = s => Math.exp(Math.log(ZOOM_MIN) + (s / 100) * (Math.log(ZOOM_MAX) - Math.log(ZOOM_MIN)));
+
+let zoomPillTimer;
+function setZoomLabel(z) {
+  const pct = Math.round(z * 100) + "%";
+  $("zoom-pct").textContent = pct;
+  $("zoom-slider").value = zoomToSlider(z);
+  // Mobile: show pill briefly
+  const pill = $("mobile-zoom-pill");
+  pill.textContent = pct;
+  pill.classList.remove("hidden");
+  clearTimeout(zoomPillTimer);
+  zoomPillTimer = setTimeout(() => pill.classList.add("hidden"), 1800);
+}
+
+// ── Desktop legend ──────────────────────────────────────────────────
+function readLegendPreference() {
+  try {
+    return localStorage.getItem("legend-open") === "true";
+  } catch {
+    return false;
+  }
+}
+
+function writeLegendPreference(open) {
+  try {
+    localStorage.setItem("legend-open", open);
+  } catch {
+    // Ignore storage failures and fall back to the in-memory state.
+  }
+}
+
+let legendOpen = readLegendPreference(); // default closed
+
+function setDesktopLegend(open, panZoom) {
+  legendOpen = open;
+  writeLegendPreference(open);
+  const leg = $("legend"), btn = $("btn-legend");
+  if (open) { leg.classList.remove("closed"); btn.classList.add("active"); btn.setAttribute("aria-expanded","true"); }
+  else       { leg.classList.add("closed");    btn.classList.remove("active"); btn.setAttribute("aria-expanded","false"); }
+  if (panZoom) setTimeout(() => { panZoom.resize(); panZoom.fit(); panZoom.center(); }, 270);
+}
+setDesktopLegend(legendOpen, null);
+
+// ── Mobile bottom sheet ─────────────────────────────────────────────
+let sheetOpen = false;
+let sheetReturnFocusEl = null;
+
+function openSheet(trigger = document.activeElement) {
+  sheetOpen = true;
+  sheetReturnFocusEl = trigger instanceof HTMLElement ? trigger : null;
+  $("bottom-sheet").classList.add("open");
+  $("sheet-backdrop").classList.add("open");
+  $("fab-legend").classList.add("active");
+  requestAnimationFrame(() => {
+    $("bottom-sheet").focus();
+    $("sheet-search").focus();
+  });
+}
+function closeSheet({ restoreFocus = true } = {}) {
+  sheetOpen = false;
+  $("bottom-sheet").classList.remove("open");
+  $("sheet-backdrop").classList.remove("open");
+  $("fab-legend").classList.remove("active");
+  if (restoreFocus) {
+    const focusTarget = sheetReturnFocusEl && sheetReturnFocusEl.isConnected ? sheetReturnFocusEl : $("fab-legend");
+    focusTarget.focus();
+  }
+  sheetReturnFocusEl = null;
+}
+
+// Sheet drag-to-dismiss
+(function() {
+  const sheet = $("bottom-sheet");
+  const handle = $("sheet-handle");
+  let startY = 0, currentY = 0, dragging = false;
+
+  function onStart(y) { startY = y; currentY = 0; dragging = true; sheet.classList.add("dragging"); }
+  function onMove(y)  {
+    if (!dragging) return;
+    currentY = Math.max(0, y - startY);
+    sheet.style.transform = `translateY(${currentY}px)`;
+  }
+  function onEnd() {
+    if (!dragging) return;
+    dragging = false;
+    sheet.classList.remove("dragging");
+    sheet.style.transform = "";
+    if (currentY > sheet.offsetHeight * 0.3) closeSheet();
+  }
+
+  handle.addEventListener("touchstart", e => onStart(e.touches[0].clientY), { passive: true });
+  handle.addEventListener("touchmove",  e => onMove(e.touches[0].clientY),  { passive: true });
+  handle.addEventListener("touchend",   () => onEnd());
+  handle.addEventListener("mousedown",  e => onStart(e.clientY));
+  document.addEventListener("mousemove", e => onMove(e.clientY));
+  document.addEventListener("mouseup",   () => onEnd());
+})();
+
+$("sheet-backdrop").addEventListener("click", closeSheet);
+$("btn-close-sheet").addEventListener("click", closeSheet);
+
+// ── Shortcuts modal ─────────────────────────────────────────────────
+function openShortcuts()  { $("shortcuts-modal").hidden = false; $("btn-close-shortcuts").focus(); }
+function closeShortcuts() { $("shortcuts-modal").hidden = true; }
+$("btn-shortcuts").addEventListener("click", openShortcuts);
+$("btn-close-shortcuts").addEventListener("click", closeShortcuts);
+$("shortcuts-modal").addEventListener("click", e => { if (e.target === $("shortcuts-modal")) closeShortcuts(); });
+
+// ── Mermaid + pan-zoom ──────────────────────────────────────────────
+function showLoadingError(message) {
+  const loading = $("loading");
+  loading.classList.remove("hidden");
+  loading.classList.add("error");
+  loading.setAttribute("role", "alert");
+  $("loading-message").textContent = message;
+}
+
+function hideLoading() {
+  const loading = $("loading");
+  loading.classList.add("hidden");
+  setTimeout(() => loading.remove(), 450);
+}
+
+if (!window.mermaid || !window.svgPanZoom) {
+  showLoadingError("Diagram assets failed to load. Open this file from the repository checkout so the vendored scripts are available.");
+} else {
+  mermaid.initialize({
+    startOnLoad: false,
+    theme: "dark",
+    flowchart: { curve: "basis", padding: 24, nodeSpacing: 50, rankSpacing: 70 },
+    themeVariables: { fontSize: "14px" },
+  });
+
+  mermaid.run().then(() => {
+    const svg = document.querySelector("#diagram-container svg");
+    if (!svg) {
+      showLoadingError("Diagram rendering completed without producing an SVG.");
+      return;
+    }
+
+    hideLoading();
+
+    svg.removeAttribute("width"); svg.removeAttribute("height");
+    svg.style.width = "100%"; svg.style.height = "100%";
+
+    const panZoom = svgPanZoom(svg, {
+    zoomEnabled: true, panEnabled: true,
+    controlIconsEnabled: false,
+    fit: true, center: true,
+    minZoom: ZOOM_MIN, maxZoom: ZOOM_MAX,
+    zoomScaleSensitivity: 0.25,
+    onZoom(z) { setZoomLabel(z); },
+  });
+
+  const fitView = () => { panZoom.resize(); panZoom.fit(); panZoom.center(); setZoomLabel(panZoom.getZoom()); };
+  fitView();
+
+  // Re-fit on container resize (orientation change, Chrome bar show/hide)
+  new ResizeObserver(fitView).observe($("diagram-container"));
+
+  // Desktop controls
+  $("btn-zoom-in").addEventListener("click",  () => panZoom.zoomIn());
+  $("btn-zoom-out").addEventListener("click", () => panZoom.zoomOut());
+  $("zoom-pct").addEventListener("click", fitView);
+  $("zoom-slider").addEventListener("input", e => {
+    const z = sliderToZoom(+e.target.value);
+    panZoom.zoom(z);
+    $("zoom-pct").textContent = Math.round(z * 100) + "%";
+  });
+  $("btn-legend").addEventListener("click", () => setDesktopLegend(!legendOpen, panZoom));
+
+  // Mobile FABs
+  $("fab-zoom-in").addEventListener("click",  () => panZoom.zoomIn());
+  $("fab-zoom-out").addEventListener("click", () => panZoom.zoomOut());
+  $("fab-fit").addEventListener("click", fitView);
+  $("fab-legend").addEventListener("click", () => sheetOpen ? closeSheet() : openSheet($("fab-legend")));
+
+  // Double-click / double-tap to fit
+  let lastTap = 0;
+  $("diagram-container").addEventListener("dblclick", fitView);
+  $("diagram-container").addEventListener("touchend", e => {
+    const now = Date.now();
+    if (now - lastTap < 300) { fitView(); e.preventDefault(); }
+    lastTap = now;
+  }, { passive: false });
+
+  // Keyboard shortcuts
+  document.addEventListener("keydown", e => {
+    if (e.target.tagName === "INPUT") return;
+    if (e.key === "Escape") {
+      if (!$("shortcuts-modal").hidden) { closeShortcuts(); return; }
+      if (sheetOpen)   { closeSheet(); return; }
+      if (legendOpen)  { setDesktopLegend(false, panZoom); return; }
+    }
+    if (e.key === "?" || e.key === "/") { e.preventDefault(); openShortcuts(); return; }
+    if (e.key === "l" || e.key === "L") {
+      isMobile() ? (sheetOpen ? closeSheet() : openSheet($("fab-legend"))) : setDesktopLegend(!legendOpen, panZoom);
+      return;
+    }
+    if (e.key === "+" || e.key === "=") { panZoom.zoomIn(); return; }
+    if (e.key === "-")                   { panZoom.zoomOut(); return; }
+    if (e.key === "0" || e.key === "f" || e.key === "F") fitView();
+  });
+  }).catch(err => {
+    console.error("Failed to render Mermaid diagram.", err);
+    showLoadingError("Failed to render the Mermaid diagram. Check the browser console for details.");
+  });
+}
+</script>
+</body>
+</html>

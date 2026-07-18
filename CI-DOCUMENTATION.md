@@ -74,10 +74,11 @@ or probe/init-container wiring mistakes).
 
 ### 4. Terraform Validate (`terraform-validate`)
 
-Runs `terraform init -backend=false` and `terraform validate` for each
-Terraform stack under `terraform/` (`aws`, `linode`, `existing-cluster`),
-and transitively the shared modules they consume, to catch syntax and
-provider errors before they hit a real deployment.
+Runs `terraform fmt -check`, `terraform init -backend=false`, and
+`terraform validate` for each Terraform stack under `terraform/`
+(`aws`, `linode`, `existing-cluster`, and `hetzner`) to catch
+formatting issues, syntax errors, and provider errors before they
+hit a real deployment.
 
 ### 5. Security Scanning (`security-scan`)
 

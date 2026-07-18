@@ -5,6 +5,10 @@ import com.openmc.webapp.dto.PluginDeleteRequest;
 import com.openmc.webapp.dto.PluginListRequest;
 import com.openmc.webapp.dto.PluginListResponse;
 import com.openmc.webapp.dto.PluginOperationResponse;
+import com.openmc.webapp.dto.WorldDeleteRequest;
+import com.openmc.webapp.dto.WorldListRequest;
+import com.openmc.webapp.dto.WorldListResponse;
+import com.openmc.webapp.dto.WorldOperationResponse;
 import com.openmc.webapp.model.ActivityTrackerStats;
 import com.openmc.webapp.model.DeploymentRecord;
 import com.openmc.webapp.model.LeaderboardEntry;
@@ -13,6 +17,7 @@ import com.openmc.webapp.service.AlertNotificationService;
 import com.openmc.webapp.service.DeploymentHistoryService;
 import com.openmc.webapp.service.PluginService;
 import com.openmc.webapp.service.RconService;
+import com.openmc.webapp.service.WorldService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -43,6 +48,7 @@ public class ServerController {
     private final ServerConfig serverConfig;
     private final ActivityTrackerService activityTrackerService;
     private final PluginService pluginService;
+    private final WorldService worldService;
     private final AlertNotificationService alertNotificationService;
     private final com.openmc.webapp.service.MinecraftWrapperService minecraftWrapperService;
     private final DeploymentHistoryService deploymentHistoryService;
@@ -50,11 +56,15 @@ public class ServerController {
     @org.springframework.beans.factory.annotation.Value("${deployment.auth.token:}")
     private String deploymentAuthToken;
 
+    @org.springframework.beans.factory.annotation.Value("${deploy.auth.token:}")
+    private String deployAuthToken;
+
     private volatile boolean deploymentTokenWarningLogged = false;
     
-    public ServerController(RconService rconService, ServerConfig serverConfig, 
+    public ServerController(RconService rconService, ServerConfig serverConfig,
                           ActivityTrackerService activityTrackerService,
                           PluginService pluginService,
+                          WorldService worldService,
                           AlertNotificationService alertNotificationService,
                           com.openmc.webapp.service.MinecraftWrapperService minecraftWrapperService,
                           DeploymentHistoryService deploymentHistoryService) {
@@ -62,6 +72,7 @@ public class ServerController {
         this.serverConfig = serverConfig;
         this.activityTrackerService = activityTrackerService;
         this.pluginService = pluginService;
+        this.worldService = worldService;
         this.alertNotificationService = alertNotificationService;
         this.minecraftWrapperService = minecraftWrapperService;
         this.deploymentHistoryService = deploymentHistoryService;
@@ -321,6 +332,88 @@ public class ServerController {
         }
     }
     
+    @PostMapping(value = "/api/world/upload", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public WorldOperationResponse uploadWorld(@RequestParam(required = false) String username,
+                                               @RequestParam(required = false) String password,
+                                               @RequestParam(value = "file", required = false) MultipartFile file) {
+        if (username == null || username.isEmpty() || password == null || password.isEmpty()) {
+            return WorldOperationResponse.error("Missing username or password");
+        }
+
+        if (file == null || file.isEmpty()) {
+            return WorldOperationResponse.error("No file provided");
+        }
+
+        if (!validateCredentials(username, password)) {
+            alertNotificationService.sendWarningAlert(
+                "World Upload Authentication Failed",
+                "Failed authentication attempt for world upload endpoint"
+            );
+            return WorldOperationResponse.error("Invalid username or password");
+        }
+
+        if (deployAuthToken == null || deployAuthToken.trim().isEmpty()) {
+            logger.error("deploy.auth.token is not configured; world upload is unavailable");
+            return WorldOperationResponse.error("World upload is not configured on this server");
+        }
+
+        boolean success = minecraftWrapperService.uploadWorld(file, deployAuthToken);
+
+        if (success) {
+            alertNotificationService.sendInfoAlert(
+                "World Uploaded Successfully",
+                String.format("User '%s' uploaded a new world map", username)
+            );
+            return WorldOperationResponse.success("World uploaded successfully. Server is restarting.");
+        } else {
+            return WorldOperationResponse.error("World upload failed. Check server logs for details.");
+        }
+    }
+
+    @PostMapping(value = "/api/world/list", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public WorldListResponse listWorlds(@RequestBody WorldListRequest request) {
+        if (!validateCredentials(request.getUsername(), request.getPassword())) {
+            alertNotificationService.sendWarningAlert(
+                "World List Authentication Failed",
+                "Failed authentication attempt for world list endpoint"
+            );
+            return WorldListResponse.error("Invalid username or password");
+        }
+        return WorldListResponse.success(worldService.listWorlds());
+    }
+
+    @PostMapping(value = "/api/world/delete", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public WorldOperationResponse deleteWorld(@RequestBody WorldDeleteRequest request) {
+        if (request.getUsername() == null || request.getUsername().isEmpty()
+                || request.getPassword() == null || request.getPassword().isEmpty()
+                || request.getName() == null || request.getName().isEmpty()) {
+            return WorldOperationResponse.error("Missing required parameters");
+        }
+        if (!validateCredentials(request.getUsername(), request.getPassword())) {
+            alertNotificationService.sendWarningAlert(
+                "World Delete Authentication Failed",
+                "Failed authentication attempt for world delete endpoint"
+            );
+            return WorldOperationResponse.error("Invalid username or password");
+        }
+
+        String result = worldService.deleteWorld(request.getName());
+        boolean success = !result.startsWith("Error");
+
+        if (success) {
+            alertNotificationService.sendInfoAlert(
+                "World Deleted Successfully",
+                String.format("User '%s' deleted world: %s", request.getUsername(), request.getName())
+            );
+            return WorldOperationResponse.success(result);
+        } else {
+            return WorldOperationResponse.error(result);
+        }
+    }
+
     @PostMapping("/api/server/start")
     @ResponseBody
     public Map<String, Object> startServer(@RequestBody Map<String, String> payload) {

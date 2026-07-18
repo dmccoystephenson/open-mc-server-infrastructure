@@ -20,7 +20,7 @@ The following environment variables can be configured in `.env`:
 - `ALERT_PORT`: Port for the alert manager API (default: `8090`)
 - `DISCORD_WEBHOOK_URL`: Discord webhook URL for sending notifications
 - `DISCORD_ENABLED`: Enable/disable Discord notifications (default: `false`)
-- `MINECRAFT_RCON_HOST`: Minecraft server hostname for RCON (default: `mcserver`). Note: `compose.yml` overrides this to `minecraft-wrapper` for the bundled stack, so under Docker Compose RCON is routed through the wrapper service.
+- `MINECRAFT_RCON_HOST`: Minecraft server hostname for RCON (Docker Compose default: `minecraft-wrapper`; the application's built-in fallback when unset is `mcserver`)
 - `MINECRAFT_RCON_PORT`: Minecraft server RCON port (default: `25575`)
 - `MINECRAFT_RCON_PASSWORD`: Password for Minecraft RCON (default: uses `RCON_PASSWORD` from compose.yml)
 - `MINECRAFT_RCON_ENABLED`: Enable/disable Minecraft message sending (default: `true`)
