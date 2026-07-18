@@ -65,9 +65,12 @@ templates.
 ### 3. Helm Deploy Smoke Test (`helm-deploy-test`)
 
 Spins up a `kind` cluster, installs the chart with minimal required values,
-and checks the resulting workloads come up healthy. Catches template
-regressions that lint and unit tests miss (e.g. selector mismatches,
-PVC binding failures).
+and verifies the release creates the expected Kubernetes objects and key
+deployment fields. Because CI does not build/load the service images into
+`kind` and installs with `--wait=false`, this job does **not** prove the
+workloads become Ready/healthy; it catches install-time/template regressions
+that lint and unit tests miss (for example selector mismatches, missing PVCs,
+or probe/init-container wiring mistakes).
 
 ### 4. Terraform Validate (`terraform-validate`)
 
