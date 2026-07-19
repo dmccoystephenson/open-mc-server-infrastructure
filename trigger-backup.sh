@@ -76,7 +76,7 @@ main() {
     # "Connection refused" from the trigger request below.
     if ! curl -sf --connect-timeout 3 --max-time 5 "http://localhost:${backup_port}/actuator/health" >/dev/null 2>&1; then
         log_error "backup-manager is not reachable at localhost:${backup_port}."
-        log_info "Check that it is running: docker compose ps open-mc-backup-manager"
+        log_info "Check that it is running: docker compose ps backup-manager"
         exit 1
     fi
 
