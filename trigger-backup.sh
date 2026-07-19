@@ -51,20 +51,35 @@ main() {
     # Get backup port from .env or use default
     local backup_port
     backup_port=$(get_env_value "BACKUP_PORT" "8091")
-    
+
+    # Validate the port is numeric before building a URL from it
+    if ! [[ "$backup_port" =~ ^[0-9]+$ ]]; then
+        log_error "BACKUP_PORT '$backup_port' is not a valid port number. Check .env."
+        exit 1
+    fi
+
     # Determine the backup manager URL
     local backup_url="http://localhost:${backup_port}/api/backups/trigger"
-    
+
     log_info "Triggering backup via API..."
     log_info "URL: $backup_url"
     echo ""
-    
+
     # Check if curl is available
     if ! command -v curl >/dev/null 2>&1; then
         log_error "curl is not installed. Please install curl to use this script."
         exit 1
     fi
-    
+
+    # Preflight: confirm backup-manager is actually reachable before triggering,
+    # so an unreachable service produces an actionable hint instead of a bare
+    # "Connection refused" from the trigger request below.
+    if ! curl -sf --connect-timeout 3 --max-time 5 "http://localhost:${backup_port}/actuator/health" >/dev/null 2>&1; then
+        log_error "backup-manager is not reachable at localhost:${backup_port}."
+        log_info "Check that it is running: docker compose ps open-mc-backup-manager"
+        exit 1
+    fi
+
     # Trigger the backup
     local response
     local http_code

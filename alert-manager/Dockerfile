@@ -20,6 +20,12 @@ RUN gradle clean build -x test --no-daemon
 # Stage 2: Create the runtime image
 FROM eclipse-temurin:21-jre
 
+# Install curl for the compose healthcheck
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends curl && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
 
 COPY --from=builder /build/build/libs/*.jar app.jar
