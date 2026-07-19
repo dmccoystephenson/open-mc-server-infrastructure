@@ -19,6 +19,14 @@ services:
     depends_on:
       alert-manager:
         condition: service_healthy
+    healthcheck:
+      # start_period allows for Spigot's first-boot BuildTools compilation (mirrors the
+      # 10-minute startupProbe budget in helm/omcsi/templates/minecraft-wrapper.yaml).
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8092/actuator/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 600s
     environment:
       - MINECRAFT_VERSION=${MINECRAFT_VERSION}
       - OPERATOR_UUID=${OPERATOR_UUID}
@@ -65,6 +73,12 @@ services:
       - mcserver:/mcserver:rw
     depends_on:
       - minecraft-wrapper
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
     environment:
       - MC_HOST=minecraft-wrapper
       - MC_RCON_PORT=25575
@@ -103,6 +117,12 @@ services:
       - "${WEB_HTTPS_PORT:-8443}:443"
     depends_on:
       - webapp
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80/"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
     volumes:
       - nginx-ssl:/etc/nginx/ssl
 
@@ -120,6 +140,12 @@ services:
     depends_on:
       alert-manager:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8091/actuator/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
     environment:
       - BACKUP_DIRECTORY=/backups
       - BACKUP_MAX_SIZE_MB=${BACKUP_MAX_SIZE_MB:-10240}
@@ -167,6 +193,14 @@ services:
         condition: service_started
       backup-manager:
         condition: service_started
+    healthcheck:
+      # Health is served on the Spring Boot management port (8094), not the API port
+      # (8093) — see CLAUDE.md's service table.
+      test: ["CMD", "curl", "-f", "http://localhost:8094/actuator/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
     environment:
       - AGENT_DISCORD_BOT_TOKEN=${AGENT_DISCORD_BOT_TOKEN:-}
       - AGENT_DISCORD_CHANNEL_ID=${AGENT_DISCORD_CHANNEL_ID:-}

@@ -3,8 +3,9 @@ FROM nginx:latest
 # Install openssl; libcap2-bin provides setcap so the nginx binary can bind
 # to ports 80/443 as a non-root user without runtime CAP_NET_BIND_SERVICE
 # (Kubernetes adds the capability via securityContext; setcap covers Docker Compose).
+# curl is used by the Docker Compose healthcheck (Kubernetes uses a kubelet httpGet probe instead).
 RUN apt-get update && \
-    apt-get install -y openssl libcap2-bin && \
+    apt-get install -y openssl libcap2-bin curl && \
     rm -rf /var/lib/apt/lists/* && \
     setcap cap_net_bind_service=+ep /usr/sbin/nginx
 
