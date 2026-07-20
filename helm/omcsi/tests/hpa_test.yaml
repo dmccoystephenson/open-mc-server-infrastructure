@@ -1,7 +1,6 @@
 suite: HorizontalPodAutoscaler
-templates:
-  - templates/hpa.yaml
-  - templates/nginx.yaml
+# nginx.yaml references nginx-configmap.yaml (checksum annotation), so both
+# must be rendered together whenever nginx.yaml is included (see nginx_test.yaml).
 set:
   secrets.rconPassword: ci
   secrets.adminPassword: ci
@@ -62,6 +61,7 @@ tests:
       nginx.autoscaling.enabled: true
     templates:
       - templates/nginx.yaml
+      - templates/nginx-configmap.yaml
     documentSelector:
       path: kind
       value: Deployment
@@ -73,6 +73,7 @@ tests:
   - it: nginx Deployment sets replicas from replicaCount when autoscaling is disabled
     templates:
       - templates/nginx.yaml
+      - templates/nginx-configmap.yaml
     documentSelector:
       path: kind
       value: Deployment
