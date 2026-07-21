@@ -86,6 +86,8 @@ tests:
   - it: renders a webapp HPA when webapp.autoscaling.enabled is true
     set:
       webapp.autoscaling.enabled: true
+      persistence.mcserver.accessMode: ReadWriteMany
+      persistence.webappData.accessMode: ReadWriteMany
     templates:
       - templates/hpa.yaml
     asserts:
@@ -104,6 +106,8 @@ tests:
   - it: webapp Deployment omits replicas when autoscaling is enabled
     set:
       webapp.autoscaling.enabled: true
+      persistence.mcserver.accessMode: ReadWriteMany
+      persistence.webappData.accessMode: ReadWriteMany
     templates:
       - templates/webapp.yaml
     documentSelector:
@@ -128,6 +132,7 @@ tests:
   - it: renders an alert-manager HPA when alertManager.autoscaling.enabled is true
     set:
       alertManager.autoscaling.enabled: true
+      persistence.alertManagerData.accessMode: ReadWriteMany
     templates:
       - templates/hpa.yaml
     asserts:
@@ -146,6 +151,7 @@ tests:
   - it: alert-manager Deployment omits replicas when autoscaling is enabled
     set:
       alertManager.autoscaling.enabled: true
+      persistence.alertManagerData.accessMode: ReadWriteMany
     templates:
       - templates/alert-manager.yaml
     documentSelector:
@@ -172,6 +178,9 @@ tests:
       nginx.autoscaling.enabled: true
       webapp.autoscaling.enabled: true
       alertManager.autoscaling.enabled: true
+      persistence.mcserver.accessMode: ReadWriteMany
+      persistence.webappData.accessMode: ReadWriteMany
+      persistence.alertManagerData.accessMode: ReadWriteMany
     templates:
       - templates/hpa.yaml
     asserts:
