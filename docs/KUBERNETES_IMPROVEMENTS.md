@@ -83,14 +83,13 @@ This document captures issues, limitations, and improvement opportunities surfac
 
 ---
 
-## 7. Horizontal Pod Autoscaler (HPA)
+## 7. Horizontal Pod Autoscaler (HPA) 🟡 Partially Resolved
 
 **Problem:** No HPA is configured for any service. The Minecraft server is intentionally limited to a single replica, but supporting services (webapp, nginx, alert-manager) could benefit from autoscaling under load.
 
-**Suggested improvements:**
-- Add optional HPA templates for `webapp`, `nginx`, and `alert-manager` (gated by `autoscaling.enabled` in `values.yaml`).
-- Define sensible CPU/memory scaling thresholds.
-- Document that `minecraft-wrapper` cannot be horizontally scaled (single-instance constraint).
+**Resolution (nginx only):** An optional HPA template was added to `helm/omcsi/templates/hpa.yaml`, gated by `nginx.autoscaling.enabled` in `values.yaml` (default `false`), targeting CPU utilization. `nginx` is the only supporting service scaled because it has no PVC and no in-memory session state; the Deployment's `replicas` field is omitted once autoscaling is enabled so Helm upgrades don't fight the HPA's chosen replica count.
+
+**Remaining work — `webapp` and `alert-manager`:** both mount a `ReadWriteOnce` PVC (`webapp` already `fail`s the template at `replicaCount > 1` for this reason), so scaling them requires first resolving the shared-PVC constraint — tracked in [#147](https://github.com/dmccoystephenson/open-mc-server-infrastructure/issues/147). `minecraft-wrapper` remains single-instance by design (owns world data + RCON) and is not a candidate for HPA.
 
 **Priority:** Low — OMCSI is typically a small-scale deployment; autoscaling adds value for larger communities.
 

@@ -6,7 +6,9 @@ metadata:
     {{- include "omcsi.labels" . | nindent 4 }}
     {{- include "omcsi.selectorLabels" (dict "root" . "component" "nginx") | nindent 4 }}
 spec:
+  {{- if not .Values.nginx.autoscaling.enabled }}
   replicas: {{ .Values.nginx.replicaCount }}
+  {{- end }}
   strategy:
     type: RollingUpdate
   selector:

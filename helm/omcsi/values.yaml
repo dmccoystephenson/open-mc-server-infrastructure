@@ -149,6 +149,18 @@ nginx:
     # --service-node-port-range to include them (e.g. 80-32767).
     httpNodePort: ""
     httpsNodePort: ""
+  # nginx has no PVC and no in-memory session state, so it is the only
+  # supporting service that can be horizontally scaled safely today.
+  # webapp and alert-manager are excluded: both mount a ReadWriteOnce PVC
+  # (webapp already `fail`s at replicaCount > 1 for this reason), so scaling
+  # them requires resolving the shared-PVC constraint first — see #147.
+  # Requires the metrics-server (or equivalent) API to be installed in the
+  # cluster; replicaCount above is ignored once enabled (HPA owns replicas).
+  autoscaling:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 3
+    targetCPUUtilizationPercentage: 70
   tls:
     # When true, a self-signed certificate is generated via an init container
     # (same behaviour as the Docker Compose setup).

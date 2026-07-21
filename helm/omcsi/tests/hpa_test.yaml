@@ -1,0 +1,84 @@
+suite: HorizontalPodAutoscaler
+# nginx.yaml references nginx-configmap.yaml (checksum annotation), so both
+# must be rendered together whenever nginx.yaml is included (see nginx_test.yaml).
+set:
+  secrets.rconPassword: ci
+  secrets.adminPassword: ci
+tests:
+  - it: renders no HPA when nginx.autoscaling.enabled is false (default)
+    templates:
+      - templates/hpa.yaml
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: renders an nginx HPA when nginx.autoscaling.enabled is true
+    set:
+      nginx.autoscaling.enabled: true
+    templates:
+      - templates/hpa.yaml
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isAPIVersion:
+          of: autoscaling/v2
+      - isKind:
+          of: HorizontalPodAutoscaler
+      - equal:
+          path: spec.scaleTargetRef.kind
+          value: Deployment
+      - equal:
+          path: spec.minReplicas
+          value: 1
+      - equal:
+          path: spec.maxReplicas
+          value: 3
+      - equal:
+          path: spec.metrics[0].resource.target.averageUtilization
+          value: 70
+
+  - it: honors custom min/max/target overrides
+    set:
+      nginx.autoscaling.enabled: true
+      nginx.autoscaling.minReplicas: 2
+      nginx.autoscaling.maxReplicas: 5
+      nginx.autoscaling.targetCPUUtilizationPercentage: 50
+    templates:
+      - templates/hpa.yaml
+    asserts:
+      - equal:
+          path: spec.minReplicas
+          value: 2
+      - equal:
+          path: spec.maxReplicas
+          value: 5
+      - equal:
+          path: spec.metrics[0].resource.target.averageUtilization
+          value: 50
+
+  - it: nginx Deployment omits replicas when autoscaling is enabled
+    set:
+      nginx.autoscaling.enabled: true
+    templates:
+      - templates/nginx.yaml
+      - templates/nginx-configmap.yaml
+    documentSelector:
+      path: kind
+      value: Deployment
+      skipEmptyTemplates: true
+    asserts:
+      - notExists:
+          path: spec.replicas
+
+  - it: nginx Deployment sets replicas from replicaCount when autoscaling is disabled
+    templates:
+      - templates/nginx.yaml
+      - templates/nginx-configmap.yaml
+    documentSelector:
+      path: kind
+      value: Deployment
+      skipEmptyTemplates: true
+    asserts:
+      - equal:
+          path: spec.replicas
+          value: 1
