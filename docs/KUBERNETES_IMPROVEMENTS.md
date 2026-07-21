@@ -70,16 +70,19 @@ This document captures issues, limitations, and improvement opportunities surfac
 
 ---
 
-## 6. Shared PVC Scheduling Constraints
+## 6. Shared PVC Scheduling Constraints ✅ Resolved (documentation)
 
 **Problem:** The mcserver PVC uses `ReadWriteOnce` (RWO), which means all pods mounting it must run on the same node. The chart uses `preferredDuringSchedulingIgnoredDuringExecution` pod affinity to encourage co-location, but this can fail on multi-node clusters if the node with the PVC has insufficient resources.
 
-**Suggested improvements:**
-- Document the option to use a `ReadWriteMany` (RWX) StorageClass (e.g., NFS, EFS, Longhorn) for multi-node flexibility.
-- Consider a sidecar or init container pattern where the Minecraft wrapper is the sole PVC owner and exposes data via RCON/API, removing the need for other services to mount the same PVC.
-- Evaluate whether the webapp truly needs direct filesystem access to `/mcserver` or could use the wrapper API instead.
+**Resolution:** `persistence.mcserver.accessMode` was already a plain Helm value (no code change required) — switching to `ReadWriteMany` only needed documenting. The [Multi-Node Scheduling & RWX StorageClasses](../README.md#multi-node-scheduling--rwx-storageclasses) section in the README now covers this: setting `accessMode: ReadWriteMany` with an RWX-capable StorageClass (NFS, AWS EFS via the EFS CSI driver, Longhorn) removes the co-location requirement entirely, since all pods can then mount the PVC regardless of which node they land on.
 
-**Priority:** Low — the current affinity rules work for typical 2-node clusters. Only relevant for larger or more constrained environments.
+**Evaluation — does `webapp` / `backup-manager` need direct filesystem access?** Yes, for both, today:
+- `webapp`'s `WorldService` and `PluginService` list, upload, and delete files directly under `/mcserver` (world directories, plugin jars) — see `web-app/src/main/java/com/openmc/webapp/service/WorldService.java` and `PluginService.java`. Routing this through `minecraft-wrapper`'s REST API instead would mean adding streaming file-transfer and directory-listing endpoints to the wrapper for every operation webapp currently does with `java.nio.file` calls — a much larger change than the low priority of this issue justifies.
+- `backup-manager`'s `BackupService` runs `tar` directly against the whole `sourceDirectory` (`/mcserver`) to produce `mcserver-backup.tar.gz` — see `backup-manager/src/main/java/com/openmc/backupmanager/service/BackupService.java`. Proxying a full-directory tar through an HTTP API on the wrapper would add complexity (streaming, timeouts, partial-failure handling) without removing the need for shared storage, since the wrapper itself still has to read every file to stream it.
+
+Given that, making `minecraft-wrapper` the sole PVC owner (sidecar/init-container pattern) was evaluated and rejected for now — it doesn't eliminate the shared-storage requirement, it just relocates it behind an API that would need to support arbitrary file listing, upload, and bulk-download. RWX StorageClasses solve the actual problem (multi-node scheduling) directly and are already supported by the existing `accessMode` value.
+
+**Priority:** Low — the current affinity rules work for typical 2-node clusters; RWX is documented as the option for larger or more constrained environments.
 
 ---
 
