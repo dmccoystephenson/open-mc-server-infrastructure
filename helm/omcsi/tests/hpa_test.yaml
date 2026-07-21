@@ -82,3 +82,98 @@ tests:
       - equal:
           path: spec.replicas
           value: 1
+
+  - it: renders a webapp HPA when webapp.autoscaling.enabled is true
+    set:
+      webapp.autoscaling.enabled: true
+    templates:
+      - templates/hpa.yaml
+    asserts:
+      - hasDocuments:
+          count: 1
+      - equal:
+          path: spec.scaleTargetRef.name
+          value: RELEASE-NAME-omcsi-webapp
+      - equal:
+          path: spec.minReplicas
+          value: 1
+      - equal:
+          path: spec.maxReplicas
+          value: 3
+
+  - it: webapp Deployment omits replicas when autoscaling is enabled
+    set:
+      webapp.autoscaling.enabled: true
+    templates:
+      - templates/webapp.yaml
+    documentSelector:
+      path: kind
+      value: Deployment
+      skipEmptyTemplates: true
+    asserts:
+      - notExists:
+          path: spec.replicas
+
+  - it: webapp Deployment fails when autoscaling.maxReplicas > 1 with a ReadWriteOnce mcserver PVC
+    set:
+      webapp.autoscaling.enabled: true
+      webapp.autoscaling.maxReplicas: 3
+      persistence.mcserver.accessMode: ReadWriteOnce
+    templates:
+      - templates/webapp.yaml
+    asserts:
+      - failedTemplate:
+          errorMessage: "webapp.replicaCount (or webapp.autoscaling.maxReplicas when autoscaling is enabled) must be 1 when a mounted PVC uses ReadWriteOnce access mode (persistence.mcserver or persistence.webappData)"
+
+  - it: renders an alert-manager HPA when alertManager.autoscaling.enabled is true
+    set:
+      alertManager.autoscaling.enabled: true
+    templates:
+      - templates/hpa.yaml
+    asserts:
+      - hasDocuments:
+          count: 1
+      - equal:
+          path: spec.scaleTargetRef.name
+          value: RELEASE-NAME-omcsi-alert-manager
+      - equal:
+          path: spec.minReplicas
+          value: 1
+      - equal:
+          path: spec.maxReplicas
+          value: 3
+
+  - it: alert-manager Deployment omits replicas when autoscaling is enabled
+    set:
+      alertManager.autoscaling.enabled: true
+    templates:
+      - templates/alert-manager.yaml
+    documentSelector:
+      path: kind
+      value: Deployment
+      skipEmptyTemplates: true
+    asserts:
+      - notExists:
+          path: spec.replicas
+
+  - it: alert-manager Deployment fails when autoscaling.maxReplicas > 1 with a ReadWriteOnce alertManagerData PVC
+    set:
+      alertManager.autoscaling.enabled: true
+      alertManager.autoscaling.maxReplicas: 3
+      persistence.alertManagerData.accessMode: ReadWriteOnce
+    templates:
+      - templates/alert-manager.yaml
+    asserts:
+      - failedTemplate:
+          errorMessage: "alertManager.replicaCount (or alertManager.autoscaling.maxReplicas when autoscaling is enabled) must be 1 when persistence.alertManagerData uses ReadWriteOnce access mode"
+
+  - it: renders all three HPAs when nginx, webapp, and alertManager autoscaling are all enabled
+    set:
+      nginx.autoscaling.enabled: true
+      webapp.autoscaling.enabled: true
+      alertManager.autoscaling.enabled: true
+    templates:
+      - templates/hpa.yaml
+    asserts:
+      - hasDocuments:
+          count: 3

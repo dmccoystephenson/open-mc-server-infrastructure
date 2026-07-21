@@ -6,7 +6,16 @@ metadata:
     {{- include "omcsi.labels" . | nindent 4 }}
     {{- include "omcsi.selectorLabels" (dict "root" . "component" "alert-manager") | nindent 4 }}
 spec:
+  {{- $alertManagerMaxReplicas := .Values.alertManager.replicaCount }}
+  {{- if .Values.alertManager.autoscaling.enabled }}
+  {{- $alertManagerMaxReplicas = .Values.alertManager.autoscaling.maxReplicas }}
+  {{- end }}
+  {{- if and (gt (int $alertManagerMaxReplicas) 1) .Values.persistence.alertManagerData.enabled (eq .Values.persistence.alertManagerData.accessMode "ReadWriteOnce") }}
+  {{- fail "alertManager.replicaCount (or alertManager.autoscaling.maxReplicas when autoscaling is enabled) must be 1 when persistence.alertManagerData uses ReadWriteOnce access mode" }}
+  {{- end }}
+  {{- if not .Values.alertManager.autoscaling.enabled }}
   replicas: {{ .Values.alertManager.replicaCount }}
+  {{- end }}
   strategy:
     type: Recreate
   selector:

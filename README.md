@@ -211,6 +211,8 @@ helm install omcsi ./helm/omcsi --namespace omcsi --create-namespace \
 
 This is a Kubernetes-only concern — Docker Compose runs all services on a single host, so there is no equivalent scheduling constraint to document there.
 
+RWX also unblocks horizontal autoscaling for `webapp` and `alert-manager` (see `webapp.autoscaling` / `alertManager.autoscaling` in `values.yaml`): their Deployment templates `fail` if autoscaling is enabled with more than 1 replica while their PVC(s) are still `ReadWriteOnce`.
+
 **Troubleshooting**
 
 | Symptom | Likely cause | Fix |

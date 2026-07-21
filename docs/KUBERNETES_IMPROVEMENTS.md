@@ -86,13 +86,13 @@ Given that, making `minecraft-wrapper` the sole PVC owner (sidecar/init-containe
 
 ---
 
-## 7. Horizontal Pod Autoscaler (HPA) 🟡 Partially Resolved
+## 7. Horizontal Pod Autoscaler (HPA) ✅ Resolved
 
 **Problem:** No HPA is configured for any service. The Minecraft server is intentionally limited to a single replica, but supporting services (webapp, nginx, alert-manager) could benefit from autoscaling under load.
 
-**Resolution (nginx only):** An optional HPA template was added to `helm/omcsi/templates/hpa.yaml`, gated by `nginx.autoscaling.enabled` in `values.yaml` (default `false`), targeting CPU utilization. `nginx` is the only supporting service scaled because it has no PVC and no in-memory session state; the Deployment's `replicas` field is omitted once autoscaling is enabled so Helm upgrades don't fight the HPA's chosen replica count.
+**Resolution:** Optional HPA templates were added to `helm/omcsi/templates/hpa.yaml` for `nginx`, `webapp`, and `alert-manager`, each independently gated by its own `<service>.autoscaling.enabled` in `values.yaml` (default `false`), targeting CPU utilization. Each Deployment's `replicas` field is omitted once its autoscaling is enabled so Helm upgrades don't fight the HPA's chosen replica count.
 
-**Remaining work — `webapp` and `alert-manager`:** both mount a `ReadWriteOnce` PVC (`webapp` already `fail`s the template at `replicaCount > 1` for this reason), so scaling them requires first resolving the shared-PVC constraint — tracked in [#147](https://github.com/dmccoystephenson/open-mc-server-infrastructure/issues/147). `minecraft-wrapper` remains single-instance by design (owns world data + RCON) and is not a candidate for HPA.
+`webapp` and `alert-manager` each mount a `ReadWriteOnce` PVC by default, so their Deployment templates `fail` if autoscaling is enabled with `maxReplicas > 1` (or `replicaCount > 1`) while the associated PVC(s) are still RWO. Scaling either service beyond 1 replica requires switching its PVC(s) to a `ReadWriteMany` (RWX) StorageClass first — see [Multi-Node Scheduling & RWX StorageClasses](../README.md#multi-node-scheduling--rwx-storageclasses) — a config change users can already make today, resolving [#147](https://github.com/dmccoystephenson/open-mc-server-infrastructure/issues/147). `minecraft-wrapper` remains single-instance by design (owns world data + RCON) and is not a candidate for HPA.
 
 **Priority:** Low — OMCSI is typically a small-scale deployment; autoscaling adds value for larger communities.
 

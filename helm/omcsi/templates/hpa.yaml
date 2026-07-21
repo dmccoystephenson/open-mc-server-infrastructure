@@ -21,3 +21,51 @@ spec:
           type: Utilization
           averageUtilization: {{ .Values.nginx.autoscaling.targetCPUUtilizationPercentage }}
 {{- end }}
+{{- if .Values.webapp.autoscaling.enabled }}
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "omcsi.fullname" . }}-webapp
+  labels:
+    {{- include "omcsi.labels" . | nindent 4 }}
+    {{- include "omcsi.selectorLabels" (dict "root" . "component" "webapp") | nindent 4 }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "omcsi.fullname" . }}-webapp
+  minReplicas: {{ .Values.webapp.autoscaling.minReplicas }}
+  maxReplicas: {{ .Values.webapp.autoscaling.maxReplicas }}
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.webapp.autoscaling.targetCPUUtilizationPercentage }}
+{{- end }}
+{{- if .Values.alertManager.autoscaling.enabled }}
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "omcsi.fullname" . }}-alert-manager
+  labels:
+    {{- include "omcsi.labels" . | nindent 4 }}
+    {{- include "omcsi.selectorLabels" (dict "root" . "component" "alert-manager") | nindent 4 }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "omcsi.fullname" . }}-alert-manager
+  minReplicas: {{ .Values.alertManager.autoscaling.minReplicas }}
+  maxReplicas: {{ .Values.alertManager.autoscaling.maxReplicas }}
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.alertManager.autoscaling.targetCPUUtilizationPercentage }}
+{{- end }}
