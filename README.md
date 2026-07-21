@@ -187,6 +187,30 @@ helm install omcsi ./helm/omcsi --namespace omcsi --create-namespace \
 
 When using Terraform, the `storage_class` variable is set automatically (defaults to `gp2` on AWS, `linode-block-storage-retain` on Linode).
 
+##### Multi-Node Scheduling & RWX StorageClasses
+
+By default, all four PVCs (`mcserver`, `webappData`, `alertManagerData`, `backups`) use `ReadWriteOnce` (RWO). An RWO volume can only be mounted read-write by pods on a single node at a time, so the chart uses pod affinity (`preferredDuringSchedulingIgnoredDuringExecution`) to encourage `minecraft-wrapper`, `webapp`, and `backup-manager` to co-locate on the same node as the `mcserver` PVC. This is a *preference*, not a requirement — on a resource-constrained multi-node cluster, the scheduler can still place these pods on different nodes, which will leave the non-co-located pod's volume mount stuck.
+
+If you run a multi-node cluster and want to remove this constraint entirely, switch the relevant PVC(s) to `ReadWriteMany` (RWX) with a StorageClass that supports it:
+
+```bash
+helm install omcsi ./helm/omcsi --namespace omcsi --create-namespace \
+  --set secrets.rconPassword=changeme \
+  --set secrets.adminPassword=strongpassword \
+  --set persistence.mcserver.accessMode=ReadWriteMany \
+  --set persistence.mcserver.storageClass=nfs-client
+```
+
+**RWX-capable StorageClass options:**
+
+| Option | Notes |
+|---|---|
+| NFS (e.g. [`nfs-subdir-external-provisioner`](https://github.com/kubernetes-sigs/nfs-subdir-external-provisioner)) | Simplest self-hosted option; works on any cluster with an NFS server reachable from all nodes |
+| AWS EFS (via the [`aws-efs-csi-driver`](https://github.com/kubernetes-sigs/aws-efs-csi-driver)) | Managed RWX storage on EKS; requires the EFS CSI driver add-on and an EFS file system |
+| [Longhorn](https://longhorn.io/) | Self-hosted distributed block storage with RWX support; works on any cluster (bare metal, Hetzner, etc.) |
+
+This is a Kubernetes-only concern — Docker Compose runs all services on a single host, so there is no equivalent scheduling constraint to document there.
+
 **Troubleshooting**
 
 | Symptom | Likely cause | Fix |
