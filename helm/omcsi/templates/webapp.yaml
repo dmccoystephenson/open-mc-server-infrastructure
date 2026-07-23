@@ -6,10 +6,16 @@ metadata:
     {{- include "omcsi.labels" . | nindent 4 }}
     {{- include "omcsi.selectorLabels" (dict "root" . "component" "webapp") | nindent 4 }}
 spec:
-  {{- if and (gt (int .Values.webapp.replicaCount) 1) (or (and .Values.persistence.mcserver.enabled (eq .Values.persistence.mcserver.accessMode "ReadWriteOnce")) (and .Values.persistence.webappData.enabled (eq .Values.persistence.webappData.accessMode "ReadWriteOnce"))) }}
-  {{- fail "webapp.replicaCount must be 1 when a mounted PVC uses ReadWriteOnce access mode (persistence.mcserver or persistence.webappData)" }}
+  {{- $webappMaxReplicas := .Values.webapp.replicaCount }}
+  {{- if .Values.webapp.autoscaling.enabled }}
+  {{- $webappMaxReplicas = .Values.webapp.autoscaling.maxReplicas }}
   {{- end }}
+  {{- if and (gt (int $webappMaxReplicas) 1) (or (and .Values.persistence.mcserver.enabled (eq .Values.persistence.mcserver.accessMode "ReadWriteOnce")) (and .Values.persistence.webappData.enabled (eq .Values.persistence.webappData.accessMode "ReadWriteOnce"))) }}
+  {{- fail "webapp.replicaCount (or webapp.autoscaling.maxReplicas when autoscaling is enabled) must be 1 when a mounted PVC uses ReadWriteOnce access mode (persistence.mcserver or persistence.webappData)" }}
+  {{- end }}
+  {{- if not .Values.webapp.autoscaling.enabled }}
   replicas: {{ .Values.webapp.replicaCount }}
+  {{- end }}
   strategy:
     type: Recreate
   selector:
