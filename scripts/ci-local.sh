@@ -16,12 +16,15 @@ bash -n resources/post-create.sh
 echo "✅ Shell script syntax validation passed"
 
 echo "🐳 Checking Docker configuration..."
-# Create a temporary .env file for validation
-cp sample.env .env
-sed -i 's/YOUR_UUID_HERE/test-uuid/g' .env
-sed -i 's/YOUR_USERNAME_HERE/testuser/g' .env
-docker compose config > /dev/null
-rm .env
+# Validate against a throwaway env file rather than the repo's .env — that file
+# is gitignored and holds real credentials (RCON/admin passwords, Discord
+# webhook, Anthropic API key), so it must never be overwritten or deleted here.
+CI_ENV_FILE="$(mktemp)"
+trap 'rm -f "${CI_ENV_FILE}"' EXIT
+sed -e 's/YOUR_UUID_HERE/test-uuid/g' \
+    -e 's/YOUR_USERNAME_HERE/testuser/g' \
+    sample.env > "${CI_ENV_FILE}"
+docker compose --env-file "${CI_ENV_FILE}" config > /dev/null
 echo "✅ Docker Compose validation passed"
 
 echo "⚙️ Checking environment configuration..."
@@ -45,10 +48,12 @@ test -x trigger-backup.sh
 test -x resources/post-create.sh
 echo "✅ File permissions validation passed"
 
-echo "🧪 Running minecraft-wrapper tests..."
-cd minecraft-wrapper
-./gradlew test --no-daemon
-cd ..
-echo "✅ Minecraft wrapper tests passed"
+# Every Gradle module the CI pipeline tests. Keep this list in sync with the
+# "Run <module> tests" steps in .github/workflows/ci.yml.
+for module in web-app minecraft-wrapper agent-manager alert-manager backup-manager; do
+    echo "🧪 Running ${module} tests..."
+    (cd "${module}" && ./gradlew test --no-daemon)
+    echo "✅ ${module} tests passed"
+done
 
 echo "🎉 All local CI checks passed!"

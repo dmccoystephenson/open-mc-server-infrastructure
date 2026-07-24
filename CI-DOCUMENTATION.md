@@ -41,9 +41,11 @@ for each Spring Boot module that has its own Gradle project:
 - `web-app`
 - `minecraft-wrapper`
 - `agent-manager`
+- `alert-manager`
+- `backup-manager`
 
-(Other modules — `alert-manager`, `backup-manager` — are exercised indirectly
-via the Helm tests and the end-to-end server run.)
+`scripts/ci-local.sh` runs `./gradlew test` for this same list — keep the two
+in sync when a module is added or removed.
 
 #### Documentation Validation
 - Confirms `README.md` exists and contains the expected H1
@@ -121,6 +123,9 @@ You can run the same validation checks locally using:
 ```
 
 This script mirrors the CI pipeline checks and helps catch issues before submitting changes.
+It validates the compose file against a `mktemp` copy of `sample.env` rather than your
+`.env`, so your real credentials are left untouched. Because it now runs the test suite
+for all five Gradle modules, expect it to take several minutes on a cold Gradle cache.
 
 ## What Gets Checked
 
@@ -128,7 +133,7 @@ This script mirrors the CI pipeline checks and helps catch issues before submitt
 - Shell script syntax (`bash -n`)
 - ShellCheck linting compliance
 - Java module compilation and unit tests for `web-app`,
-  `minecraft-wrapper`, and `agent-manager`
+  `minecraft-wrapper`, `agent-manager`, `alert-manager`, and `backup-manager`
 
 ### ✅ Configuration Integrity
 - Dockerfile parses and the `base` stage builds

@@ -49,7 +49,13 @@ services:
       - ALERTS_SERVER_STOP=${ALERTS_SERVER_STOP:-true}
       - ALERTS_SERVER_CRASH=${ALERTS_SERVER_CRASH:-true}
       - ALERTS_CONFIG_WARNING=${ALERTS_CONFIG_WARNING:-false}
+      - ALERTS_PLUGIN_DEPLOY=${ALERTS_PLUGIN_DEPLOY:-true}
       - ALERTS_WORLD_UPLOAD=${ALERTS_WORLD_UPLOAD:-true}
+      # Diagnostic log access (consumed by ServerController's GET /api/server/logs).
+      # Must be enabled here *and* via DIAGNOSTICS_LOGS_ENABLED on agent-manager
+      # for the agent to include log snippets in diagnostics.
+      - LOGS_DIAGNOSTIC_ENABLED=${LOGS_DIAGNOSTIC_ENABLED:-false}
+      - LOGS_DIAGNOSTIC_MAX_LINES=${LOGS_DIAGNOSTIC_MAX_LINES:-100}
       # Plugin deployment CI/CD configuration
       - DEPLOY_AUTH_TOKEN=${DEPLOY_AUTH_TOKEN:-}
       - PLUGINS_DIRECTORY=${PLUGINS_DIRECTORY:-/mcserver/plugins}
@@ -214,6 +220,11 @@ services:
       - ALERT_MANAGER_URL=${ALERT_MANAGER_URL:-http://alert-manager:8090/api/alerts}
       - BACKUP_MANAGER_URL=${BACKUP_MANAGER_URL:-http://backup-manager:8091}
       - DIAGNOSTICS_WEBAPP_ENABLED=${DIAGNOSTICS_WEBAPP_ENABLED:-false}
+      # Diagnostic log inclusion. Requires LOGS_DIAGNOSTIC_ENABLED=true on
+      # minecraft-wrapper as well; logs are IP-anonymized unless explicitly disabled.
+      - DIAGNOSTICS_LOGS_ENABLED=${DIAGNOSTICS_LOGS_ENABLED:-false}
+      - DIAGNOSTICS_LOGS_MAX_LINES=${DIAGNOSTICS_LOGS_MAX_LINES:-500}
+      - DIAGNOSTICS_LOGS_ANONYMIZE=${DIAGNOSTICS_LOGS_ANONYMIZE:-true}
       - WEBAPP_URL=${WEBAPP_URL:-http://webapp:8080}
 
 volumes:
