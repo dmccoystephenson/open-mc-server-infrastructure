@@ -94,12 +94,9 @@ spec:
               value: {{ .Values.minecraftWrapper.env.ALERTS_PLUGIN_DEPLOY | quote }}
             - name: ALERTS_WORLD_UPLOAD
               value: {{ .Values.minecraftWrapper.env.ALERTS_WORLD_UPLOAD | quote }}
-            - name: ALERTS_UPGRADE_START
-              value: {{ .Values.minecraftWrapper.env.ALERTS_UPGRADE_START | quote }}
-            - name: ALERTS_UPGRADE_COMPLETE
-              value: {{ .Values.minecraftWrapper.env.ALERTS_UPGRADE_COMPLETE | quote }}
-            - name: ALERTS_UPGRADE_FAILURE
-              value: {{ .Values.minecraftWrapper.env.ALERTS_UPGRADE_FAILURE | quote }}
+            # ALERTS_UPGRADE_START/COMPLETE/FAILURE are intentionally absent: their only
+            # consumer is upgrade.sh, a host-side script that drives `docker compose`
+            # directly, so they are Docker Compose-only and inert inside this container.
             - name: DEPLOY_AUTH_TOKEN
               valueFrom:
                 secretKeyRef:

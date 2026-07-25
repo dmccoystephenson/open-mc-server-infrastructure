@@ -806,7 +806,7 @@ docker compose --env-file .env.dev2 up -d --build
 
 - `BACKUP_CONTAINER_NAME`: Backup manager container name (default: `open-mc-backup-manager`)
 - `BACKUP_MAX_SIZE_MB`: Maximum size of backups directory in MB (default: `10240` = 10GB)
-- `BACKUP_SCHEDULE`: Cron expression for backup schedule (default: `0 0 2 * * ?` = 2 AM daily)
+- `BACKUP_SCHEDULE`: Cron expression for backup schedule (default: `0 0 2 * * ?` = 2 AM daily). Set to `-` to disable scheduled backups entirely; manual backups via `POST /api/backups/trigger` and `trigger-backup.sh` keep working.
 
 See [backup-manager/README.md](backup-manager/README.md) for detailed cron expression examples and configuration.
 
@@ -823,10 +823,14 @@ See [backup-manager/README.md](backup-manager/README.md) for detailed cron expre
 - `ALERTS_SERVER_CRASH`: Alert when server crashes unexpectedly (default: `true`)
 - `ALERTS_BACKUP_SUCCESS`: Alert when backup completes successfully (default: `true`)
 - `ALERTS_BACKUP_FAILURE`: Alert when backup fails (default: `true`)
+- `ALERTS_CONFIG_WARNING`: Alert when server starts with configuration warnings (default: `false`)
+
+The following three toggles are read by `upgrade.sh`, which runs on the Docker host and drives
+`docker compose` directly. They apply to the **Docker Compose deployment only** and have no
+Kubernetes equivalent, so the Helm chart does not expose them:
 - `ALERTS_UPGRADE_START`: Alert when upgrade process begins (default: `true`)
 - `ALERTS_UPGRADE_COMPLETE`: Alert when upgrade completes successfully (default: `true`)
 - `ALERTS_UPGRADE_FAILURE`: Alert when upgrade fails (default: `true`)
-- `ALERTS_CONFIG_WARNING`: Alert when server starts with configuration warnings (default: `false`)
 
 To enable Discord notifications:
 1. Create a webhook in your Discord server (Server Settings → Integrations → Webhooks)

@@ -78,9 +78,9 @@ minecraftWrapper:
     ALERTS_CONFIG_WARNING: "false"
     ALERTS_PLUGIN_DEPLOY: "true"
     ALERTS_WORLD_UPLOAD: "true"
-    ALERTS_UPGRADE_START: "true"
-    ALERTS_UPGRADE_COMPLETE: "true"
-    ALERTS_UPGRADE_FAILURE: "true"
+    # NOTE: ALERTS_UPGRADE_START/COMPLETE/FAILURE are deliberately not listed here.
+    # They are read by upgrade.sh on the Docker host, never inside the container,
+    # so they have no meaning for the Kubernetes deployment.
     # Diagnostic log access
     LOGS_DIAGNOSTIC_ENABLED: "false"
     LOGS_DIAGNOSTIC_MAX_LINES: "100"
@@ -214,8 +214,9 @@ backupManager:
     BACKUP_MAX_SIZE_MB: "10240"
     # Cron expression: seconds minutes hours day-of-month month day-of-week
     # Default: 2:00 AM every day (server/container local time)
+    # Set to "-" to disable scheduled backups entirely; the manual
+    # POST /api/backups/trigger endpoint keeps working either way.
     BACKUP_SCHEDULE: "0 0 2 * * ?"
-    SPRING_TASK_SCHEDULING_ENABLED: "true"
     SOURCE_DIRECTORY: "/mcserver"
     ALERTS_BACKUP_SUCCESS: "true"
     ALERTS_BACKUP_FAILURE: "true"

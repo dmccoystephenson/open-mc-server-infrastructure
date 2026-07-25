@@ -190,3 +190,41 @@ tests:
           path: spec.template.spec.volumes[0].persistentVolumeClaim.claimName
           value: RELEASE-NAME-omcsi-mcserver
         documentIndex: 0
+
+  # ALERTS_UPGRADE_* are read by upgrade.sh on the Docker host, never inside this
+  # container, so rendering them here would be inert config that looks supported.
+  - it: does not render the Compose-only ALERTS_UPGRADE_* toggles
+    asserts:
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: ALERTS_UPGRADE_START
+          any: true
+        documentIndex: 0
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: ALERTS_UPGRADE_COMPLETE
+          any: true
+        documentIndex: 0
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: ALERTS_UPGRADE_FAILURE
+          any: true
+        documentIndex: 0
+
+  - it: still renders the alert toggles the container actually reads
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: ALERTS_SERVER_START
+            value: "true"
+        documentIndex: 0
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: ALERTS_CONFIG_WARNING
+            value: "false"
+        documentIndex: 0
