@@ -812,6 +812,8 @@ Plugin JARs and world archives are uploaded through the nginx reverse proxy, so 
 
 To allow larger uploads, raise `NGINX_MAX_BODY_SIZE` and keep the two web app limits at or above it. Note the suffixes differ: nginx uses `100M` / `2G`, Spring uses `100MB` / `2048MB`.
 
+World uploads are forwarded to the minecraft-wrapper, whose own multipart limit is fixed at `2048MB`, so that is the ceiling for a world archive regardless of the settings above. Plugin uploads are written directly by the web app and are not subject to it.
+
 On Kubernetes the equivalent values are `nginx.maxBodySize`, `webapp.env.MAX_FILE_UPLOAD_SIZE`, and `webapp.env.MAX_REQUEST_UPLOAD_SIZE` in `helm/omcsi/values.yaml`.
 
 ### Backup Manager Configuration
