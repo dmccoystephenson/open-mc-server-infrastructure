@@ -98,3 +98,27 @@ tests:
             name: BACKUP_SCHEDULE
           any: true
         documentIndex: 0
+
+  # "-" is Spring's Scheduled.CRON_DISABLED marker — the only supported way to turn
+  # the scheduled backup off, since @EnableScheduling cannot be disabled by a property.
+  - it: backup schedule env var passes through the "-" disabled marker
+    set:
+      backupManager.env.BACKUP_SCHEDULE: "-"
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: BACKUP_SCHEDULE
+            value: "-"
+        documentIndex: 0
+
+  # SPRING_TASK_SCHEDULING_ENABLED is not a Spring Boot property; it never disabled
+  # anything, so it must not be rendered as though it were a supported knob.
+  - it: does not render the non-functional SPRING_TASK_SCHEDULING_ENABLED knob
+    asserts:
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: SPRING_TASK_SCHEDULING_ENABLED
+          any: true
+        documentIndex: 0

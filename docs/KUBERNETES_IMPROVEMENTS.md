@@ -18,6 +18,8 @@ This document captures issues, limitations, and improvement opportunities surfac
 - `helm/omcsi/values.yaml`: enabled scheduled backups (`SPRING_TASK_SCHEDULING_ENABLED: "true"`, `BACKUP_SCHEDULE: "0 0 2 * * ?"`), enabled alerts, replaced `VOLUME_NAME` with `SOURCE_DIRECTORY`.
 - `helm/omcsi/templates/backup-manager.yaml`: replaced `VOLUME_NAME` env entry with `SOURCE_DIRECTORY`.
 
+**Follow-up:** `SPRING_TASK_SCHEDULING_ENABLED` was later removed — `spring.task.scheduling.enabled` is not a Spring Boot property, so the knob never disabled anything. Scheduled backups are switched off by setting `BACKUP_SCHEDULE` to `-` (Spring's `Scheduled.CRON_DISABLED` marker) instead.
+
 ---
 
 ## 2. Health Probes — Missing for Several Services ✅ Resolved

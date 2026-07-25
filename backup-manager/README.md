@@ -19,7 +19,7 @@ The following environment variables can be configured in `.env`:
 
 - `BACKUP_CONTAINER_NAME`: Container name (default: `open-mc-backup-manager`)
 - `BACKUP_MAX_SIZE_MB`: Maximum size of backups directory in MB (default: `10240` = 10GB)
-- `BACKUP_SCHEDULE`: Cron expression for backup schedule (default: `0 0 2 * * ?` = 2 AM daily)
+- `BACKUP_SCHEDULE`: Cron expression for backup schedule (default: `0 0 2 * * ?` = 2 AM daily). Set to `-` (Spring's `Scheduled.CRON_DISABLED` marker) to disable scheduled backups; the manual `POST /api/backups/trigger` endpoint is unaffected.
 - `SOURCE_DIRECTORY`: Path to the mounted Minecraft server data directory (default: `/mcserver`)
 - `ALERTS_BACKUP_SUCCESS`: Enable alerts for successful backups (default: `true`)
 - `ALERTS_BACKUP_FAILURE`: Enable alerts for failed backups (default: `true`)

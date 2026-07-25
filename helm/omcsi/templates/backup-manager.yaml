@@ -47,8 +47,6 @@ spec:
             - name: BACKUP_SCHEDULE
               value: {{ .Values.backupManager.env.BACKUP_SCHEDULE | quote }}
             {{- end }}
-            - name: SPRING_TASK_SCHEDULING_ENABLED
-              value: {{ .Values.backupManager.env.SPRING_TASK_SCHEDULING_ENABLED | default "true" | quote }}
             - name: SOURCE_DIRECTORY
               value: {{ .Values.backupManager.env.SOURCE_DIRECTORY | default "/mcserver" | quote }}
             - name: ALERTS_BACKUP_SUCCESS
