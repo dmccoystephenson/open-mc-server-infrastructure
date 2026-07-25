@@ -165,7 +165,6 @@ public class MinecraftWrapperService {
      */
     public WrapperResult initiateShutdown() {
         log.info("Initiating server shutdown via wrapper");
-        // Accept both 200 OK and 202 Accepted as success
         return post("/api/server/shutdown", "shut down", "Server shutdown initiated");
     }
 
