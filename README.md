@@ -823,6 +823,8 @@ See [backup-manager/README.md](backup-manager/README.md) for detailed cron expre
 - `ALERTS_SERVER_CRASH`: Alert when server crashes unexpectedly (default: `true`)
 - `ALERTS_BACKUP_SUCCESS`: Alert when backup completes successfully (default: `true`)
 - `ALERTS_BACKUP_FAILURE`: Alert when backup fails (default: `true`)
+- `ALERTS_PLUGIN_DEPLOY`: Alert on plugin deployment success or failure (default: `true`)
+- `ALERTS_WORLD_UPLOAD`: Alert on world upload success or failure (default: `true`)
 - `ALERTS_CONFIG_WARNING`: Alert when server starts with configuration warnings (default: `false`)
 
 The following three toggles are read by `upgrade.sh`, which runs on the Docker host and drives
