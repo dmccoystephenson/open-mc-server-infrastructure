@@ -115,6 +115,36 @@ jobs:
         ./gradlew test
         echo "✓ All tests passed"
         
+    - name: Build alert-manager module
+      run: |
+        echo "🔔 Building alert-manager module..."
+        cd alert-manager
+        ./gradlew build
+        echo "✓ Alert manager built successfully"
+        ls -lh build/libs/
+
+    - name: Run alert-manager tests
+      run: |
+        echo "🧪 Running alert-manager tests..."
+        cd alert-manager
+        ./gradlew test
+        echo "✓ All tests passed"
+
+    - name: Build backup-manager module
+      run: |
+        echo "💾 Building backup-manager module..."
+        cd backup-manager
+        ./gradlew build
+        echo "✓ Backup manager built successfully"
+        ls -lh build/libs/
+
+    - name: Run backup-manager tests
+      run: |
+        echo "🧪 Running backup-manager tests..."
+        cd backup-manager
+        ./gradlew test
+        echo "✓ All tests passed"
+
     - name: Validate documentation
       run: |
         echo "📚 Validating documentation..."
