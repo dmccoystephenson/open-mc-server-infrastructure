@@ -14,10 +14,11 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
+import org.springframework.web.client.HttpStatusCodeException;
+import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.IOException;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
@@ -30,6 +31,17 @@ import java.util.Map;
 public class MinecraftWrapperService {
 
     private static final Logger log = LoggerFactory.getLogger(MinecraftWrapperService.class);
+
+    /**
+     * Shown when the wrapper never answered, as opposed to answering with a rejection.
+     */
+    static final String UNREACHABLE_MESSAGE = "Could not reach the Minecraft wrapper";
+
+    /**
+     * Longest wrapper response body echoed onto the dashboard; anything longer is replaced
+     * with a generic message rather than dumping a wall of text into the admin UI.
+     */
+    private static final int MAX_SURFACED_MESSAGE_LENGTH = 200;
 
     @Value("${minecraft.wrapper.url:http://minecraft-wrapper:8092}")
     private String wrapperUrl;
@@ -117,74 +129,43 @@ public class MinecraftWrapperService {
     /**
      * Start the Minecraft server via the wrapper.
      * The start endpoint returns immediately (202 Accepted) and performs start asynchronously.
-     * @return true if start was initiated successfully
+     * It answers 409 Conflict when the server is already running.
+     * @return the outcome, carrying the wrapper's own reason when it rejected the request
      */
-    public boolean startServer() {
-        try {
-            String url = wrapperUrl + "/api/server/start";
-            log.info("Starting server via wrapper");
-            
-            ResponseEntity<String> response = restTemplate.postForEntity(url, null, String.class);
-            return response.getStatusCode().is2xxSuccessful();
-        } catch (Exception e) {
-            log.error("Failed to start server via wrapper: {}", e.getMessage());
-            return false;
-        }
+    public WrapperResult startServer() {
+        log.info("Starting server via wrapper");
+        return post("/api/server/start", "start", "Server start initiated");
     }
 
     /**
      * Stop the Minecraft server via the wrapper.
      * The stop endpoint returns immediately (202 Accepted) and performs stop asynchronously.
-     * @return true if stop was initiated successfully
+     * It answers 409 Conflict when the server is not running.
+     * @return the outcome, carrying the wrapper's own reason when it rejected the request
      */
-    public boolean stopServer() {
-        try {
-            String url = wrapperUrl + "/api/server/stop";
-            log.info("Stopping server via wrapper");
-            
-            ResponseEntity<String> response = restTemplate.postForEntity(url, null, String.class);
-            return response.getStatusCode().is2xxSuccessful();
-        } catch (Exception e) {
-            log.error("Failed to stop server via wrapper: {}", e.getMessage());
-            return false;
-        }
+    public WrapperResult stopServer() {
+        log.info("Stopping server via wrapper");
+        return post("/api/server/stop", "stop", "Server stop initiated");
     }
 
     /**
      * Restart the Minecraft server via the wrapper.
      * The restart endpoint returns immediately (202 Accepted) and performs restart asynchronously.
-     * @return true if restart was initiated successfully
+     * @return the outcome, carrying the wrapper's own reason when it rejected the request
      */
-    public boolean restartServer() {
-        try {
-            String url = wrapperUrl + "/api/server/restart";
-            log.info("Restarting server via wrapper");
-            
-            ResponseEntity<String> response = restTemplate.postForEntity(url, null, String.class);
-            return response.getStatusCode().is2xxSuccessful();
-        } catch (Exception e) {
-            log.error("Failed to restart server via wrapper: {}", e.getMessage());
-            return false;
-        }
+    public WrapperResult restartServer() {
+        log.info("Restarting server via wrapper");
+        return post("/api/server/restart", "restart", "Server restart initiated");
     }
 
     /**
      * Initiate graceful server shutdown via the wrapper.
      * The shutdown endpoint returns immediately (202 Accepted) and performs shutdown asynchronously.
-     * @return true if shutdown was initiated successfully
+     * @return the outcome, carrying the wrapper's own reason when it rejected the request
      */
-    public boolean initiateShutdown() {
-        try {
-            String url = wrapperUrl + "/api/server/shutdown";
-            log.info("Initiating server shutdown via wrapper");
-            
-            ResponseEntity<String> response = restTemplate.postForEntity(url, null, String.class);
-            // Accept both 200 OK and 202 Accepted as success
-            return response.getStatusCode().is2xxSuccessful();
-        } catch (Exception e) {
-            log.error("Failed to initiate shutdown via wrapper: {}", e.getMessage());
-            return false;
-        }
+    public WrapperResult initiateShutdown() {
+        log.info("Initiating server shutdown via wrapper");
+        return post("/api/server/shutdown", "shut down", "Server shutdown initiated");
     }
 
     /**
@@ -193,11 +174,12 @@ public class MinecraftWrapperService {
      *
      * @param file            the ZIP archive containing the world
      * @param deployAuthToken the Bearer token for the wrapper's deploy endpoint
-     * @return true if the upload was accepted successfully
+     * @return the outcome, carrying the wrapper's own reason when it rejected the upload
+     *         (e.g. "Invalid request: ..." for a malformed archive)
      */
-    public boolean uploadWorld(MultipartFile file, String deployAuthToken) {
+    public WrapperResult uploadWorld(MultipartFile file, String deployAuthToken) {
+        String url = wrapperUrl + "/api/world/upload";
         try {
-            String url = wrapperUrl + "/api/world/upload";
             log.info("Uploading world to wrapper");
 
             String filename = file.getOriginalFilename() != null ? file.getOriginalFilename() : "world.zip";
@@ -223,10 +205,22 @@ public class MinecraftWrapperService {
 
             HttpEntity<MultiValueMap<String, Object>> request = new HttpEntity<>(body, headers);
             ResponseEntity<String> response = uploadRestTemplate.postForEntity(url, request, String.class);
-            return response.getStatusCode().is2xxSuccessful();
+            if (response.getStatusCode().is2xxSuccessful()) {
+                return WrapperResult.success("World uploaded successfully. Server is restarting.");
+            }
+            return WrapperResult.failure(describeRejection(
+                    response.getStatusCode().value(), response.getBody(), "upload the world"));
+        } catch (HttpStatusCodeException e) {
+            log.warn("Wrapper rejected world upload: {} - {}", e.getStatusCode(), e.getResponseBodyAsString());
+            return WrapperResult.failure(describeRejection(
+                    e.getStatusCode().value(), e.getResponseBodyAsString(), "upload the world"));
+        } catch (RestClientException e) {
+            log.error("Failed to upload world to wrapper at {}: {}", url, e.getMessage());
+            return WrapperResult.failure(UNREACHABLE_MESSAGE);
         } catch (Exception e) {
-            log.error("Failed to upload world to wrapper: {}", e.getMessage());
-            return false;
+            // e.g. the multipart file could not be read back off disk
+            log.error("Failed to upload world to wrapper at {}: {}", url, e.getMessage(), e);
+            return WrapperResult.failure("World upload failed. Check server logs for details.");
         }
     }
 
@@ -236,6 +230,74 @@ public class MinecraftWrapperService {
      */
     public boolean isAvailable() {
         return getServerStatus() != null;
+    }
+
+    /**
+     * POST to a wrapper endpoint that takes no body, preserving the wrapper's own
+     * explanation when it answers with an error status (e.g. 409 "Server is already running").
+     *
+     * @param path           wrapper path to POST to
+     * @param action         verb used in log messages and in the generic fallback message
+     * @param successMessage message shown to the admin when the wrapper accepted the request
+     */
+    private WrapperResult post(String path, String action, String successMessage) {
+        String url = wrapperUrl + path;
+        try {
+            ResponseEntity<String> response = restTemplate.postForEntity(url, null, String.class);
+            if (response.getStatusCode().is2xxSuccessful()) {
+                return WrapperResult.success(successMessage);
+            }
+            return WrapperResult.failure(describeRejection(
+                    response.getStatusCode().value(), response.getBody(), action + " the server"));
+        } catch (HttpStatusCodeException e) {
+            log.warn("Wrapper rejected {} request: {} - {}", action, e.getStatusCode(), e.getResponseBodyAsString());
+            return WrapperResult.failure(describeRejection(
+                    e.getStatusCode().value(), e.getResponseBodyAsString(), action + " the server"));
+        } catch (RestClientException e) {
+            log.error("Failed to {} server via wrapper at {}: {}", action, url, e.getMessage());
+            return WrapperResult.failure(UNREACHABLE_MESSAGE);
+        } catch (Exception e) {
+            log.error("Unexpected failure calling wrapper at {}: {}", url, e.getMessage(), e);
+            return WrapperResult.failure(String.format("Failed to %s the server", action));
+        }
+    }
+
+    /**
+     * Turn a wrapper error response into a message worth showing on the dashboard.
+     *
+     * <p>Only 4xx bodies are surfaced verbatim: those are the wrapper's deliberate,
+     * human-readable rejections (409 "Server is already running", 400 "Invalid request: ...").
+     * A 5xx body may be a framework-generated JSON or HTML error page, which would be noise
+     * on the dashboard, so those fall back to a generic message.
+     */
+    private static String describeRejection(int statusCode, String responseBody, String actionPhrase) {
+        boolean clientError = statusCode >= 400 && statusCode < 500;
+        if (clientError && responseBody != null && !responseBody.isBlank()) {
+            String trimmed = responseBody.trim();
+            boolean looksLikeMarkup = trimmed.startsWith("{") || trimmed.startsWith("<") || trimmed.startsWith("[");
+            if (!looksLikeMarkup && trimmed.length() <= MAX_SURFACED_MESSAGE_LENGTH) {
+                return trimmed;
+            }
+        }
+        return String.format("Failed to %s (HTTP %d)", actionPhrase, statusCode);
+    }
+
+    /**
+     * Outcome of a call to the wrapper.
+     *
+     * @param success whether the wrapper accepted the request
+     * @param message text suitable for display on the admin dashboard — the wrapper's own
+     *                explanation when it answered, or a connectivity message when it did not
+     */
+    public record WrapperResult(boolean success, String message) {
+
+        public static WrapperResult success(String message) {
+            return new WrapperResult(true, message);
+        }
+
+        public static WrapperResult failure(String message) {
+            return new WrapperResult(false, message);
+        }
     }
 
     /**

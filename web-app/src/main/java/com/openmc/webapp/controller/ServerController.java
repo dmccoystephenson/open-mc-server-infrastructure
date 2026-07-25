@@ -358,16 +358,16 @@ public class ServerController {
             return WorldOperationResponse.error("World upload is not configured on this server");
         }
 
-        boolean success = minecraftWrapperService.uploadWorld(file, deployAuthToken);
+        var result = minecraftWrapperService.uploadWorld(file, deployAuthToken);
 
-        if (success) {
+        if (result.success()) {
             alertNotificationService.sendInfoAlert(
                 "World Uploaded Successfully",
                 String.format("User '%s' uploaded a new world map", username)
             );
-            return WorldOperationResponse.success("World uploaded successfully. Server is restarting.");
+            return WorldOperationResponse.success(result.message());
         } else {
-            return WorldOperationResponse.error("World upload failed. Check server logs for details.");
+            return WorldOperationResponse.error(result.message());
         }
     }
 
@@ -429,17 +429,15 @@ public class ServerController {
             return Map.of("success", false, "message", "Invalid username or password");
         }
         
-        boolean success = minecraftWrapperService.startServer();
-        
-        if (success) {
+        var result = minecraftWrapperService.startServer();
+
+        if (result.success()) {
             alertNotificationService.sendInfoAlert(
                 "Server Start Initiated",
                 String.format("User '%s' initiated server start", username)
             );
-            return Map.of("success", true, "message", "Server start initiated");
-        } else {
-            return Map.of("success", false, "message", "Failed to start server");
         }
+        return Map.of("success", result.success(), "message", result.message());
     }
     
     @PostMapping("/api/server/stop")
@@ -457,17 +455,15 @@ public class ServerController {
             return Map.of("success", false, "message", "Invalid username or password");
         }
         
-        boolean success = minecraftWrapperService.stopServer();
-        
-        if (success) {
+        var result = minecraftWrapperService.stopServer();
+
+        if (result.success()) {
             alertNotificationService.sendInfoAlert(
                 "Server Stop Initiated",
                 String.format("User '%s' initiated server stop", username)
             );
-            return Map.of("success", true, "message", "Server stop initiated");
-        } else {
-            return Map.of("success", false, "message", "Failed to stop server");
         }
+        return Map.of("success", result.success(), "message", result.message());
     }
     
     @PostMapping("/api/server/restart")
@@ -485,17 +481,15 @@ public class ServerController {
             return Map.of("success", false, "message", "Invalid username or password");
         }
         
-        boolean success = minecraftWrapperService.restartServer();
-        
-        if (success) {
+        var result = minecraftWrapperService.restartServer();
+
+        if (result.success()) {
             alertNotificationService.sendInfoAlert(
                 "Server Restart Initiated",
                 String.format("User '%s' initiated server restart", username)
             );
-            return Map.of("success", true, "message", "Server restart initiated");
-        } else {
-            return Map.of("success", false, "message", "Failed to restart server");
         }
+        return Map.of("success", result.success(), "message", result.message());
     }
     
     @GetMapping("/api/deployment-history")

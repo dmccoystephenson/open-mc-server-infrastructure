@@ -3,6 +3,7 @@ package com.openmc.webapp.controller;
 import com.openmc.webapp.config.ServerConfig;
 import com.openmc.webapp.service.ActivityTrackerService;
 import com.openmc.webapp.service.AlertNotificationService;
+import com.openmc.webapp.service.MinecraftWrapperService.WrapperResult;
 import com.openmc.webapp.service.PluginService;
 import com.openmc.webapp.service.RconService;
 import com.openmc.webapp.service.WorldService;
@@ -14,6 +15,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.Arrays;
@@ -26,11 +28,14 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.never;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 import static org.hamcrest.Matchers.containsString;
 
 @WebMvcTest(ServerController.class)
+// The world upload endpoint short-circuits when deploy.auth.token is unset, so give it a value.
+@TestPropertySource(properties = "deploy.auth.token=test-deploy-token")
 @DisplayName("ServerController Tests")
 class ServerControllerTest {
 
@@ -375,8 +380,92 @@ class ServerControllerTest {
     @DisplayName("Should return 404 via API when player not found")
     void shouldReturn404ViaApiWhenPlayerNotFound() throws Exception {
         when(activityTrackerService.getPlayerProfile("UnknownPlayer")).thenReturn(null);
-        
+
         mockMvc.perform(get("/api/player/UnknownPlayer"))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @DisplayName("Should report the wrapper's success message when starting the server")
+    void shouldReportSuccessMessageOnServerStart() throws Exception {
+        when(minecraftWrapperService.startServer())
+                .thenReturn(WrapperResult.success("Server start initiated"));
+
+        mockMvc.perform(post("/api/server/start")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"username\":\"admin\",\"password\":\"admin\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.message").value("Server start initiated"));
+
+        verify(alertNotificationService, times(1)).sendInfoAlert(anyString(), anyString());
+    }
+
+    @Test
+    @DisplayName("Should surface the wrapper's rejection reason when starting the server")
+    void shouldSurfaceWrapperReasonOnServerStart() throws Exception {
+        when(minecraftWrapperService.startServer())
+                .thenReturn(WrapperResult.failure("Server is already running"));
+
+        mockMvc.perform(post("/api/server/start")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"username\":\"admin\",\"password\":\"admin\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.message").value("Server is already running"));
+
+        // A rejected start is not an event worth alerting on
+        verify(alertNotificationService, never()).sendInfoAlert(anyString(), anyString());
+    }
+
+    @Test
+    @DisplayName("Should surface the wrapper's rejection reason when stopping the server")
+    void shouldSurfaceWrapperReasonOnServerStop() throws Exception {
+        when(minecraftWrapperService.stopServer())
+                .thenReturn(WrapperResult.failure("Server is not running"));
+
+        mockMvc.perform(post("/api/server/stop")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"username\":\"admin\",\"password\":\"admin\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.message").value("Server is not running"));
+    }
+
+    @Test
+    @DisplayName("Should surface the wrapper's rejection reason when restarting the server")
+    void shouldSurfaceWrapperReasonOnServerRestart() throws Exception {
+        when(minecraftWrapperService.restartServer())
+                .thenReturn(WrapperResult.failure("Could not reach the Minecraft wrapper"));
+
+        mockMvc.perform(post("/api/server/restart")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"username\":\"admin\",\"password\":\"admin\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.message").value("Could not reach the Minecraft wrapper"));
+    }
+
+    @Test
+    @DisplayName("Should surface the wrapper's validation reason when a world upload is rejected")
+    void shouldSurfaceWrapperReasonOnWorldUpload() throws Exception {
+        MockMultipartFile file = new MockMultipartFile(
+            "file",
+            "world.zip",
+            "application/zip",
+            "test content".getBytes()
+        );
+
+        when(minecraftWrapperService.uploadWorld(any(), anyString()))
+                .thenReturn(WrapperResult.failure("Invalid request: archive does not contain a level.dat"));
+
+        mockMvc.perform(multipart("/api/world/upload")
+                        .file(file)
+                        .param("username", "admin")
+                        .param("password", "admin"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.error")
+                        .value("Invalid request: archive does not contain a level.dat"));
     }
 }
