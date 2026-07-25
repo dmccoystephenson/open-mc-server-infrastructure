@@ -13,7 +13,10 @@ data:
     }
 
     http {
-        client_max_body_size 100M;
+        # File upload size limit.  This is the effective cap for dashboard
+        # uploads whenever it is lower than the web app's own multipart limit
+        # (webapp.env.MAX_FILE_UPLOAD_SIZE).
+        client_max_body_size {{ .Values.nginx.maxBodySize }};
 
         # Security headers
         add_header X-Frame-Options "SAMEORIGIN" always;

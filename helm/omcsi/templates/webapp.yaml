@@ -127,6 +127,10 @@ spec:
               value: {{ .Values.webapp.env.MINECRAFT_WRAPPER_ENABLED | quote }}
             - name: WORLD_DIRECTORY
               value: {{ .Values.webapp.env.WORLD_DIRECTORY | quote }}
+            - name: MAX_FILE_UPLOAD_SIZE
+              value: {{ .Values.webapp.env.MAX_FILE_UPLOAD_SIZE | quote }}
+            - name: MAX_REQUEST_UPLOAD_SIZE
+              value: {{ .Values.webapp.env.MAX_REQUEST_UPLOAD_SIZE | quote }}
             - name: DEPLOYMENT_AUTH_TOKEN
               valueFrom:
                 secretKeyRef:

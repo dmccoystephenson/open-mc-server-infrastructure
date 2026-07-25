@@ -56,6 +56,31 @@ tests:
           path: spec.ports[1].nodePort
           value: 443
 
+  - it: config map caps request bodies at the default upload size limit
+    documentSelector:
+      path: kind
+      value: ConfigMap
+      skipEmptyTemplates: true
+    asserts:
+      - matchRegex:
+          path: data["nginx.conf"]
+          pattern: "client_max_body_size 100M;"
+
+  - it: upload size limit is configurable via nginx.maxBodySize
+    set:
+      nginx.maxBodySize: 2G
+    documentSelector:
+      path: kind
+      value: ConfigMap
+      skipEmptyTemplates: true
+    asserts:
+      - matchRegex:
+          path: data["nginx.conf"]
+          pattern: "client_max_body_size 2G;"
+      - notMatchRegex:
+          path: data["nginx.conf"]
+          pattern: "client_max_body_size 100M;"
+
   - it: nodePorts are ignored for non-NodePort service types
     set:
       nginx.service.type: LoadBalancer

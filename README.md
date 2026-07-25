@@ -802,6 +802,20 @@ docker compose --env-file .env.dev2 up -d --build
 
 **Note**: The RCON password must match between the server and web application for admin commands to work. Change the admin username and password from defaults in production for security. All connections to the web dashboard are encrypted using HTTPS to protect your credentials.
 
+#### Upload Size Limits
+
+Plugin JARs and world archives are uploaded through the nginx reverse proxy, so the proxy limit is the effective cap — a larger request is rejected with a bare `413 Request Entity Too Large` before the dashboard's own error handling runs.
+
+- `NGINX_MAX_BODY_SIZE`: Maximum request body accepted by nginx (default: `100M`)
+- `MAX_FILE_UPLOAD_SIZE`: Web app per-file multipart limit (default: `2048MB`)
+- `MAX_REQUEST_UPLOAD_SIZE`: Web app total request multipart limit (default: `2048MB`)
+
+To allow larger uploads, raise `NGINX_MAX_BODY_SIZE` and keep the two web app limits at or above it. Note the suffixes differ: nginx uses `100M` / `2G`, Spring uses `100MB` / `2048MB`.
+
+World uploads are forwarded to the minecraft-wrapper, whose own multipart limit is fixed at `2048MB`, so that is the ceiling for a world archive regardless of the settings above. Plugin uploads are written directly by the web app and are not subject to it.
+
+On Kubernetes the equivalent values are `nginx.maxBodySize`, `webapp.env.MAX_FILE_UPLOAD_SIZE`, and `webapp.env.MAX_REQUEST_UPLOAD_SIZE` in `helm/omcsi/values.yaml`.
+
 ### Backup Manager Configuration
 
 - `BACKUP_CONTAINER_NAME`: Backup manager container name (default: `open-mc-backup-manager`)
