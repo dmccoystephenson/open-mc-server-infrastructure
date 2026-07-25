@@ -816,6 +816,8 @@ World uploads are forwarded to the minecraft-wrapper, whose own multipart limit 
 
 On Kubernetes the equivalent values are `nginx.maxBodySize`, `webapp.env.MAX_FILE_UPLOAD_SIZE`, and `webapp.env.MAX_REQUEST_UPLOAD_SIZE` in `helm/omcsi/values.yaml`.
 
+**Disk headroom for world uploads**: a world archive is extracted into a staging directory next to the world directory — on the same volume — before being renamed into place, because a rename cannot cross filesystems. The server volume therefore needs enough free space to hold the old world and the extracted new one at the same time, roughly twice the size of the larger of the two. Plan for this when sizing the volume (`persistence.mcserver.size` on Kubernetes, default `10Gi`); a world upload that runs out of space fails and leaves the existing world in place. The extracted size is capped at 10 GB regardless.
+
 ### Backup Manager Configuration
 
 - `BACKUP_CONTAINER_NAME`: Backup manager container name (default: `open-mc-backup-manager`)
