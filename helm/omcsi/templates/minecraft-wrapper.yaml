@@ -104,6 +104,8 @@ spec:
                   key: DEPLOY_AUTH_TOKEN
             - name: PLUGINS_DIRECTORY
               value: {{ .Values.minecraftWrapper.env.PLUGINS_DIRECTORY | quote }}
+            - name: WORLD_DIRECTORY
+              value: {{ .Values.minecraftWrapper.env.WORLD_DIRECTORY | quote }}
             - name: WEBAPP_URL
               value: "http://{{ include "omcsi.webappHost" . }}:{{ .Values.webapp.service.port }}"
             - name: DEPLOYMENT_AUTH_TOKEN

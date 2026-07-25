@@ -15,6 +15,9 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.List;
+import java.util.stream.Stream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
@@ -240,6 +243,77 @@ class WorldUploadServiceTest {
 
         Path backup = worldDir.getParent().resolve(worldDir.getFileName() + ".old");
         assertFalse(Files.exists(backup), "Backup directory should be cleaned up after success");
+    }
+
+    // ── createStagingDirectory ───────────────────────────────────────────────
+    //
+    // The staging directory must live on the same filesystem as the world directory:
+    // installWorld finishes with Files.move, which cannot rename a non-empty directory
+    // across filesystems. On both deployment targets /tmp and the world volume are
+    // separate filesystems, so staging under java.io.tmpdir breaks every real upload.
+
+    @Test
+    @DisplayName("createStagingDirectory creates the staging dir alongside the world directory")
+    void stagingDirectoryIsSiblingOfWorldDirectory() throws IOException {
+        Path staging = worldUploadService.createStagingDirectory(worldDir);
+
+        assertEquals(worldDir.getParent(), staging.getParent(),
+                "Staging dir must share a parent (and therefore a filesystem) with the world dir");
+        assertTrue(Files.isDirectory(staging), "Staging dir should have been created");
+    }
+
+    @Test
+    @DisplayName("createStagingDirectory does not stage under java.io.tmpdir")
+    void stagingDirectoryIsNotUnderSystemTempDir() throws IOException {
+        Path systemTmp = Paths.get(System.getProperty("java.io.tmpdir")).toAbsolutePath().normalize();
+        Path isolatedWorldDir = Files.createDirectory(tempDir.resolve("mcserver")).resolve("world");
+        ReflectionTestUtils.setField(worldUploadService, "worldDirectory", isolatedWorldDir.toString());
+
+        Path staging = worldUploadService.createStagingDirectory(isolatedWorldDir).toAbsolutePath().normalize();
+
+        assertNotEquals(systemTmp, staging.getParent(),
+                "Staging dir must not be created directly under java.io.tmpdir");
+        assertEquals(isolatedWorldDir.getParent(), staging.getParent());
+    }
+
+    @Test
+    @DisplayName("createStagingDirectory creates the world's parent directory when it is missing")
+    void stagingDirectoryCreatesMissingParent() throws IOException {
+        Path missingParentWorld = tempDir.resolve("not-yet-created").resolve("world");
+
+        Path staging = worldUploadService.createStagingDirectory(missingParentWorld);
+
+        assertTrue(Files.isDirectory(missingParentWorld.getParent()), "Parent should have been created");
+        assertEquals(missingParentWorld.getParent(), staging.getParent());
+    }
+
+    @Test
+    @DisplayName("replaceWorld leaves no staging directory behind on success")
+    void leavesNoStagingDirectoryOnSuccess() throws IOException {
+        worldUploadService.replaceWorld(zipFile(buildSingleDirWorldZip("myworld")));
+
+        assertEquals(List.of("world"), listDirNames(tempDir),
+                "Only the installed world should remain next to it");
+    }
+
+    @Test
+    @DisplayName("replaceWorld leaves no staging directory behind on failure")
+    void leavesNoStagingDirectoryOnFailure() throws IOException {
+        assertThrows(IllegalArgumentException.class,
+                () -> worldUploadService.replaceWorld(zipFile(buildNoLevelDatZip())));
+
+        assertEquals(List.of(), listDirNames(tempDir),
+                "A failed upload should not leave a staging directory behind");
+    }
+
+    /** Sorted names of the directories directly under {@code dir}. */
+    private List<String> listDirNames(Path dir) throws IOException {
+        try (Stream<Path> entries = Files.list(dir)) {
+            return entries.filter(Files::isDirectory)
+                    .map(p -> p.getFileName().toString())
+                    .sorted()
+                    .toList();
+        }
     }
 
     // ── replaceWorld — server lifecycle ──────────────────────────────────────

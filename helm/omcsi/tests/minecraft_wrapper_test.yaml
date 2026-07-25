@@ -228,3 +228,26 @@ tests:
             name: ALERTS_CONFIG_WARNING
             value: "false"
         documentIndex: 0
+
+  # The wrapper installs uploaded worlds at world.directory; the webapp lists and
+  # deletes worlds under its own WORLD_DIRECTORY. Both must be fed the same value,
+  # or an upload lands somewhere the dashboard never looks.
+  - it: renders WORLD_DIRECTORY so uploads land where the webapp looks
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: WORLD_DIRECTORY
+            value: /mcserver/world
+        documentIndex: 0
+
+  - it: honours an overridden WORLD_DIRECTORY
+    set:
+      minecraftWrapper.env.WORLD_DIRECTORY: /mcserver/custom-world
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: WORLD_DIRECTORY
+            value: /mcserver/custom-world
+        documentIndex: 0
