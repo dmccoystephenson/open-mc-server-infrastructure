@@ -60,18 +60,18 @@ public class WorldUploadService {
             log.info("Server was not running before world upload; proceeding without stop");
         }
 
-        Path tempDir = null;
+        Path stagingDir = null;
         try {
-            tempDir = Files.createTempDirectory("world-upload-");
+            stagingDir = createStagingDirectory(worldDir);
 
             // Single stream open — ZipInputStream validates the ZIP format itself;
             // a non-ZIP payload will throw ZipException from getNextEntry().
             try (InputStream is = file.getInputStream();
                  ZipInputStream zis = new ZipInputStream(is)) {
-                extractZip(zis, tempDir);
+                extractZip(zis, stagingDir);
             }
 
-            Path worldRoot = detectWorldRoot(tempDir);
+            Path worldRoot = detectWorldRoot(stagingDir);
 
             if (!Files.exists(worldRoot.resolve("level.dat"))) {
                 throw new IllegalArgumentException(
@@ -81,13 +81,13 @@ public class WorldUploadService {
             installWorld(worldRoot, worldDir);
             log.info("World replaced successfully at {}", worldDir);
         } finally {
-            if (tempDir != null) {
+            if (stagingDir != null) {
                 try {
-                    if (Files.exists(tempDir)) {
-                        deleteDirectory(tempDir);
+                    if (Files.exists(stagingDir)) {
+                        deleteDirectory(stagingDir);
                     }
                 } catch (IOException e) {
-                    log.debug("Could not clean up temp directory {}: {}", tempDir, e.getMessage());
+                    log.debug("Could not clean up staging directory {}: {}", stagingDir, e.getMessage());
                 }
             }
             if (wasRunning) {
@@ -99,6 +99,37 @@ public class WorldUploadService {
                 }
             }
         }
+    }
+
+    /**
+     * Create the directory the uploaded archive is extracted into.
+     *
+     * <p>The staging directory is deliberately a sibling of the world directory rather than a
+     * {@code java.io.tmpdir} temp directory. {@link #installWorld} finishes by renaming the
+     * extracted world into place, and {@link Files#move} cannot rename a non-empty directory
+     * across filesystems — it fails instead of falling back to copy-and-delete. On both
+     * deployment targets {@code /tmp} and the world volume are separate filesystems (an
+     * {@code emptyDir} vs. the {@code mcserver} PVC on Kubernetes; the container's writable
+     * layer vs. the {@code mcserver} named volume under Docker Compose), so staging under
+     * {@code /tmp} would make every upload of a real world fail. Staging on the world volume
+     * also keeps up to {@link #MAX_UNCOMPRESSED_BYTES} of extracted data off the node's local disk.
+     *
+     * <p>The name is dot-prefixed so the transient directory is visually distinguishable from a
+     * real world; it exists only for the duration of a single upload, during which the server is
+     * stopped.
+     *
+     * @param worldDir absolute, normalized path of the world directory
+     * @return a newly created, empty staging directory on the same filesystem as {@code worldDir}
+     * @throws IOException if the parent directory cannot be created or the staging directory cannot be made
+     */
+    Path createStagingDirectory(Path worldDir) throws IOException {
+        Path parent = worldDir.getParent();
+        if (parent == null) {
+            throw new IOException("World directory '" + worldDir
+                    + "' has no parent directory to stage the upload in");
+        }
+        Files.createDirectories(parent);
+        return Files.createTempDirectory(parent, ".world-upload-");
     }
 
     /**

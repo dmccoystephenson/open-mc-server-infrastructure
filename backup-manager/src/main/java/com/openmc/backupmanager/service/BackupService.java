@@ -417,17 +417,19 @@ public class BackupService {
             return 0;
         }
         
-        return Files.walk(directory)
-                .filter(Files::isRegularFile)
-                .mapToLong(path -> {
-                    try {
-                        return Files.size(path);
-                    } catch (IOException e) {
-                        log.warn("Error getting size of file: {}", path, e);
-                        return 0L;
-                    }
-                })
-                .sum();
+        try (Stream<Path> paths = Files.walk(directory)) {
+            return paths
+                    .filter(Files::isRegularFile)
+                    .mapToLong(path -> {
+                        try {
+                            return Files.size(path);
+                        } catch (IOException e) {
+                            log.warn("Error getting size of file: {}", path, e);
+                            return 0L;
+                        }
+                    })
+                    .sum();
+        }
     }
 
     private void deleteDirectory(Path directory) throws IOException {

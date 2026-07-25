@@ -71,6 +71,10 @@ minecraftWrapper:
     ONLINE_MODE: "true"
     JAVA_OPTS: "-Xmx6G -Xms4G"
     PLUGINS_DIRECTORY: "/mcserver/plugins"
+    # Must match webapp.env.WORLD_DIRECTORY: the webapp lists/deletes worlds under
+    # this path while the wrapper installs uploaded worlds there, so a mismatch
+    # silently hides uploads from the dashboard.
+    WORLD_DIRECTORY: "/mcserver/world"
     # Alert toggles
     ALERTS_SERVER_START: "true"
     ALERTS_SERVER_STOP: "true"
