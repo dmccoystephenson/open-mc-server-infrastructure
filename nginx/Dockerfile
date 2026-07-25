@@ -9,8 +9,10 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/* && \
     setcap cap_net_bind_service=+ep /usr/sbin/nginx
 
-# Copy nginx configuration
-COPY nginx.conf /etc/nginx/nginx.conf
+# Copy nginx configuration.  It is owned by UID 1000 so that entrypoint.sh can
+# substitute NGINX_MAX_BODY_SIZE into it at startup; on Kubernetes this file is
+# replaced by a read-only ConfigMap mount and the substitution is skipped.
+COPY --chown=1000:1000 nginx.conf /etc/nginx/nginx.conf
 
 # Create SSL directory owned by UID 1000 so entrypoint can write certs without root
 RUN mkdir -p /etc/nginx/ssl && chown 1000:1000 /etc/nginx/ssl

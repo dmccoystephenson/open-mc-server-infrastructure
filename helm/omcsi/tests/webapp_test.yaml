@@ -103,3 +103,36 @@ tests:
           path: spec.template.spec.containers[0].readinessProbe.httpGet.port
           value: http
         documentIndex: 0
+
+  - it: renders the Spring multipart upload limits
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: MAX_FILE_UPLOAD_SIZE
+            value: "2048MB"
+        documentIndex: 0
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: MAX_REQUEST_UPLOAD_SIZE
+            value: "2048MB"
+        documentIndex: 0
+
+  - it: upload limits are configurable
+    set:
+      webapp.env.MAX_FILE_UPLOAD_SIZE: 512MB
+      webapp.env.MAX_REQUEST_UPLOAD_SIZE: 512MB
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: MAX_FILE_UPLOAD_SIZE
+            value: "512MB"
+        documentIndex: 0
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: MAX_REQUEST_UPLOAD_SIZE
+            value: "512MB"
+        documentIndex: 0

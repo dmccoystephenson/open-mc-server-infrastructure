@@ -119,6 +119,9 @@ webapp:
     DASHBOARD_DARK_MODE: "true"
     ALERT_MANAGER_ENABLED: "true"
     ACCORDION_CHAT_URL: ""
+    # Spring multipart limits.  nginx.maxBodySize is the effective upload cap.
+    MAX_FILE_UPLOAD_SIZE: "2048MB"
+    MAX_REQUEST_UPLOAD_SIZE: "2048MB"
     MINECRAFT_WRAPPER_ENABLED: "true"
     WORLD_DIRECTORY: "/mcserver/world"
   # webapp mounts the mcserver and webapp-data PVCs directly. Scaling beyond
@@ -143,6 +146,13 @@ nginx:
     tag: latest
     pullPolicy: Always
   replicaCount: 1
+  # Maximum request body size accepted by the proxy (nginx client_max_body_size).
+  # nginx sits in front of the web app, so this is the effective upload cap for
+  # plugin JARs and world archives: a larger request is rejected with a bare 413
+  # before the dashboard sees it.  Raise it together with
+  # webapp.env.MAX_FILE_UPLOAD_SIZE / MAX_REQUEST_UPLOAD_SIZE, which use Spring's
+  # "2048MB" suffix rather than nginx's "2G".
+  maxBodySize: 100M
   resources:
     requests:
       cpu: "50m"
