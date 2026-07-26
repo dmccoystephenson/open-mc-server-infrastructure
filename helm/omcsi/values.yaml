@@ -312,7 +312,11 @@ secrets:
   rconPassword: ""
   adminUsername: "admin"
   adminPassword: ""
+  # Protects the wrapper's POST /api/plugins/deploy and POST /api/world/upload. The webapp
+  # receives the same value and presents it when forwarding a dashboard world upload, so
+  # leaving it empty also disables world upload from the dashboard.
   deployAuthToken: ""
+  # Protects the webapp's POST /api/deployment-history, which the wrapper calls back into.
   deploymentAuthToken: ""
   discordWebhookUrl: ""
   agentDiscordBotToken: ""

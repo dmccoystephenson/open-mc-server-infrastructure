@@ -43,7 +43,7 @@ class AlertNotificationServiceTest {
         when(restTemplateBuilder.build()).thenReturn(restTemplate);
 
         alertService = new AlertNotificationService(restTemplateBuilder);
-        ReflectionTestUtils.setField(alertService, "alertManagerUrl", "http://test-alert-manager:8090");
+        ReflectionTestUtils.setField(alertService, "alertManagerUrl", "http://test-alert-manager:8090/api/alerts");
         ReflectionTestUtils.setField(alertService, "alertsEnabled", true);
     }
 
@@ -187,6 +187,25 @@ class AlertNotificationServiceTest {
 
         verify(restTemplate).postForEntity(
                 eq("http://test-alert-manager:8090/api/alerts"),
+                any(),
+                eq(String.class)
+        );
+    }
+
+    // ALERT_MANAGER_URL is one .env value shared with minecraft-wrapper, backup-manager and
+    // agent-manager, all of which POST to it verbatim. Appending a path here would send
+    // dashboard alerts to /api/alerts/api/alerts and 404.
+    @Test
+    @DisplayName("Should post to the configured URL verbatim without appending a path")
+    void shouldPostToConfiguredUrlVerbatim() {
+        ReflectionTestUtils.setField(alertService, "alertManagerUrl", "http://custom-host:9000/custom/alerts");
+        when(restTemplate.postForEntity(anyString(), any(HttpEntity.class), eq(String.class)))
+                .thenReturn(ResponseEntity.ok("Success"));
+
+        alertService.sendAlert("Test Title", "Test Message", "INFO");
+
+        verify(restTemplate).postForEntity(
+                eq("http://custom-host:9000/custom/alerts"),
                 any(),
                 eq(String.class)
         );

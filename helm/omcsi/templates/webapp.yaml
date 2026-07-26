@@ -115,8 +115,9 @@ spec:
               value: {{ .Values.webapp.env.DASHBOARD_DARK_MODE | quote }}
             - name: DATA_STORAGE_PATH
               value: "/app/data"
+            # Full alerts endpoint, matching minecraft-wrapper/backup-manager/agent-manager.
             - name: ALERT_MANAGER_URL
-              value: "http://{{ include "omcsi.alertManagerHost" . }}:{{ .Values.alertManager.service.port }}"
+              value: "http://{{ include "omcsi.alertManagerHost" . }}:{{ .Values.alertManager.service.port }}/api/alerts"
             - name: ALERT_MANAGER_ENABLED
               value: {{ .Values.webapp.env.ALERT_MANAGER_ENABLED | quote }}
             - name: MINECRAFT_WRAPPER_URL
@@ -136,6 +137,13 @@ spec:
                 secretKeyRef:
                   name: {{ include "omcsi.secretName" . }}
                   key: DEPLOYMENT_AUTH_TOKEN
+            # The webapp authenticates to the wrapper's POST /api/world/upload with this
+            # token, so it needs the same secret the wrapper validates against.
+            - name: DEPLOY_AUTH_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "omcsi.secretName" . }}
+                  key: DEPLOY_AUTH_TOKEN
           readinessProbe:
             httpGet:
               path: /

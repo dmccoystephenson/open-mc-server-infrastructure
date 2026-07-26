@@ -25,6 +25,7 @@ import java.util.Map;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.times;
@@ -467,5 +468,30 @@ class ServerControllerTest {
                 .andExpect(jsonPath("$.success").value(false))
                 .andExpect(jsonPath("$.error")
                         .value("Invalid request: archive does not contain a level.dat"));
+    }
+
+    // The token comes from DEPLOY_AUTH_TOKEN and must reach the wrapper unchanged — it is the
+    // same secret the wrapper's POST /api/world/upload validates the bearer token against.
+    @Test
+    @DisplayName("Should forward the configured deploy auth token to the wrapper on world upload")
+    void shouldForwardDeployAuthTokenOnWorldUpload() throws Exception {
+        MockMultipartFile file = new MockMultipartFile(
+            "file",
+            "world.zip",
+            "application/zip",
+            "test content".getBytes()
+        );
+
+        when(minecraftWrapperService.uploadWorld(any(), anyString()))
+                .thenReturn(WrapperResult.success("World uploaded"));
+
+        mockMvc.perform(multipart("/api/world/upload")
+                        .file(file)
+                        .param("username", "admin")
+                        .param("password", "admin"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true));
+
+        verify(minecraftWrapperService).uploadWorld(any(), eq("test-deploy-token"));
     }
 }

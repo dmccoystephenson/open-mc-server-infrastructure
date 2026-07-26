@@ -23,7 +23,13 @@ public class AlertNotificationService {
     
     private static final Logger logger = LoggerFactory.getLogger(AlertNotificationService.class);
     
-    @Value("${alert.manager.url:http://alert-manager:8090}")
+    /**
+     * Full alert-manager alerts endpoint, including the {@code /api/alerts} path. This matches
+     * the convention every other consumer of ALERT_MANAGER_URL uses (minecraft-wrapper,
+     * backup-manager, agent-manager, upgrade.sh, resources/post-create.sh) — they all share the
+     * single value from .env, so the web app must not append a path of its own.
+     */
+    @Value("${alert.manager.url:http://alert-manager:8090/api/alerts}")
     private String alertManagerUrl;
     
     @Value("${alert.manager.enabled:true}")
@@ -63,8 +69,7 @@ public class AlertNotificationService {
             
             HttpEntity<Map<String, Object>> request = new HttpEntity<>(alert, headers);
             
-            String url = alertManagerUrl + "/api/alerts";
-            ResponseEntity<String> response = restTemplate.postForEntity(url, request, String.class);
+            ResponseEntity<String> response = restTemplate.postForEntity(alertManagerUrl, request, String.class);
             if (response.getStatusCode().is2xxSuccessful()) {
                 logger.info("Alert sent successfully: {}", title);
             } else {

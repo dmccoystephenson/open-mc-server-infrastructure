@@ -193,7 +193,7 @@ Set the following variables in your omcsi `.env` file (see `sample.env` for refe
 
 | Variable | Description |
 |----------|-------------|
-| `DEPLOY_AUTH_TOKEN` | Shared secret used to authenticate deploy requests. Leave empty to disable the endpoint entirely. |
+| `DEPLOY_AUTH_TOKEN` | Shared secret used to authenticate deploy requests. Leave empty to disable the endpoint entirely. The web app is given the same value and presents it when forwarding a dashboard world upload to the wrapper, so leaving it empty also disables world upload from the dashboard. |
 | `PLUGINS_DIRECTORY` | Absolute path to the Minecraft plugins directory inside the container (default: `/mcserver/plugins`). |
 
 ### Reference Workflow for Spigot Plugin Repositories

@@ -830,6 +830,7 @@ See [backup-manager/README.md](backup-manager/README.md) for detailed cron expre
 
 - `ALERT_CONTAINER_NAME`: Alert manager container name (default: `open-mc-alert-manager`)
 - `ALERT_PORT`: Alert manager API port (default: `8090`)
+- `ALERT_MANAGER_URL`: Alerts endpoint the other services POST to (default: `http://alert-manager:8090/api/alerts`). Docker Compose only — one `.env` value shared by minecraft-wrapper, the web app, backup-manager and agent-manager, all of which use it verbatim, so it must include the `/api/alerts` path. On Kubernetes the Helm chart derives it per service from the in-cluster alert-manager Service.
 - `DISCORD_WEBHOOK_URL`: Discord webhook URL for sending notifications (optional)
 - `DISCORD_ENABLED`: Enable/disable Discord notifications (default: `false`)
 

@@ -108,12 +108,18 @@ services:
       - DASHBOARD_SECONDARY_COLOR=${DASHBOARD_SECONDARY_COLOR:-#764ba2}
       - DASHBOARD_DARK_MODE=${DASHBOARD_DARK_MODE:-true}
       - DATA_STORAGE_PATH=${DATA_STORAGE_PATH:-/app/data}
-      - ALERT_MANAGER_URL=${ALERT_MANAGER_URL:-http://alert-manager:8090}
+      # Full alerts endpoint. ALERT_MANAGER_URL is a single .env value shared with
+      # minecraft-wrapper, backup-manager and agent-manager, so every consumer must
+      # use the same form.
+      - ALERT_MANAGER_URL=${ALERT_MANAGER_URL:-http://alert-manager:8090/api/alerts}
       - ALERT_MANAGER_ENABLED=${ALERT_MANAGER_ENABLED:-true}
       - MINECRAFT_WRAPPER_URL=${MINECRAFT_WRAPPER_URL:-http://minecraft-wrapper:8092}
       - MINECRAFT_WRAPPER_ENABLED=${MINECRAFT_WRAPPER_ENABLED:-true}
       - ACCORDION_CHAT_URL=${ACCORDION_CHAT_URL:-}
       - DEPLOYMENT_AUTH_TOKEN=${DEPLOYMENT_AUTH_TOKEN:-}
+      # The webapp authenticates to the wrapper's POST /api/world/upload with this
+      # token, so it needs the same secret the wrapper validates against.
+      - DEPLOY_AUTH_TOKEN=${DEPLOY_AUTH_TOKEN:-}
       - WORLD_DIRECTORY=${WORLD_DIRECTORY:-/mcserver/world}
       # Spring multipart limits. nginx (NGINX_MAX_BODY_SIZE) is the effective cap.
       - MAX_FILE_UPLOAD_SIZE=${MAX_FILE_UPLOAD_SIZE:-2048MB}
@@ -168,6 +174,7 @@ services:
       - BACKUP_MAX_SIZE_MB=${BACKUP_MAX_SIZE_MB:-10240}
       - BACKUP_SCHEDULE=${BACKUP_SCHEDULE:-0 0 2 * * ?}
       # Alert configuration
+      - ALERT_MANAGER_URL=${ALERT_MANAGER_URL:-http://alert-manager:8090/api/alerts}
       - ALERTS_BACKUP_SUCCESS=${ALERTS_BACKUP_SUCCESS:-true}
       - ALERTS_BACKUP_FAILURE=${ALERTS_BACKUP_FAILURE:-true}
 
