@@ -136,3 +136,40 @@ tests:
             name: MAX_REQUEST_UPLOAD_SIZE
             value: "512MB"
         documentIndex: 0
+
+  # The webapp POSTs to ALERT_MANAGER_URL verbatim, exactly like minecraft-wrapper,
+  # backup-manager and agent-manager, so the /api/alerts path must be part of the value.
+  - it: renders ALERT_MANAGER_URL as the full alerts endpoint
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: ALERT_MANAGER_URL
+            value: http://RELEASE-NAME-omcsi-alert-manager:8090/api/alerts
+        documentIndex: 0
+
+  # Without this the dashboard cannot authenticate to the wrapper's world upload
+  # endpoint and every upload is rejected as "not configured on this server".
+  - it: renders DEPLOY_AUTH_TOKEN from the chart secret
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: DEPLOY_AUTH_TOKEN
+            valueFrom:
+              secretKeyRef:
+                name: RELEASE-NAME-omcsi-secrets
+                key: DEPLOY_AUTH_TOKEN
+        documentIndex: 0
+
+  - it: still renders DEPLOYMENT_AUTH_TOKEN alongside it
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: DEPLOYMENT_AUTH_TOKEN
+            valueFrom:
+              secretKeyRef:
+                name: RELEASE-NAME-omcsi-secrets
+                key: DEPLOYMENT_AUTH_TOKEN
+        documentIndex: 0

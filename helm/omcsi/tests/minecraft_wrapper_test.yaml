@@ -251,3 +251,14 @@ tests:
             name: WORLD_DIRECTORY
             value: /mcserver/custom-world
         documentIndex: 0
+
+  # Every consumer of ALERT_MANAGER_URL POSTs to it verbatim, so all four services must
+  # render the identical full-endpoint form. See the matching assertion in webapp_test.yaml.
+  - it: renders ALERT_MANAGER_URL as the full alerts endpoint
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: ALERT_MANAGER_URL
+            value: http://RELEASE-NAME-omcsi-alert-manager:8090/api/alerts
+        documentIndex: 0
