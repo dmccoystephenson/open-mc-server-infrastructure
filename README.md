@@ -767,6 +767,7 @@ Copy `sample.env` to `.env` and modify the following settings:
 - `GAMEMODE`: Default game mode (survival, creative, adventure, spectator)
 - `PVP_ENABLED`: Enable/disable player vs player combat
 - `ONLINE_MODE`: Enable Mojang authentication (set to false for offline/cracked servers)
+- `DEFAULT_PLUGINS`: Comma-separated list of direct download URLs to plugin JARs, installed automatically into `PLUGINS_DIRECTORY` on server setup. A plugin already present there (matched by filename) is left untouched, so it's safe to leave alongside manually or CI-deployed plugins. Leave empty to skip (default).
 
 ### Docker Configuration (for Parallel Servers)
 

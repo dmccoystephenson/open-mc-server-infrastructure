@@ -252,6 +252,26 @@ tests:
             value: /mcserver/custom-world
         documentIndex: 0
 
+  - it: DEFAULT_PLUGINS is empty by default
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: DEFAULT_PLUGINS
+            value: ""
+        documentIndex: 0
+
+  - it: honours a configured DEFAULT_PLUGINS list
+    set:
+      minecraftWrapper.env.DEFAULT_PLUGINS: "https://example.com/a.jar,https://example.com/b.jar"
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: DEFAULT_PLUGINS
+            value: "https://example.com/a.jar,https://example.com/b.jar"
+        documentIndex: 0
+
   # Every consumer of ALERT_MANAGER_URL POSTs to it verbatim, so all four services must
   # render the identical full-endpoint form. See the matching assertion in webapp_test.yaml.
   - it: renders ALERT_MANAGER_URL as the full alerts endpoint

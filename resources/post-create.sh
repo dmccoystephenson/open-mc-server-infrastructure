@@ -114,6 +114,47 @@ setup_server() {
     fi
 }
 
+# Function: Install default plugins listed in DEFAULT_PLUGINS (comma-separated
+# download URLs). Idempotent: a plugin already present under plugins/ (matched
+# by the URL's filename) is left untouched, so manually installed or updated
+# plugins are never overwritten.
+install_default_plugins() {
+    if [ -z "${DEFAULT_PLUGINS:-}" ]; then
+        return 0
+    fi
+
+    mkdir -p "$SERVER_DIR/plugins"
+
+    local IFS=','
+    read -ra plugin_urls <<< "$DEFAULT_PLUGINS"
+    for url in "${plugin_urls[@]}"; do
+        # Trim leading/trailing whitespace
+        url="${url#"${url%%[![:space:]]*}"}"
+        url="${url%"${url##*[![:space:]]}"}"
+        if [ -z "$url" ]; then
+            continue
+        fi
+
+        local filename
+        filename="$(basename "$url")"
+        local dest="$SERVER_DIR/plugins/$filename"
+
+        if [ -f "$dest" ]; then
+            log "Default plugin already installed: $filename"
+            continue
+        fi
+
+        log "Installing default plugin: $filename"
+        if curl -fsSL --max-time 60 -o "$dest" "$url"; then
+            log "Installed default plugin: $filename"
+        else
+            log "WARNING: Failed to download default plugin from $url"
+            rm -f "$dest"
+            send_alert "Default Plugin Install Failed" "Failed to download plugin from $url" "WARNING" "ALERTS_CONFIG_WARNING"
+        fi
+    done
+}
+
 # Function: Setup ops.json file
 setup_ops_file() {
     # Check if ops.json already exists - if so, preserve it to maintain runtime op changes
@@ -248,6 +289,7 @@ start_server() {
 log "Running server setup script..."
 validate_environment
 setup_server
+install_default_plugins
 setup_ops_file
 accept_eula
 create_server_properties
