@@ -100,7 +100,9 @@ spec:
             matchLabels:
               {{- include "omcsi.selectorLabels" (dict "root" . "component" "webapp") | nindent 14 }}
     # Mojang authentication (online-mode=true) and any other external HTTPS
-    # Required for player login via api.minecraftservices.com / sessionserver.mojang.com
+    # Required for player login via api.minecraftservices.com / sessionserver.mojang.com,
+    # and also covers DEFAULT_PLUGINS downloads (post-create.sh fetches plugin JARs
+    # over HTTPS during server setup).
     - ports:
         - port: 443
           protocol: TCP

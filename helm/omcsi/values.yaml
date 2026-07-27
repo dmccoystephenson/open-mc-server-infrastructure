@@ -71,6 +71,11 @@ minecraftWrapper:
     ONLINE_MODE: "true"
     JAVA_OPTS: "-Xmx6G -Xms4G"
     PLUGINS_DIRECTORY: "/mcserver/plugins"
+    # Comma-separated list of direct download URLs to plugin JARs, installed
+    # automatically on server setup. A plugin already present under
+    # PLUGINS_DIRECTORY (matched by filename) is left untouched. Empty by
+    # default.
+    DEFAULT_PLUGINS: ""
     # Must match webapp.env.WORLD_DIRECTORY: the webapp lists/deletes worlds under
     # this path while the wrapper installs uploaded worlds there, so a mismatch
     # silently hides uploads from the dashboard.

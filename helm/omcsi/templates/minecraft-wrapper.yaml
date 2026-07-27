@@ -104,6 +104,8 @@ spec:
                   key: DEPLOY_AUTH_TOKEN
             - name: PLUGINS_DIRECTORY
               value: {{ .Values.minecraftWrapper.env.PLUGINS_DIRECTORY | quote }}
+            - name: DEFAULT_PLUGINS
+              value: {{ .Values.minecraftWrapper.env.DEFAULT_PLUGINS | quote }}
             - name: WORLD_DIRECTORY
               value: {{ .Values.minecraftWrapper.env.WORLD_DIRECTORY | quote }}
             - name: WEBAPP_URL
