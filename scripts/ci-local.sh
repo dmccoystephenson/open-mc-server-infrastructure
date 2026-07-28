@@ -11,6 +11,7 @@ echo "📝 Checking shell scripts..."
 bash -n up.sh
 bash -n down.sh
 bash -n upgrade.sh
+bash -n rollback.sh
 bash -n trigger-backup.sh
 bash -n resources/post-create.sh
 echo "✅ Shell script syntax validation passed"
@@ -44,6 +45,7 @@ echo "🔐 Checking file permissions..."
 test -x up.sh
 test -x down.sh
 test -x upgrade.sh
+test -x rollback.sh
 test -x trigger-backup.sh
 test -x resources/post-create.sh
 echo "✅ File permissions validation passed"

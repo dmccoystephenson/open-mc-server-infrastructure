@@ -849,8 +849,10 @@ The following three toggles are read by `upgrade.sh`, which runs on the Docker h
 `docker compose` directly. They apply to the **Docker Compose deployment only** and have no
 Kubernetes equivalent, so the Helm chart does not expose them:
 - `ALERTS_UPGRADE_START`: Alert when upgrade process begins (default: `true`)
-- `ALERTS_UPGRADE_COMPLETE`: Alert when upgrade completes successfully (default: `true`)
+- `ALERTS_UPGRADE_COMPLETE`: Alert when the upgrade process finishes — either confirmed successful or with startup unverified from logs (default: `true`)
 - `ALERTS_UPGRADE_FAILURE`: Alert when upgrade fails (default: `true`)
+
+`rollback.sh` (also Docker Compose only) sends a completion alert unconditionally — it isn't gated by a toggle, since a rollback is a rare, explicitly-confirmed action.
 
 To enable Discord notifications:
 1. Create a webhook in your Discord server (Server Settings → Integrations → Webhooks)
@@ -953,7 +955,7 @@ See [backup-manager/README.md](backup-manager/README.md) for detailed configurat
 
 #### Manual Backup
 
-The backup-manager service automatically creates backups on a schedule (default: 2 AM daily). Backups are stored in the `./backups/` directory with timestamped names like `backup-20241211-020000`.
+The backup-manager service automatically creates backups on a schedule (default: 2 AM daily). Backups are stored in the `backups` Docker volume (a named volume, not a host directory — see `BACKUPS_VOLUME_NAME` in `.env`) with timestamped names like `backup-20241211-020000`. List them with `./rollback.sh` (no arguments), or directly via `docker run --rm -v backups:/backups:ro alpine ls /backups`.
 
 To trigger a manual backup immediately:
 
@@ -1003,6 +1005,8 @@ This script automates the entire upgrade process:
 - Updates configuration
 - Rebuilds with the new version
 - Starts the server
+
+Preview an upgrade without making any changes with `./upgrade.sh --dry-run` (optionally `./upgrade.sh --dry-run <version>` to skip the version prompt). If an upgrade needs to be undone, `./rollback.sh` restores a previous backup and restarts the server — see [Rollback Procedure](UPGRADE-GUIDE.md#rollback-procedure) in the Upgrade Guide.
 
 ### Upgrade to a New Minecraft Version
 

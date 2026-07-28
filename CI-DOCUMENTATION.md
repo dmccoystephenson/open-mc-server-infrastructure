@@ -20,8 +20,8 @@ The main per-PR validation job. It runs the following steps in order:
 
 #### Shell Script Validation
 - **Syntax Checking** (`bash -n`): `up.sh`, `down.sh`, `upgrade.sh`,
-  `trigger-backup.sh`, `resources/post-create.sh`.
-- **ShellCheck Linting**: the same five scripts plus everything under
+  `rollback.sh`, `trigger-backup.sh`, `resources/post-create.sh`.
+- **ShellCheck Linting**: the same six scripts plus everything under
   `scripts/*.sh`.
 
 #### Docker Configuration Validation
