@@ -68,6 +68,21 @@ The script will:
 # Script handles the rest automatically
 ```
 
+**Preview a planned upgrade with `--dry-run`:**
+
+Before committing to an upgrade, `--dry-run` shows what the script would do
+without stopping the server, touching `.env`, or creating a backup:
+
+```bash
+./upgrade.sh --dry-run
+# or, non-interactively:
+./upgrade.sh --dry-run 26.2
+```
+
+This prints the current version, target version, current world data size,
+and where the backup would be stored (an existing recent backup, or a new
+one the script would create).
+
 If you prefer manual control or need to understand each step, continue with the manual process below.
 
 ---
@@ -96,17 +111,14 @@ Create a backup of all server data from the persistent volume. This is your safe
 
 #### Option A: Using Backup Manager (Recommended)
 
-The backup-manager service automatically creates scheduled backups (default: 2 AM daily). Before upgrading, ensure a recent backup exists:
+The backup-manager service automatically creates scheduled backups (default: 2 AM daily) into the `backups` Docker volume (a named volume, not a host directory — see `BACKUPS_VOLUME_NAME` in `.env`). Before upgrading, ensure a recent backup exists:
 
 ```bash
-# Check for recent backups
-ls -lth ./backups/
+# List backups in the named volume (also shown by `./rollback.sh` with no args)
+docker run --rm -v backups:/backups:ro alpine sh -c 'ls -lth /backups'
 
-# If no recent backup, restart backup-manager to trigger one
-docker restart open-mc-backup-manager
-
-# Wait a few moments and verify the backup was created
-ls -lth ./backups/
+# If no recent backup, trigger one manually
+./trigger-backup.sh
 ```
 
 **Benefits:**
@@ -169,8 +181,8 @@ docker run --rm \
 **Verify your backup** before proceeding:
 
 ```bash
-# For Option A (backup script)
-ls -lh ./backups/backup-*/mcserver-backup.tar.gz
+# For Option A (backup script) — backups live in the named "backups" volume
+docker run --rm -v backups:/backups:ro alpine sh -c 'ls -lh /backups/backup-*/mcserver-backup.tar.gz'
 
 # For Option B (manual backup)
 ls -lh "$BACKUP_DIR/mcserver-backup.tar.gz"
@@ -275,6 +287,26 @@ Press `Ctrl+C` to stop following the logs (server continues running).
 
 If the upgrade fails or causes issues, you can restore your server from the backup.
 
+### Automated Rollback (Recommended)
+
+`./rollback.sh` automates restoring a backup-manager backup (Option A above)
+from the named `backups` volume: it stops the server, replaces the contents
+of the `mcserver` volume with the chosen backup, and starts the server again.
+
+```bash
+# List available backups (name, size, complete/incomplete)
+./rollback.sh
+
+# Restore a specific backup — the "backup-" prefix is optional
+./rollback.sh 20260115-020000
+```
+
+You'll be asked to type `yes` to confirm before anything is overwritten. Use
+the manual procedure below for Option B/C/D backups (which live in a local
+directory rather than the `backups` volume) or if you need finer control.
+
+### Manual Rollback
+
 ### Step 1: Stop the Server
 
 ```bash
@@ -292,18 +324,18 @@ docker volume rm mcserver
 
 ### Step 3: Restore from Backup
 
-#### If you used Option A (tar.gz backup):
+#### If you used Option A (backup-manager, named volume):
 
 ```bash
-# Specify your backup file
-BACKUP_FILE="./backups/backup-YYYYMMDD-HHMMSS/mcserver-backup.tar.gz"
+# Specify your backup directory name (see: docker run --rm -v backups:/backups:ro alpine ls /backups)
+BACKUP_NAME="backup-YYYYMMDD-HHMMSS"
 
-# Restore the data
+# Restore the data directly from the "backups" volume into the "mcserver" volume
 docker run --rm \
+  --user 1000:1000 \
+  -v backups:/backups:ro \
   -v mcserver:/mcserver \
-  -v "$(pwd)/$(dirname $BACKUP_FILE)":/backup \
-  ubuntu \
-  tar xzf /backup/$(basename $BACKUP_FILE) -C /mcserver
+  alpine sh -c "tar xzf /backups/${BACKUP_NAME}/mcserver-backup.tar.gz -C /mcserver"
 ```
 
 #### If you used Option B (directory backup):
