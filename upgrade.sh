@@ -146,7 +146,11 @@ wait_for_server_start() {
         if echo "$logs" | grep -qiE 'Done \([0-9.]+s\)! For help'; then
             return 0
         fi
-        if echo "$logs" | grep -qiE 'failed to bind|exception in server tick loop|could not load|corrupt(ed)? world'; then
+        # Only match indicators that mean the server process itself failed to
+        # come up. Deliberately narrow: a generic phrase like "could not load"
+        # is logged routinely by healthy plugins, and a false positive here
+        # raises a FAILURE alert and exits non-zero on a working upgrade.
+        if echo "$logs" | grep -qiE 'failed to bind to port|exception in server tick loop|failed to start the minecraft server|encountered an unexpected exception|you need to agree to the eula|unable to access jarfile|unsupportedclassversionerror'; then
             return 1
         fi
         sleep "$interval"

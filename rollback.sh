@@ -205,15 +205,28 @@ main() {
     echo ""
 
     log_info "Restoring '$backup_name' into volume '$mcserver_volume'..."
-    docker run --rm \
+    # `set -e` inside the container matters: without it, a failed `cd` would
+    # let the following `rm -rf` run against the container's own root instead
+    # of the mounted volume.
+    if ! docker run --rm \
         --user 1000:1000 \
         -v "${backups_volume}:/backups:ro" \
         -v "${mcserver_volume}:/mcserver" \
         alpine sh -c '
+            set -e
             cd /mcserver
             rm -rf -- ..?* .[!.]* * 2>/dev/null || true
             tar xzf "/backups/$1/mcserver-backup.tar.gz" -C /mcserver
-        ' _ "$backup_name"
+        ' _ "$backup_name"; then
+        log_error "Restore failed while extracting '$backup_name'."
+        log_warning "Volume '$mcserver_volume' may now be empty or partially restored."
+        log_info "The server was NOT started. Re-run './rollback.sh $backup_name' once the"
+        log_info "cause is resolved, or restore manually — see UPGRADE-GUIDE.md."
+        send_alert "Server Rollback Failed" \
+            "Restore of '$backup_name' failed; volume '$mcserver_volume' may be in a partial state and the server was not started." \
+            "ERROR"
+        exit 1
+    fi
     log_success "Restore complete."
     echo ""
 

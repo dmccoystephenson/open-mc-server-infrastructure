@@ -852,7 +852,7 @@ Kubernetes equivalent, so the Helm chart does not expose them:
 - `ALERTS_UPGRADE_COMPLETE`: Alert when the upgrade process finishes — either confirmed successful or with startup unverified from logs (default: `true`)
 - `ALERTS_UPGRADE_FAILURE`: Alert when upgrade fails (default: `true`)
 
-`rollback.sh` (also Docker Compose only) sends a completion alert unconditionally — it isn't gated by a toggle, since a rollback is a rare, explicitly-confirmed action.
+`rollback.sh` (also Docker Compose only) sends a completion alert on success and an `ERROR` alert if the restore fails partway through, both unconditionally — they aren't gated by a toggle, since a rollback is a rare, explicitly-confirmed action.
 
 To enable Discord notifications:
 1. Create a webhook in your Discord server (Server Settings → Integrations → Webhooks)
