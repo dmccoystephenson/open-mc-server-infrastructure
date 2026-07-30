@@ -92,6 +92,18 @@ helm upgrade omcsi ./helm/omcsi --namespace omcsi --reuse-values
 helm uninstall omcsi --namespace omcsi
 ```
 
+**Installing without cloning the repo**
+
+The chart is also published as an OCI artifact on every `helm/omcsi/Chart.yaml` version bump (see [`.github/workflows/helm-publish.yml`](.github/workflows/helm-publish.yml)), so it can be installed directly without a local checkout:
+```bash
+helm install omcsi oci://ghcr.io/dmccoystephenson/charts/omcsi --version 0.1.0 \
+  --namespace omcsi --create-namespace \
+  --set secrets.rconPassword=changeme \
+  --set secrets.adminPassword=strongpassword
+```
+
+Note: GHCR packages are private on first publish. The package's visibility must be switched to public once (repo → Packages → `omcsi` → Package settings → Change visibility) before anonymous `helm install`/`helm pull` from the `oci://` URL will work; until then, run `helm registry login ghcr.io` with a token that has `read:packages`.
+
 The chart exposes most application-level `sample.env` variables through `values.yaml`. Some values are intentionally computed or fixed in the templates (e.g., internal service URLs are derived from Helm helpers, RCON port references are sourced from `minecraftWrapper.internalService.rconPort`, and `DATA_STORAGE_PATH` is hardcoded to match the PVC mount). Docker Compose-only variables like container names and host port mappings are excluded — Kubernetes manages those natively. See [`helm/omcsi/values.yaml`](helm/omcsi/values.yaml) for the full list of configurable values including image tags, replica counts, resource requests/limits, storage classes, service types, and feature flags.
 
 **Key design notes:**
