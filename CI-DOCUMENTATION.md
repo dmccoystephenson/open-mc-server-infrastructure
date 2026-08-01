@@ -243,7 +243,8 @@ The workflow:
 
 ### Java Module Build / Test Failures
 - Run `./gradlew build` and `./gradlew test` locally inside the affected
-  module (`web-app`, `minecraft-wrapper`, or `agent-manager`) to reproduce.
+  module (`web-app`, `minecraft-wrapper`, `agent-manager`, `alert-manager`,
+  or `backup-manager`) to reproduce.
 - Confirm you're on JDK 21 — older or newer JDKs may produce class-version
   errors that look unrelated.
 
