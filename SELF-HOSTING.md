@@ -245,12 +245,12 @@ See each provider's setup guide for configuration steps.
 
 ### SSL Certificates with DDNS
 
-Once you have a DDNS domain, obtain a Let's Encrypt certificate with `certbot` (see [SSL Certificates](#ssl-certificates) above) using your DDNS hostname. Set up a deploy hook to copy renewed certificates and restart nginx:
+Once you have a DDNS domain, obtain a Let's Encrypt certificate with `certbot` (see [SSL Certificates](#ssl-certificates) above) using your DDNS hostname. Set up a deploy hook to copy renewed certificates into the running container (the `nginx-ssl` named Docker volume, not a host directory — see [SSL Certificates](#ssl-certificates) above) and restart nginx:
 
 ```bash
 # /etc/letsencrypt/renewal-hooks/deploy/01-copy-certs.sh
-cp /etc/letsencrypt/live/yourdomain.duckdns.org/fullchain.pem /path/to/open-mc-server-infrastructure/nginx/ssl/cert.pem
-cp /etc/letsencrypt/live/yourdomain.duckdns.org/privkey.pem /path/to/open-mc-server-infrastructure/nginx/ssl/key.pem
+docker cp /etc/letsencrypt/live/yourdomain.duckdns.org/fullchain.pem open-mc-nginx:/etc/nginx/ssl/cert.pem
+docker cp /etc/letsencrypt/live/yourdomain.duckdns.org/privkey.pem open-mc-nginx:/etc/nginx/ssl/key.pem
 cd /path/to/open-mc-server-infrastructure && docker compose restart nginx
 ```
 
@@ -266,7 +266,7 @@ cd /path/to/open-mc-server-infrastructure && docker compose restart nginx
 | Symptom | Check |
 |---------|-------|
 | Players can't connect | Port forwarding, `docker ps`, server logs |
-| Web dashboard inaccessible | `docker logs open-mc-nginx`, SSL cert files in `nginx/ssl/` |
+| Web dashboard inaccessible | `docker logs open-mc-nginx`, SSL cert files via `docker exec open-mc-nginx ls -la /etc/nginx/ssl/` (the `nginx-ssl` named volume, not a host directory) |
 | High latency | `docker stats`, increase `JAVA_OPTS` memory, reduce view-distance |
 | Server crashes | `docker logs open-mc-server`, `dmesg | grep -i "out of memory"` |
 

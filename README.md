@@ -694,16 +694,23 @@ Access the dashboard at `https://localhost:8443` (or your configured `WEB_HTTPS_
 
 The server uses self-signed SSL certificates by default for development. When you first access the web dashboard, your browser will show a security warning. This is expected and safe for local development.
 
-**For production use**, replace the self-signed certificates with certificates from a trusted Certificate Authority:
+**For production use**, replace the self-signed certificates with certificates from a trusted Certificate Authority. Certificates live in the `nginx-ssl` named Docker volume (mounted at `/etc/nginx/ssl` inside the `nginx` container), not a host directory, so copy them in with `docker cp` after the stack is running:
 
 1. Obtain SSL certificates (e.g., from [Let's Encrypt](https://letsencrypt.org/))
-2. Place your certificate in `nginx/ssl/cert.pem`
-3. Place your private key in `nginx/ssl/key.pem`
-4. Restart the services with `./up.sh`
+2. Start the stack so the `nginx-ssl` volume exists: `./up.sh`
+3. Copy the certificate and key into the running container:
+   ```bash
+   docker cp fullchain.pem open-mc-nginx:/etc/nginx/ssl/cert.pem
+   docker cp privkey.pem open-mc-nginx:/etc/nginx/ssl/key.pem
+   ```
+4. Restart nginx to pick up the new certificate: `docker compose restart nginx`
 
-Alternatively, you can generate new self-signed certificates:
+Alternatively, you can generate new self-signed certificates locally and copy them in the same way:
 ```bash
 ./scripts/generate-ssl-certs.sh
+docker cp nginx/ssl/cert.pem open-mc-nginx:/etc/nginx/ssl/cert.pem
+docker cp nginx/ssl/key.pem open-mc-nginx:/etc/nginx/ssl/key.pem
+docker compose restart nginx
 ```
 
 ### Activity Tracker Integration
@@ -1103,7 +1110,7 @@ Spring Boot service providing testable, REST-accessible wrapper functionality fo
 - **Location**: `minecraft-wrapper/`
 - **Documentation**: [minecraft-wrapper/README.md](minecraft-wrapper/README.md)
 - **Features**:
-  - Unit-tested server lifecycle management (15 tests)
+  - Unit-tested server lifecycle management
   - REST API for server status, commands, and messaging (port 8092)
   - Graceful shutdown with player warnings
   - Alert integration
