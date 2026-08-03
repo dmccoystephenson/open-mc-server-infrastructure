@@ -60,8 +60,27 @@ jobs:
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
 
+      # Booting the docker-container driver pulls the BuildKit image from Docker
+      # Hub, and that pull has no retry of its own — a transient registry timeout
+      # fails the job before any build starts. Pre-pull it with backoff so the
+      # bootstrap below finds it locally. Keep this tag in sync with the
+      # driver-opts image pin on the next step.
+      - name: Pre-pull BuildKit image
+        run: |
+          for attempt in 1 2 3; do
+            if docker pull moby/buildkit:buildx-stable-1; then
+              exit 0
+            fi
+            echo "::warning::BuildKit image pull failed (attempt ${attempt}/3); retrying in $((attempt * 10))s"
+            sleep $((attempt * 10))
+          done
+          echo "::error::Could not pull moby/buildkit:buildx-stable-1 after 3 attempts"
+          exit 1
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
+        with:
+          driver-opts: image=moby/buildkit:buildx-stable-1
 
       - name: Log in to Docker Hub
         if: github.event_name != 'workflow_dispatch' || github.event.inputs.push_images == 'true'
@@ -93,6 +112,9 @@ jobs:
     name: Build supporting images
     runs-on: ubuntu-latest
     strategy:
+      # Each image is published independently, so one image's failure must not
+      # cancel the others mid-build and leave the registry half-updated.
+      fail-fast: false
       matrix:
         include:
           - name: open-mc-server-webapp
@@ -120,8 +142,24 @@ jobs:
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
 
+      # See the note on the open-mc-server job: the BuildKit bootstrap pull is
+      # not retried by the action, so pre-pull it with backoff.
+      - name: Pre-pull BuildKit image
+        run: |
+          for attempt in 1 2 3; do
+            if docker pull moby/buildkit:buildx-stable-1; then
+              exit 0
+            fi
+            echo "::warning::BuildKit image pull failed (attempt ${attempt}/3); retrying in $((attempt * 10))s"
+            sleep $((attempt * 10))
+          done
+          echo "::error::Could not pull moby/buildkit:buildx-stable-1 after 3 attempts"
+          exit 1
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
+        with:
+          driver-opts: image=moby/buildkit:buildx-stable-1
 
       - name: Log in to Docker Hub
         if: github.event_name != 'workflow_dispatch' || github.event.inputs.push_images == 'true'
