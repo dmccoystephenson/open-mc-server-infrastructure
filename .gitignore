@@ -1,6 +1,10 @@
 # Environment variables
 .env
 
+# Local Helm value overrides (hold real secrets; see CLAUDE.md)
+values-override.yaml
+values-override.yml
+
 # IDE files
 .idea/
 .vscode/
