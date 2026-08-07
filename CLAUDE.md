@@ -36,7 +36,7 @@ Checklist for any PR touching services, config, or infrastructure:
 | `terraform/linode/` | Terraform config that provisions LKE and deploys the Helm chart |
 | `terraform/aws/` | Terraform config that provisions a VPC and EKS cluster and deploys the Helm chart |
 | `terraform/existing-cluster/` | Terraform config that deploys the Helm chart into a cluster you already run, configured from a supplied kubeconfig path/context |
-| `terraform/modules/` | Shared modules (`omcsi-helm`, `traefik`) consumed by the targets above |
+| `terraform/modules/` | Shared modules (`omcsi-helm`, `traefik`) consumed by the `linode`, `aws`, and `existing-cluster` targets. `hetzner` does not use them — it runs `helm upgrade` over SSH on the node instead. |
 | `<service>/` | One directory per service (source code, Dockerfile) |
 | `scripts/ci-local.sh` | Local CI validation script |
 
@@ -92,7 +92,8 @@ kubectl logs -n omcsi <pod>  # check for startup errors
 
 CI runs `fmt -check -diff`, `init -backend=false`, and `validate` against **all four**
 targets — `linode`, `aws`, `existing-cluster`, `hetzner` — on every PR. Because
-`terraform/modules/` is shared, editing one target can break another, so check each:
+`terraform/modules/` is shared by `linode`, `aws`, and `existing-cluster`, editing
+one of those targets can break another, so check each:
 
 ```bash
 for t in linode aws existing-cluster hetzner; do
