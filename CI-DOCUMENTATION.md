@@ -53,7 +53,10 @@ in sync when a module is added or removed.
 - Confirms `LICENSE` is present.
 
 #### Helm Chart Linting
-- Sets up Helm and runs `helm lint helm/omcsi` against the chart.
+- Sets up Helm and runs `helm lint helm/omcsi --set secrets.rconPassword=ci
+  --set secrets.adminPassword=ci` against the chart. The two `--set` values are
+  required: `templates/secret.yaml` wraps them in `required` and they default to
+  `""` in `values.yaml`, so lint fails without them.
 
 ### 2. Helm Unit Tests (`helm-unit-test`)
 
@@ -249,7 +252,9 @@ The workflow:
   errors that look unrelated.
 
 ### Helm Lint / Unit Test Failures
-- `helm lint helm/omcsi` reproduces lint output locally.
+- `helm lint helm/omcsi --set secrets.rconPassword=ci --set secrets.adminPassword=ci`
+  reproduces lint output locally. Omitting the `--set` flags produces a
+  `secrets.rconPassword is required` error rather than real lint findings.
 - `helm unittest helm/omcsi` reproduces template assertions; look at
   `helm/omcsi/tests/*.yaml` for which template a failing assertion belongs to.
 

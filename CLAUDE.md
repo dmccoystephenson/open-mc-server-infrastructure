@@ -34,6 +34,9 @@ Checklist for any PR touching services, config, or infrastructure:
 | `helm/omcsi/` | Helm chart for Kubernetes deployment |
 | `terraform/hetzner/` | Terraform config that provisions one Hetzner server, self-manages a single-node kubeadm cluster on it (cloud-init), and deploys the Helm chart — the cheapest cloud target (~$14/mo). Deploys via SSH from the node (not the Helm provider) since a kubeadm node has no API credentials as resource attributes at plan time. |
 | `terraform/linode/` | Terraform config that provisions LKE and deploys the Helm chart |
+| `terraform/aws/` | Terraform config that provisions a VPC and EKS cluster and deploys the Helm chart |
+| `terraform/existing-cluster/` | Terraform config that deploys the Helm chart into a cluster you already run, configured from a supplied kubeconfig path/context |
+| `terraform/modules/` | Shared modules (`omcsi-helm`, `traefik`) consumed by the `linode`, `aws`, and `existing-cluster` targets. `hetzner` does not use them — it runs `helm upgrade` over SSH on the node instead. |
 | `<service>/` | One directory per service (source code, Dockerfile) |
 | `scripts/ci-local.sh` | Local CI validation script |
 
@@ -65,13 +68,17 @@ docker compose logs --tail=50 <service>   # check for startup errors
 
 ### Kubernetes / Helm
 ```bash
-# Lint the chart
-helm lint helm/omcsi
+# Lint the chart. secrets.rconPassword and secrets.adminPassword are `required`
+# in templates/secret.yaml and default to "", so lint fails without them —
+# this is the exact invocation CI uses.
+helm lint helm/omcsi --set secrets.rconPassword=ci --set secrets.adminPassword=ci
 
 # Run unit tests (validates templates, NetworkPolicies, etc.)
 helm unittest helm/omcsi
 
-# Dry-run render to catch template errors
+# Dry-run render to catch template errors. values-override.yaml is a local,
+# gitignored file — drop the flag (and pass the two --set values above) if you
+# do not have one.
 helm template omcsi helm/omcsi --values values-override.yaml
 
 # Apply to a cluster
@@ -81,12 +88,27 @@ kubectl get pods -n omcsi   # all pods should reach Running/Ready
 kubectl logs -n omcsi <pod>  # check for startup errors
 ```
 
+### Terraform
+
+CI runs `fmt -check -diff`, `init -backend=false`, and `validate` against **all four**
+targets — `linode`, `aws`, `existing-cluster`, `hetzner` — on every PR. Because
+`terraform/modules/` is shared by `linode`, `aws`, and `existing-cluster`, editing
+one of those targets can break another, so check each:
+
+```bash
+for t in linode aws existing-cluster hetzner; do
+  terraform -chdir=terraform/$t fmt -check -diff
+  terraform -chdir=terraform/$t init -backend=false
+  terraform -chdir=terraform/$t validate
+done
+```
+
 ### CI
 ```bash
 ./scripts/ci-local.sh
 ```
 
-All three must pass before a PR is ready for review.
+All of the above must pass before a PR is ready for review.
 
 ## Networking (Kubernetes)
 
@@ -127,7 +149,7 @@ The `--set-json` form is required for the `monitoring` map because `--reuse-valu
 1. Create the service directory with a `Dockerfile`.
 2. Add the service to `compose.yml` with appropriate `depends_on`, healthcheck, and volume mounts.
 3. Add any new env vars to `sample.env`.
-4. Add a Deployment, Service, and (if needed) PVC template under `helm/omcsi/templates/<service>/`.
+4. Add a Deployment, Service, and (if needed) PVC as a single flat template file `helm/omcsi/templates/<service>.yaml`, matching the sibling services — the chart has no per-service template subdirectories.
 5. Add NetworkPolicy ingress/egress rules for the new service.
 6. Expose any new config knobs in `values.yaml`.
 7. Verify both deployment targets (see Verification section above).
