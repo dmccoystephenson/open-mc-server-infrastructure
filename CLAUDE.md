@@ -108,6 +108,12 @@ done
 ./scripts/ci-local.sh
 ```
 
+This runs all of the above in one pass — ShellCheck, `docker compose config`,
+`helm lint`, `helm unittest`, the Terraform loop for all four targets, and every
+module's Gradle tests. Any check whose tool is missing locally is skipped with a
+warning and repeated in the summary at the end, so read that summary: a skipped
+check is still enforced by CI.
+
 All of the above must pass before a PR is ready for review.
 
 ## Networking (Kubernetes)

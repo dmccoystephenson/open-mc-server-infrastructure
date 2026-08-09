@@ -1,9 +1,27 @@
 #!/bin/bash
 
 # Local CI validation script
-# This script runs the same checks that the CI pipeline will run
+# This script runs the same checks that the CI pipeline will run.
+#
+# Checks that depend on an optional tool (ShellCheck, Helm, the helm-unittest
+# plugin, Terraform) are skipped with a warning when that tool is missing
+# locally, and every skip is reported again in the summary at the end. A skipped
+# check is still enforced by .github/workflows/ci.yml, so a clean local run with
+# skips is weaker than a green CI run.
 
 set -e
+
+# Names of checks that were skipped because a required tool is unavailable.
+SKIPPED_CHECKS=()
+
+have() {
+    command -v "$1" > /dev/null 2>&1
+}
+
+skip() {
+    SKIPPED_CHECKS+=("$1")
+    echo "⚠️  Skipping $1"
+}
 
 echo "🚀 Running local CI validation..."
 
@@ -15,6 +33,16 @@ bash -n rollback.sh
 bash -n trigger-backup.sh
 bash -n resources/post-create.sh
 echo "✅ Shell script syntax validation passed"
+
+echo "🔍 Linting shell scripts..."
+if have shellcheck; then
+    # Keep this file list in sync with the "Validate shell scripts" step in
+    # .github/workflows/ci.yml.
+    shellcheck up.sh down.sh upgrade.sh rollback.sh trigger-backup.sh resources/post-create.sh scripts/*.sh
+    echo "✅ ShellCheck passed"
+else
+    skip "ShellCheck (shellcheck is not installed)"
+fi
 
 echo "🐳 Checking Docker configuration..."
 # Validate against a throwaway env file rather than the repo's .env — that file
@@ -50,6 +78,42 @@ test -x trigger-backup.sh
 test -x resources/post-create.sh
 echo "✅ File permissions validation passed"
 
+echo "⎈ Linting Helm chart..."
+if have helm; then
+    # secrets.rconPassword and secrets.adminPassword are `required` in
+    # templates/secret.yaml, so they must be supplied for lint to succeed.
+    helm lint helm/omcsi --set secrets.rconPassword=ci --set secrets.adminPassword=ci
+    echo "✅ Helm chart lint passed"
+else
+    skip "helm lint (helm is not installed)"
+fi
+
+echo "⎈ Running Helm unit tests..."
+if ! have helm; then
+    skip "helm unittest (helm is not installed)"
+elif ! helm plugin list 2> /dev/null | grep -q "^unittest"; then
+    skip "helm unittest (the helm-unittest plugin is not installed — install it with: helm plugin install https://github.com/helm-unittest/helm-unittest --version v1.1.0)"
+else
+    helm unittest helm/omcsi
+    echo "✅ Helm unit tests passed"
+fi
+
+echo "🏗️ Validating Terraform configurations..."
+if have terraform; then
+    # Every target the terraform-validate job in .github/workflows/ci.yml
+    # checks. terraform/modules/ is shared by linode, aws and existing-cluster,
+    # so editing one target can break another — all four are always validated.
+    for target in linode aws existing-cluster hetzner; do
+        echo "  🔍 ${target}..."
+        terraform -chdir="terraform/${target}" fmt -check -diff
+        terraform -chdir="terraform/${target}" init -backend=false > /dev/null
+        terraform -chdir="terraform/${target}" validate
+    done
+    echo "✅ Terraform validation passed"
+else
+    skip "Terraform fmt/init/validate (terraform is not installed)"
+fi
+
 # Every Gradle module the CI pipeline tests. Keep this list in sync with the
 # "Run <module> tests" steps in .github/workflows/ci.yml.
 for module in web-app minecraft-wrapper agent-manager alert-manager backup-manager; do
@@ -58,4 +122,12 @@ for module in web-app minecraft-wrapper agent-manager alert-manager backup-manag
     echo "✅ ${module} tests passed"
 done
 
-echo "🎉 All local CI checks passed!"
+if [ ${#SKIPPED_CHECKS[@]} -eq 0 ]; then
+    echo "🎉 All local CI checks passed!"
+else
+    echo "🎉 All local CI checks that could be run passed, but ${#SKIPPED_CHECKS[@]} were skipped:"
+    for check in "${SKIPPED_CHECKS[@]}"; do
+        echo "  ⚠️  ${check}"
+    done
+    echo "These are still enforced by CI — install the missing tools to catch failures before pushing."
+fi

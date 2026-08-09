@@ -130,6 +130,14 @@ It validates the compose file against a `mktemp` copy of `sample.env` rather tha
 `.env`, so your real credentials are left untouched. Because it now runs the test suite
 for all five Gradle modules, expect it to take several minutes on a cold Gradle cache.
 
+Alongside those, it runs ShellCheck, `helm lint`, `helm unittest`, and
+`terraform fmt -check`/`init -backend=false`/`validate` for the `linode`, `aws`,
+`existing-cluster`, and `hetzner` targets. ShellCheck, Helm, the helm-unittest
+plugin, and Terraform are optional: a check whose tool is not installed is
+skipped with a warning and repeated in the summary printed at the end of the
+run. Skipped checks are still enforced by CI, so a local run with skips is a
+weaker signal than a green pipeline.
+
 ## What Gets Checked
 
 ### ✅ Code Quality

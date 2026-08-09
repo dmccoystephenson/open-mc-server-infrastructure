@@ -1152,7 +1152,12 @@ Before submitting changes, you can run the same validation checks locally:
 ./scripts/ci-local.sh
 ```
 
-This will run basic validation checks that mirror the CI pipeline to catch issues early.
+This mirrors the CI pipeline to catch issues early: shell script syntax and
+ShellCheck linting, Docker Compose configuration, environment and documentation
+checks, `helm lint`, `helm unittest`, Terraform formatting and validation for
+all four targets, and the Gradle test suite for every module. Checks whose tool
+(ShellCheck, Helm, the helm-unittest plugin, Terraform) is not installed locally
+are skipped with a warning and listed in the summary at the end of the run.
 
 ### CI Pipeline Status
 
