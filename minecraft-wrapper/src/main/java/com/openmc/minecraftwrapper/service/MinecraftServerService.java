@@ -395,7 +395,9 @@ public class MinecraftServerService {
      * Returns an empty list if the log file does not exist or cannot be read.
      *
      * <p>Uses a streaming bounded-deque to avoid loading the entire log file into memory,
-     * regardless of how large the file has grown.
+     * regardless of how large the file has grown. Decoding is lenient, so a line containing
+     * bytes that are not valid UTF-8 is returned with those bytes replaced by U+FFFD rather
+     * than costing the caller the whole tail — see {@link #readLogTail(int)}.
      *
      * @param maxLines maximum number of lines to return (clamped to 1..logsDiagnosticMaxLines by the caller)
      * @return tail of the log file, oldest line first
@@ -422,6 +424,8 @@ public class MinecraftServerService {
             log.debug("Server log file not found at {}", logFile);
             return List.of();
         }
+        // Math.max only keeps the initial capacity legal; a non-positive maxLines still yields an
+        // empty list, because every line added below is evicted again on the same iteration.
         Deque<String> tail = new ArrayDeque<>(Math.max(1, maxLines));
         try (BufferedReader reader = new BufferedReader(
                 new InputStreamReader(Files.newInputStream(logFile), StandardCharsets.UTF_8))) {
