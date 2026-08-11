@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
@@ -54,6 +55,9 @@ public class MinecraftServerService {
     private final AtomicReference<TpsCache> tpsCacheRef =
             new AtomicReference<>(new TpsCache(null, Instant.EPOCH));
     private static final Duration TPS_CACHE_TTL = Duration.ofSeconds(30);
+
+    /** Number of trailing log lines scanned for a Paper/Spigot TPS reading. */
+    private static final int TPS_SCAN_LINES = 500;
 
     public MinecraftServerService(AlertService alertService, ShutdownService shutdownService) {
         this.alertService = alertService;
@@ -397,19 +401,37 @@ public class MinecraftServerService {
      * @return tail of the log file, oldest line first
      */
     public List<String> getRecentLogLines(int maxLines) {
+        return readLogTail(maxLines);
+    }
+
+    /**
+     * Read the last {@code maxLines} lines of {@code logs/latest.log} into a list, oldest first.
+     *
+     * <p>Uses a streaming bounded deque so the whole file is never held in memory, and decodes
+     * leniently: {@link InputStreamReader} constructed with a {@link java.nio.charset.Charset}
+     * replaces undecodable bytes with U+FFFD instead of throwing. Server logs regularly carry
+     * bytes that are not valid UTF-8 (plugin output, player chat), and a strict decoder would
+     * abort the read mid-stream with an {@link UncheckedIOException} and lose the entire tail.
+     *
+     * @param maxLines maximum number of lines to return
+     * @return tail of the log file, oldest line first; empty when the file is missing or unreadable
+     */
+    private List<String> readLogTail(int maxLines) {
         Path logFile = Path.of(serverDirectory, "logs", "latest.log");
         if (!Files.exists(logFile)) {
             log.debug("Server log file not found at {}", logFile);
             return List.of();
         }
-        Deque<String> tail = new ArrayDeque<>(maxLines);
-        try (var lines = Files.lines(logFile)) {
-            lines.forEach(line -> {
+        Deque<String> tail = new ArrayDeque<>(Math.max(1, maxLines));
+        try (BufferedReader reader = new BufferedReader(
+                new InputStreamReader(Files.newInputStream(logFile), StandardCharsets.UTF_8))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
                 tail.addLast(line);
                 if (tail.size() > maxLines) {
                     tail.pollFirst();
                 }
-            });
+            }
             return new ArrayList<>(tail);
         } catch (IOException e) {
             log.error("Failed to read server log file {}: {}", logFile, e.getMessage());
@@ -499,9 +521,12 @@ public class MinecraftServerService {
     }
 
     /**
-     * Scan the last 500 lines of {@code logs/latest.log} for a Paper/Spigot TPS line.
+     * Scan the tail of {@code logs/latest.log} for a Paper/Spigot TPS line.
      *
-     * <p>Uses a streaming approach to avoid loading the entire log file into memory.
+     * <p>Reads through {@link #readLogTail(int)}, so the full file is never held in memory and an
+     * unreadable log yields {@code null} rather than an exception. A missing TPS line and an
+     * unreadable log are both cached for {@link #TPS_CACHE_TTL} so the file is not re-scanned on
+     * every metrics request.
      *
      * @return the TPS segment starting from "TPS from last …", or {@code null} if not found
      */
@@ -511,30 +536,13 @@ public class MinecraftServerService {
         if (Duration.between(cached.fetchedAt(), Instant.now()).compareTo(TPS_CACHE_TTL) < 0) {
             return cached.tps();
         }
-        Path logFile = Path.of(serverDirectory, "logs", "latest.log");
-        if (!Files.exists(logFile)) {
-            tpsCacheRef.set(new TpsCache(null, Instant.now()));
-            return null;
-        }
-        // Collect the last 500 lines into a bounded deque to avoid loading the full file
-        Deque<String> tail = new ArrayDeque<>(500);
-        try (var lines = Files.lines(logFile)) {
-            lines.forEach(line -> {
-                tail.addLast(line);
-                if (tail.size() > 500) {
-                    tail.pollFirst();
-                }
-            });
-        } catch (IOException e) {
-            log.debug("Could not read server log for TPS: {}", e.getMessage());
-            return null;
-        }
+        // Collect the last 500 lines to avoid loading the full file
+        List<String> tail = readLogTail(TPS_SCAN_LINES);
         // Scan backwards through the tail for the most recent TPS entry
-        String[] tailArr = tail.toArray(new String[0]);
-        for (int i = tailArr.length - 1; i >= 0; i--) {
-            int idx = tailArr[i].indexOf("TPS from last");
+        for (int i = tail.size() - 1; i >= 0; i--) {
+            int idx = tail.get(i).indexOf("TPS from last");
             if (idx >= 0) {
-                String result = tailArr[i].substring(idx);
+                String result = tail.get(i).substring(idx);
                 tpsCacheRef.set(new TpsCache(result, Instant.now()));
                 return result;
             }
