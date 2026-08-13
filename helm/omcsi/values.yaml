@@ -299,6 +299,12 @@ agentManager:
     # (agentManager.enabled=true) also activates the bot. Override to "false"
     # to deploy the pod without starting the agent.
     AGENT_ENABLED: "true"
+    # Anthropic model the agent uses for every Messages API call.
+    AGENT_ANTHROPIC_MODEL: "claude-sonnet-4-20250514"
+    # Maximum output tokens per Anthropic response. Raise this if answers that
+    # summarise get_server_diagnostics output are being cut short; lower it to
+    # cap per-response API spend.
+    AGENT_ANTHROPIC_MAX_TOKENS: "1024"
     AGENT_START_SERVER_REQUIRES_CONFIRMATION: "true"
     AGENT_STOP_SERVER_REQUIRES_CONFIRMATION: "true"
     AGENT_RESTART_SERVER_REQUIRES_CONFIRMATION: "true"

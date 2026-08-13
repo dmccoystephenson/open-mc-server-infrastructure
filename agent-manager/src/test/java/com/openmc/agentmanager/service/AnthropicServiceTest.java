@@ -1,13 +1,18 @@
 package com.openmc.agentmanager.service;
 
+import com.openmc.agentmanager.model.AnthropicRequest;
 import com.openmc.agentmanager.model.AnthropicResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.ResponseEntity;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.client.RestTemplate;
 
@@ -15,6 +20,9 @@ import java.util.Collections;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("AnthropicService Tests")
@@ -31,6 +39,44 @@ class AnthropicServiceTest {
         ReflectionTestUtils.setField(anthropicService, "apiKey", "test-key");
         ReflectionTestUtils.setField(anthropicService, "apiUrl", "https://api.anthropic.com/v1/messages");
         ReflectionTestUtils.setField(anthropicService, "model", "claude-sonnet-4-20250514");
+        ReflectionTestUtils.setField(anthropicService, "maxTokens", 1024);
+    }
+
+    /**
+     * Stub the outbound call and capture the request body that {@code callApi} builds.
+     */
+    private AnthropicRequest captureRequest() {
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<HttpEntity<AnthropicRequest>> captor = ArgumentCaptor.forClass(HttpEntity.class);
+        when(restTemplate.exchange(any(String.class), eq(HttpMethod.POST), captor.capture(),
+                eq(AnthropicResponse.class)))
+                .thenReturn(ResponseEntity.ok(AnthropicResponse.builder().build()));
+
+        anthropicService.sendMessage("is the server okay?");
+
+        return captor.getValue().getBody();
+    }
+
+    @Test
+    @DisplayName("Should send the configured model in the request body")
+    void shouldSendConfiguredModel() {
+        ReflectionTestUtils.setField(anthropicService, "model", "claude-test-model");
+
+        assertEquals("claude-test-model", captureRequest().getModel());
+    }
+
+    @Test
+    @DisplayName("Should send the configured max_tokens budget in the request body")
+    void shouldSendConfiguredMaxTokens() {
+        ReflectionTestUtils.setField(anthropicService, "maxTokens", 4096);
+
+        assertEquals(4096, captureRequest().getMaxTokens());
+    }
+
+    @Test
+    @DisplayName("Should send the default max_tokens budget when none is overridden")
+    void shouldSendDefaultMaxTokens() {
+        assertEquals(1024, captureRequest().getMaxTokens());
     }
 
     @Test

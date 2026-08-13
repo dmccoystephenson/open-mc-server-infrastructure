@@ -50,6 +50,9 @@ public class AnthropicService {
     @Value("${anthropic.model:claude-sonnet-4-20250514}")
     private String model;
 
+    @Value("${anthropic.max-tokens:1024}")
+    private int maxTokens;
+
     public AnthropicService(RestTemplate restTemplate) {
         this.restTemplate = restTemplate;
     }
@@ -124,11 +127,12 @@ public class AnthropicService {
     }
 
     private AnthropicResponse callApi(List<AnthropicRequest.Message> messages) {
-        log.debug("Building Anthropic API request with model: {}, max_tokens: 1024, tools: {}", model, ToolDefinition.allTools().size());
+        log.debug("Building Anthropic API request with model: {}, max_tokens: {}, tools: {}", model, maxTokens,
+                ToolDefinition.allTools().size());
         AnthropicRequest request = AnthropicRequest.builder()
                 .model(model)
                 .system(SYSTEM_PROMPT)
-                .maxTokens(1024)
+                .maxTokens(maxTokens)
                 .messages(messages)
                 .tools(ToolDefinition.allTools())
                 .build();
