@@ -68,6 +68,48 @@ tests:
           value: 3
         documentIndex: 0
 
+  - it: renders the Anthropic model and token budget defaults when enabled
+    set:
+      agentManager.enabled: true
+      secrets.agentDiscordBotToken: ci-token
+      secrets.agentDiscordChannelId: "123456"
+      secrets.agentAnthropicApiKey: ci-key
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: AGENT_ANTHROPIC_MODEL
+            value: "claude-sonnet-4-20250514"
+        documentIndex: 0
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: AGENT_ANTHROPIC_MAX_TOKENS
+            value: "1024"
+        documentIndex: 0
+
+  - it: Anthropic model and token budget are overridable
+    set:
+      agentManager.enabled: true
+      secrets.agentDiscordBotToken: ci-token
+      secrets.agentDiscordChannelId: "123456"
+      secrets.agentAnthropicApiKey: ci-key
+      agentManager.env.AGENT_ANTHROPIC_MODEL: claude-test-model
+      agentManager.env.AGENT_ANTHROPIC_MAX_TOKENS: 4096
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: AGENT_ANTHROPIC_MODEL
+            value: "claude-test-model"
+        documentIndex: 0
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: AGENT_ANTHROPIC_MAX_TOKENS
+            value: "4096"
+        documentIndex: 0
+
   - it: Service is ClusterIP on port 8093 when enabled
     set:
       agentManager.enabled: true

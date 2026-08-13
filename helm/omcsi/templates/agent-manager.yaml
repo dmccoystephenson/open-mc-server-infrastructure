@@ -54,6 +54,10 @@ spec:
                 secretKeyRef:
                   name: {{ include "omcsi.secretName" . }}
                   key: AGENT_ANTHROPIC_API_KEY
+            - name: AGENT_ANTHROPIC_MODEL
+              value: {{ .Values.agentManager.env.AGENT_ANTHROPIC_MODEL | quote }}
+            - name: AGENT_ANTHROPIC_MAX_TOKENS
+              value: {{ .Values.agentManager.env.AGENT_ANTHROPIC_MAX_TOKENS | quote }}
             - name: AGENT_ENABLED
               value: {{ .Values.agentManager.env.AGENT_ENABLED | quote }}
             - name: MINECRAFT_WRAPPER_URL

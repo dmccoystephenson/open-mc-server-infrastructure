@@ -889,6 +889,8 @@ See [alert-manager/README.md](alert-manager/README.md) for detailed configuratio
 - `AGENT_DISCORD_BOT_TOKEN`: Discord bot token (required for agent manager)
 - `AGENT_DISCORD_CHANNEL_ID`: Discord channel ID to listen on (required for agent manager)
 - `AGENT_ANTHROPIC_API_KEY`: Anthropic API key (required for agent manager)
+- `AGENT_ANTHROPIC_MODEL`: Anthropic model used for every Messages API call (default: `claude-sonnet-4-20250514`)
+- `AGENT_ANTHROPIC_MAX_TOKENS`: Maximum output tokens per Anthropic response (default: `1024`). Raise this if answers summarising `get_server_diagnostics` output are being cut short; lower it to cap per-response API spend.
 - `AGENT_ENABLED`: Enable/disable the agent manager (default: `false`)
 - `AGENT_START_SERVER_REQUIRES_CONFIRMATION`: Require confirmation to start server (default: `true`)
 - `AGENT_STOP_SERVER_REQUIRES_CONFIRMATION`: Require confirmation to stop server (default: `true`)

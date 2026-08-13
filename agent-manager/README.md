@@ -125,6 +125,8 @@ The following environment variables can be configured in `.env`:
 - `AGENT_DISCORD_BOT_TOKEN`: Discord bot token (**required**)
 - `AGENT_DISCORD_CHANNEL_ID`: Discord channel ID to listen on (**required**)
 - `AGENT_ANTHROPIC_API_KEY`: Anthropic API key (**required**)
+- `AGENT_ANTHROPIC_MODEL`: Anthropic model used for every Messages API call (default: `claude-sonnet-4-20250514`)
+- `AGENT_ANTHROPIC_MAX_TOKENS`: Maximum output tokens per Anthropic response (default: `1024`). Raise this if answers summarising `get_server_diagnostics` output are being cut short; lower it to cap per-response API spend.
 - `AGENT_ENABLED`: Enable/disable the agent manager (default: `false`)
 - `ALERT_MANAGER_URL`: URL for the alert-manager API (default: `http://alert-manager:8090/api/alerts`)
 
