@@ -1,9 +1,11 @@
 package com.openmc.agentmanager.service;
 
+import com.openmc.agentmanager.model.AnthropicResponse;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.MessageReaction;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel;
+import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.entities.channel.unions.MessageChannelUnion;
 import net.dv8tion.jda.api.entities.emoji.EmojiUnion;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
@@ -17,10 +19,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.mockito.junit.jupiter.MockitoSettings;
-import org.mockito.quality.Strictness;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.AbstractExecutorService;
@@ -28,19 +29,11 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
-import static org.mockito.Mockito.when;
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-@MockitoSettings(strictness = Strictness.LENIENT)
 @DisplayName("DiscordBotService Tests")
 class DiscordBotServiceTest {
 
@@ -172,7 +165,7 @@ class DiscordBotServiceTest {
     void shouldStorePendingConfirmationWhenConfirmationRequired() {
         MessageReceivedEvent event = messageEvent("stop the server");
         MessageCreateAction createAction = stubSendMessage(event.getChannel());
-        List<com.openmc.agentmanager.model.AnthropicResponse.ContentBlock> assistantContent = List.of();
+        List<AnthropicResponse.ContentBlock> assistantContent = List.of();
         Map<String, Object> toolInput = Map.of("reason", "maintenance");
         when(agentService.processMessage("stop the server", USERNAME))
                 .thenReturn(new AgentService.AgentResponse(
@@ -197,14 +190,14 @@ class DiscordBotServiceTest {
         verify(confirmationService).addPendingConfirmation(eq(MESSAGE_ID), pendingCaptor.capture());
 
         ConfirmationService.PendingConfirmation pending = pendingCaptor.getValue();
-        org.junit.jupiter.api.Assertions.assertEquals("tool-use-1", pending.toolUseId());
-        org.junit.jupiter.api.Assertions.assertEquals("stop_server", pending.toolName());
-        org.junit.jupiter.api.Assertions.assertEquals("stop the server", pending.userMessage());
-        org.junit.jupiter.api.Assertions.assertEquals(assistantContent, pending.assistantContent());
-        org.junit.jupiter.api.Assertions.assertEquals(CHANNEL_ID, pending.channelId());
-        org.junit.jupiter.api.Assertions.assertEquals(USER_ID, pending.requestingUserId());
-        org.junit.jupiter.api.Assertions.assertEquals(USERNAME, pending.discordUsername());
-        org.junit.jupiter.api.Assertions.assertEquals(toolInput, pending.toolInput());
+        assertEquals("tool-use-1", pending.toolUseId());
+        assertEquals("stop_server", pending.toolName());
+        assertEquals("stop the server", pending.userMessage());
+        assertEquals(assistantContent, pending.assistantContent());
+        assertEquals(CHANNEL_ID, pending.channelId());
+        assertEquals(USER_ID, pending.requestingUserId());
+        assertEquals(USERNAME, pending.discordUsername());
+        assertEquals(toolInput, pending.toolInput());
         assertNotNull(pending.createdAt());
 
         verify(sentMessage).addReaction(any());
@@ -278,11 +271,11 @@ class DiscordBotServiceTest {
         GuildMessageChannel channel = event.getChannel().asGuildMessageChannel();
         MessageCreateAction createAction = stubSendMessage(channel);
 
-        List<com.openmc.agentmanager.model.AnthropicResponse.ContentBlock> assistantContent = List.of();
+        List<AnthropicResponse.ContentBlock> assistantContent = List.of();
         Map<String, Object> toolInput = Map.of("reason", "maintenance");
         ConfirmationService.PendingConfirmation pending = new ConfirmationService.PendingConfirmation(
                 "tool-use-1", "stop_server", "stop the server", assistantContent,
-                CHANNEL_ID, USER_ID, USERNAME, toolInput, java.time.Instant.now());
+                CHANNEL_ID, USER_ID, USERNAME, toolInput, Instant.now());
         when(confirmationService.consumeIfRequestingUser(MESSAGE_ID, USER_ID)).thenReturn(pending);
         when(agentService.executeToolAndRespond("stop the server", assistantContent,
                 "tool-use-1", "stop_server", USERNAME, toolInput))
@@ -306,7 +299,7 @@ class DiscordBotServiceTest {
 
         ConfirmationService.PendingConfirmation pending = new ConfirmationService.PendingConfirmation(
                 "tool-use-1", "stop_server", "stop the server", List.of(),
-                CHANNEL_ID, USER_ID, USERNAME, Map.of(), java.time.Instant.now());
+                CHANNEL_ID, USER_ID, USERNAME, Map.of(), Instant.now());
         when(confirmationService.consumeIfRequestingUser(MESSAGE_ID, USER_ID)).thenReturn(pending);
         when(agentService.executeToolAndRespond(anyString(), any(), anyString(), anyString(),
                 anyString(), any())).thenThrow(new RuntimeException("tool exploded"));
@@ -326,62 +319,65 @@ class DiscordBotServiceTest {
         ExecutorService executor = (ExecutorService)
                 ReflectionTestUtils.getField(discordBotService, "executor");
         assertNotNull(executor);
-        org.junit.jupiter.api.Assertions.assertTrue(executor.isShutdown());
+        assertTrue(executor.isShutdown());
     }
 
     // ----------------------------------------------------------------- helpers
 
     /**
      * Build a message event in the configured channel from a non-bot author.
+     * The stubs are lenient because each guard in the handler short-circuits
+     * before the later ones, so no single test consumes all of them.
      */
     private MessageReceivedEvent messageEvent(String content) {
         MessageReceivedEvent event = mock(MessageReceivedEvent.class);
         User author = mock(User.class);
-        when(author.isBot()).thenReturn(false);
-        when(author.getId()).thenReturn(USER_ID);
-        when(author.getName()).thenReturn(USERNAME);
-        when(event.getAuthor()).thenReturn(author);
+        lenient().when(author.isBot()).thenReturn(false);
+        lenient().when(author.getId()).thenReturn(USER_ID);
+        lenient().when(author.getName()).thenReturn(USERNAME);
+        lenient().when(event.getAuthor()).thenReturn(author);
 
         MessageChannelUnion channel = mock(MessageChannelUnion.class);
-        when(channel.getId()).thenReturn(CHANNEL_ID);
-        when(channel.sendTyping()).thenReturn(mockRestAction());
-        when(event.getChannel()).thenReturn(channel);
+        lenient().when(channel.getId()).thenReturn(CHANNEL_ID);
+        lenient().when(channel.sendTyping()).thenReturn(mockRestAction());
+        lenient().when(event.getChannel()).thenReturn(channel);
 
         Message message = mock(Message.class);
-        when(message.getContentRaw()).thenReturn(content);
-        when(event.getMessage()).thenReturn(message);
+        lenient().when(message.getContentRaw()).thenReturn(content);
+        lenient().when(event.getMessage()).thenReturn(message);
         return event;
     }
 
     /**
      * Build a reaction event in the configured channel from a non-bot user.
+     * Lenient for the same reason as {@link #messageEvent(String)}.
      */
     private MessageReactionAddEvent reactionEvent(String reactionCode) {
         MessageReactionAddEvent event = mock(MessageReactionAddEvent.class);
         User user = mock(User.class);
-        when(user.isBot()).thenReturn(false);
-        when(event.getUser()).thenReturn(user);
-        when(event.getUserId()).thenReturn(USER_ID);
-        when(event.getMessageId()).thenReturn(MESSAGE_ID);
+        lenient().when(user.isBot()).thenReturn(false);
+        lenient().when(event.getUser()).thenReturn(user);
+        lenient().when(event.getUserId()).thenReturn(USER_ID);
+        lenient().when(event.getMessageId()).thenReturn(MESSAGE_ID);
 
         MessageChannelUnion channel = mock(MessageChannelUnion.class);
-        when(channel.getId()).thenReturn(CHANNEL_ID);
-        when(event.getChannel()).thenReturn(channel);
+        lenient().when(channel.getId()).thenReturn(CHANNEL_ID);
+        lenient().when(event.getChannel()).thenReturn(channel);
 
         GuildMessageChannel guildChannel = mock(GuildMessageChannel.class);
-        when(guildChannel.sendTyping()).thenReturn(mockRestAction());
-        when(channel.asGuildMessageChannel()).thenReturn(guildChannel);
+        lenient().when(guildChannel.sendTyping()).thenReturn(mockRestAction());
+        lenient().when(channel.asGuildMessageChannel()).thenReturn(guildChannel);
 
         MessageReaction reaction = mock(MessageReaction.class);
         EmojiUnion emoji = mock(EmojiUnion.class);
-        when(emoji.getAsReactionCode()).thenReturn(reactionCode);
-        when(emoji.getName()).thenReturn(reactionCode);
-        when(reaction.getEmoji()).thenReturn(emoji);
-        when(event.getReaction()).thenReturn(reaction);
+        lenient().when(emoji.getAsReactionCode()).thenReturn(reactionCode);
+        lenient().when(emoji.getName()).thenReturn(reactionCode);
+        lenient().when(reaction.getEmoji()).thenReturn(emoji);
+        lenient().when(event.getReaction()).thenReturn(reaction);
         return event;
     }
 
-    private MessageCreateAction stubSendMessage(net.dv8tion.jda.api.entities.channel.middleman.MessageChannel channel) {
+    private MessageCreateAction stubSendMessage(MessageChannel channel) {
         MessageCreateAction createAction = mock(MessageCreateAction.class);
         when(channel.sendMessage(anyString())).thenReturn(createAction);
         return createAction;
