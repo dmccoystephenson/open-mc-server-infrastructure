@@ -39,7 +39,7 @@ public class MultipartTempDirConfig {
             log.info("Buffering multipart uploads in {}", dir);
         } catch (IOException e) {
             log.error("Could not create multipart upload directory {}: {}. Uploads will fail until "
-                    + "this path exists and is writable, or MULTIPART_TEMP_DIR is cleared.", dir, e.getMessage());
+                    + "this path exists and is writable, or MULTIPART_TEMP_DIR is cleared.", dir, e.getMessage(), e);
         }
     }
 }

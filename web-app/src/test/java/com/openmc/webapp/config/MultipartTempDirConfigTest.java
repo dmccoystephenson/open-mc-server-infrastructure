@@ -41,6 +41,20 @@ class MultipartTempDirConfigTest {
     }
 
     @Test
+    @DisplayName("an uncreatable path is logged rather than aborting startup")
+    void doesNotFailStartupWhenDirectoryCannotBeCreated() throws Exception {
+        // Parent is a regular file, so createDirectories cannot succeed.
+        Path blocker = Files.writeString(tempDir.resolve("blocker"), "x");
+        Path unreachable = blocker.resolve("upload-tmp");
+
+        assertDoesNotThrow(() ->
+                ReflectionTestUtils.invokeMethod(configWithLocation(unreachable.toString()),
+                        "createMultipartTempDir"));
+
+        assertFalse(Files.isDirectory(unreachable));
+    }
+
+    @Test
     @DisplayName("an existing directory is left alone rather than failing startup")
     void toleratesExistingDirectory() throws Exception {
         Path target = Files.createDirectory(tempDir.resolve("already-there"));
