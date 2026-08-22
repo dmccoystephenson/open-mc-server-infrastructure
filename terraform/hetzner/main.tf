@@ -49,6 +49,7 @@ locals {
 
     world_upload_max_size_mb      = var.world_upload_max_size_mb
     world_upload_max_extracted_mb = var.world_upload_max_extracted_mb
+    world_upload_max_entries      = var.world_upload_max_entries
     world_upload_timeout_seconds  = var.world_upload_timeout_seconds
     multipart_temp_dir            = var.multipart_temp_dir
     mcserver_storage_size         = var.mcserver_storage_size

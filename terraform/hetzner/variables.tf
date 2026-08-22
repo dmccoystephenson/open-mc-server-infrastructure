@@ -259,6 +259,17 @@ variable "world_upload_max_extracted_mb" {
   }
 }
 
+variable "world_upload_max_entries" {
+  description = "Cap on the number of entries in a world archive (zip bomb protection). A very large world can legitimately approach the default; raise it rather than trimming a real world."
+  type        = number
+  default     = 100000
+
+  validation {
+    condition     = var.world_upload_max_entries > 0
+    error_message = "world_upload_max_entries must be greater than 0."
+  }
+}
+
 variable "world_upload_timeout_seconds" {
   description = "How long the upload routes may run before nginx and the web app give up. Covers transfer plus extraction, the world swap, and the server restart — not just transfer time."
   type        = number
