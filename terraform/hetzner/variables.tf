@@ -304,3 +304,17 @@ variable "mcserver_storage_size" {
   type        = string
   default     = "10Gi"
 }
+
+# --- BlueMap ------------------------------------------------------------------
+
+variable "bluemap_enabled" {
+  description = "Serve BlueMap's webapp through the proxy. Requires the BlueMap plugin to be installed in the server's plugins directory — nothing listens on the wrapper's bluemap port until it is, and the route would return 502."
+  type        = bool
+  default     = false
+}
+
+variable "bluemap_path" {
+  description = "Path BlueMap's webapp is served at, including both slashes (e.g. \"/map/\")."
+  type        = string
+  default     = "/map/"
+}

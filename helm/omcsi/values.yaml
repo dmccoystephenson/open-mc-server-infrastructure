@@ -192,6 +192,16 @@ nginx:
   # webapp.env.MAX_FILE_UPLOAD_SIZE / MAX_REQUEST_UPLOAD_SIZE, which use Spring's
   # "2048MB" suffix rather than nginx's "2G".
   maxBodySize: 100M
+  # Serve BlueMap's webapp through this proxy at bluemap.path.
+  #
+  # Off by default because nothing listens on the wrapper's bluemap port until
+  # the BlueMap plugin is actually installed, and a route to a dead upstream is
+  # a 502 waiting to happen.  The NetworkPolicy already permits nginx to reach
+  # the wrapper on that port, so enabling this is the only step needed once
+  # BlueMap is in place.
+  bluemap:
+    enabled: false
+    path: /map/
   # Send/read timeout applied to the upload routes (/api/plugins/, /api/world/)
   # only; the rest of the dashboard keeps nginx's 60s.  A large world archive
   # takes minutes to transfer and minutes more to extract and install, and the
