@@ -282,6 +282,23 @@ variable "multipart_temp_dir" {
   default     = ""
 }
 
+variable "backup_max_size_mb" {
+  description = "Cap on the total size of the backups directory, in MB. Set this to a few times the world size: the newest backup is never deleted to satisfy the cap, so a value below one backup's size means only ever holding that single backup. Sized together with backups_storage_size."
+  type        = number
+  default     = 10240
+
+  validation {
+    condition     = var.backup_max_size_mb > 0
+    error_message = "backup_max_size_mb must be greater than 0."
+  }
+}
+
+variable "backups_storage_size" {
+  description = "Size of the backups PersistentVolumeClaim. Must comfortably exceed backup_max_size_mb, since the cap is enforced after a backup is written rather than before."
+  type        = string
+  default     = "20Gi"
+}
+
 variable "mcserver_storage_size" {
   description = "Size of the mcserver PersistentVolumeClaim, which holds the world, plugins, and the staging directory an upload extracts into. Needs room for the old world and the extracted new one at the same time."
   type        = string

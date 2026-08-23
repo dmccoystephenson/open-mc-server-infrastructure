@@ -870,6 +870,9 @@ The Hetzner Terraform module derives every one of them from a single variable so
 
 - `BACKUP_CONTAINER_NAME`: Backup manager container name (default: `open-mc-backup-manager`)
 - `BACKUP_MAX_SIZE_MB`: Maximum size of backups directory in MB (default: `10240` = 10GB)
+
+> **Size this off the world, not off the default.** After each backup, older backups are deleted oldest-first until the directory is under the cap — but the newest backup is never a deletion candidate. A cap smaller than one backup therefore leaves you holding exactly one backup and nothing else, and the run warns (and sends a `WARNING` alert) that the cap is too small to keep any history. Allow a few times the world size, and size the backups volume above the cap, since the cap is enforced after a backup is written rather than before.
+
 - `BACKUP_SCHEDULE`: Cron expression for backup schedule (default: `0 0 2 * * ?` = 2 AM daily). Set to `-` to disable scheduled backups entirely; manual backups via `POST /api/backups/trigger` and `trigger-backup.sh` keep working.
 
 See [backup-manager/README.md](backup-manager/README.md) for detailed cron expression examples and configuration.

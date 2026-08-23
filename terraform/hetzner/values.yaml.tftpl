@@ -58,6 +58,8 @@ nginx:
 backupManager:
   image:
     repository: ${image_registry}/open-mc-server-backup-manager
+  env:
+    BACKUP_MAX_SIZE_MB: "${backup_max_size_mb}"
 
 alertManager:
   image:
@@ -85,6 +87,7 @@ persistence:
     storageClass: "${storage_class}"
   backups:
     storageClass: "${storage_class}"
+    size: ${backups_storage_size}
 
 secrets:
   rconPassword: "${rcon_password}"

@@ -53,6 +53,8 @@ locals {
     world_upload_timeout_seconds  = var.world_upload_timeout_seconds
     multipart_temp_dir            = var.multipart_temp_dir
     mcserver_storage_size         = var.mcserver_storage_size
+    backup_max_size_mb            = var.backup_max_size_mb
+    backups_storage_size          = var.backups_storage_size
   })
 }
 
