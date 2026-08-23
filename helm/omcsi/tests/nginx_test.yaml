@@ -136,3 +136,44 @@ tests:
       - notMatchRegex:
           path: data["nginx.conf"]
           pattern: "proxy_read_timeout    3600s;"
+
+  # The NetworkPolicy already permits nginx -> wrapper:8100, so the proxy route is
+  # the only missing piece. It stays opt-in: nothing listens on that port until the
+  # BlueMap plugin is installed.
+  - it: does not route BlueMap by default
+    documentSelector:
+      path: kind
+      value: ConfigMap
+      skipEmptyTemplates: true
+    asserts:
+      - notMatchRegex:
+          path: data["nginx.conf"]
+          pattern: "location /map/"
+
+  - it: routes BlueMap to the wrapper when enabled
+    set:
+      nginx.bluemap.enabled: true
+    documentSelector:
+      path: kind
+      value: ConfigMap
+      skipEmptyTemplates: true
+    asserts:
+      - matchRegex:
+          path: data["nginx.conf"]
+          pattern: "location /map/ \\{"
+      - matchRegex:
+          path: data["nginx.conf"]
+          pattern: "proxy_pass http://RELEASE-NAME-omcsi-minecraft-wrapper-internal:8100/;"
+
+  - it: honours a custom BlueMap path
+    set:
+      nginx.bluemap.enabled: true
+      nginx.bluemap.path: /bluemap/
+    documentSelector:
+      path: kind
+      value: ConfigMap
+      skipEmptyTemplates: true
+    asserts:
+      - matchRegex:
+          path: data["nginx.conf"]
+          pattern: "location /bluemap/ \\{"

@@ -55,6 +55,9 @@ locals {
     mcserver_storage_size         = var.mcserver_storage_size
     backup_max_size_mb            = var.backup_max_size_mb
     backups_storage_size          = var.backups_storage_size
+    bluemap_enabled               = var.bluemap_enabled
+    bluemap_path                  = var.bluemap_path
+    bluemap_url                   = var.bluemap_enabled ? "https://${hcloud_server.omcsi.ipv4_address}${var.bluemap_path}" : ""
   })
 }
 

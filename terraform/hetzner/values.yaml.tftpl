@@ -41,6 +41,8 @@ webapp:
     MAX_REQUEST_UPLOAD_SIZE: "${world_upload_max_size_mb}MB"
     MULTIPART_TEMP_DIR: "${multipart_temp_dir}"
     WORLD_UPLOAD_READ_TIMEOUT_SECONDS: "${world_upload_timeout_seconds}"
+    # Lets the dashboard link the map; empty unless BlueMap is enabled.
+    BLUEMAP_URL: "${bluemap_url}"
 
 nginx:
   image:
@@ -53,6 +55,9 @@ nginx:
   # default is 100M, which silently caps uploads well below the 2048MB the
   # services advertise; deriving both from one variable removes that trap.
   maxBodySize: ${world_upload_max_size_mb}M
+  bluemap:
+    enabled: ${bluemap_enabled}
+    path: "${bluemap_path}"
   uploadTimeout: ${world_upload_timeout_seconds}s
 
 backupManager:
