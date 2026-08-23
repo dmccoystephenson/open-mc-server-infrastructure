@@ -171,3 +171,24 @@ tests:
       - isNotNull:
           path: spec.egress[2].to[0].namespaceSelector
         documentIndex: 4
+
+  # The wrapper's ingress already accepts 8100 from nginx. Without the matching
+  # egress rule the packets never leave nginx, and the proxy 504s after its read
+  # timeout instead of failing fast — which reads as "BlueMap is down".
+  - it: nginx may reach the wrapper's BlueMap port
+    documentSelector:
+      path: metadata.name
+      value: RELEASE-NAME-omcsi-nginx
+    asserts:
+      - contains:
+          path: spec.egress
+          content:
+            ports:
+              - port: 8100
+                protocol: TCP
+            to:
+              - podSelector:
+                  matchLabels:
+                    app.kubernetes.io/name: omcsi
+                    app.kubernetes.io/instance: RELEASE-NAME
+                    app.kubernetes.io/component: minecraft-wrapper

@@ -235,6 +235,17 @@ spec:
         - podSelector:
             matchLabels:
               {{- include "omcsi.selectorLabels" (dict "root" . "component" "minecraft-wrapper") | nindent 14 }}
+    # BlueMap's webserver. The wrapper's ingress rules already accept this from
+    # nginx; without the matching egress rule here the packets are dropped on the
+    # way out and the proxy returns 504 after its read timeout rather than failing
+    # fast, which makes it look like BlueMap is down.
+    - ports:
+        - port: {{ .Values.minecraftWrapper.internalService.bluemapPort }}
+          protocol: TCP
+      to:
+        - podSelector:
+            matchLabels:
+              {{- include "omcsi.selectorLabels" (dict "root" . "component" "minecraft-wrapper") | nindent 14 }}
     # DNS — scoped to CoreDNS (adjust networkPolicy.dnsNamespaceSelector/dnsPodSelector for non-standard distros)
     - ports:
         - port: 53
