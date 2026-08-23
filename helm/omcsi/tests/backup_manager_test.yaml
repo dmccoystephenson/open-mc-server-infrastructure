@@ -122,3 +122,26 @@ tests:
             name: SPRING_TASK_SCHEDULING_ENABLED
           any: true
         documentIndex: 0
+
+  # The newest backup is never deleted to satisfy the cap, so a cap below one
+  # backup's size means only ever holding that single backup. Both the cap and
+  # the volume have to move with the world.
+  - it: renders the backup size cap at its default
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: BACKUP_MAX_SIZE_MB
+            value: "10240"
+        documentIndex: 0
+
+  - it: honours a raised backup size cap
+    set:
+      backupManager.env.BACKUP_MAX_SIZE_MB: "61440"
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: BACKUP_MAX_SIZE_MB
+            value: "61440"
+        documentIndex: 0

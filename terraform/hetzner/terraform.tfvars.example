@@ -68,3 +68,9 @@ admin_password = "strongpassword"
 # world_upload_timeout_seconds  = 7200     # transfer + extract + swap + restart
 # multipart_temp_dir            = "/mcserver/tmp"
 # mcserver_storage_size         = "80Gi"   # holds the old and new world at once
+#
+# Backups are sized off the world, not the archive. The newest backup is never
+# deleted to satisfy the cap, so a cap below one backup's size means only ever
+# holding that one. For a 20 GB world, room for two or three:
+# backup_max_size_mb   = 61440
+# backups_storage_size = "70Gi"

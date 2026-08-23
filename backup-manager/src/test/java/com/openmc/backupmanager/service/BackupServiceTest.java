@@ -115,6 +115,50 @@ class BackupServiceTest {
     }
 
     @Test
+    @DisplayName("Keeps the newest backup even when it alone exceeds the size limit")
+    void shouldKeepNewestBackupWhenItAloneExceedsLimit() throws BackupException, IOException, InterruptedException {
+        // Mirrors a world larger than the cap: every backup taken is over the limit on its own.
+        ReflectionTestUtils.setField(backupService, "maxBackupSizeMb", 0L);
+
+        Path older = tempDir.resolve("backup-20240101-120000");
+        Path newest = tempDir.resolve("backup-20240102-120000");
+        Files.createDirectories(older);
+        Files.writeString(older.resolve("mcserver-backup.tar.gz"), "older backup payload");
+        Thread.sleep(100); // Ensure different timestamps
+        Files.createDirectories(newest);
+        Files.writeString(newest.resolve("mcserver-backup.tar.gz"), "newest backup payload");
+
+        backupService.cleanupOldBackups();
+
+        assertTrue(Files.exists(newest),
+                "The newest backup must survive cleanup, or a world over the cap is left with no backup at all");
+        assertFalse(Files.exists(older), "Older backups should still be reclaimed");
+    }
+
+    @Test
+    @DisplayName("Keeps a lone oversized backup rather than emptying the directory")
+    void shouldKeepSoleBackupWhenOverLimit() throws BackupException, IOException {
+        ReflectionTestUtils.setField(backupService, "maxBackupSizeMb", 0L);
+
+        Path only = tempDir.resolve("backup-20240103-120000");
+        Files.createDirectories(only);
+        Files.writeString(only.resolve("mcserver-backup.tar.gz"), "the only backup there is");
+
+        backupService.cleanupOldBackups();
+
+        assertTrue(Files.exists(only), "The only backup on disk must not be deleted to satisfy the size cap");
+    }
+
+    @Test
+    @DisplayName("Tolerates an over-limit directory holding no backup-* folders")
+    void shouldTolerateNoBackupFolders() throws IOException {
+        ReflectionTestUtils.setField(backupService, "maxBackupSizeMb", 0L);
+        Files.writeString(tempDir.resolve("stray-file.txt"), "not a backup directory");
+
+        assertDoesNotThrow(() -> backupService.cleanupOldBackups());
+    }
+
+    @Test
     @DisplayName("Should format file size correctly")
     void shouldFormatFileSize() {
         assertEquals("500B", ReflectionTestUtils.invokeMethod(backupService, "formatFileSize", 500L));

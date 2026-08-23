@@ -371,6 +371,12 @@ public class BackupService {
             throw new BackupException("Failed to list backup directories", e);
         }
 
+        if (backupFolders.isEmpty()) {
+            log.warn("Backup directory is over its {} MB limit but contains no backup-* directories to remove",
+                    maxBackupSizeMb);
+            return;
+        }
+
         // Sort by last modified time (oldest first)
         backupFolders.sort(Comparator.comparingLong(path -> {
             try {
@@ -379,6 +385,13 @@ public class BackupService {
                 return 0L;
             }
         }));
+
+        // The newest backup is never a deletion candidate. Without this, a world larger
+        // than the cap deletes every backup on each run — including the one just taken,
+        // since it is in this list too — leaving nothing on disk while the run still
+        // reports success. Exceeding a soft size cap is strictly better than holding no
+        // backup at all, so the newest is kept and the operator is told the cap is short.
+        Path newestBackup = backupFolders.remove(backupFolders.size() - 1);
 
         // Delete oldest backups until we're under the size limit
         for (Path backupFolder : backupFolders) {
@@ -403,6 +416,23 @@ public class BackupService {
             } catch (IOException e) {
                 log.error("Failed to delete backup folder: {}", backupFolder, e);
             }
+        }
+
+        if (currentSize > maxSizeBytes) {
+            long newestSizeMb;
+            try {
+                newestSizeMb = calculateDirectorySize(newestBackup) / 1024 / 1024;
+            } catch (IOException e) {
+                newestSizeMb = -1;
+            }
+            String message = String.format(
+                    "Backup '%s' is %d MB, which alone exceeds the %d MB limit for the whole backup "
+                            + "directory. It has been kept rather than deleted, so the directory is over "
+                            + "its limit and no older backup is being retained. Raise BACKUP_MAX_SIZE_MB "
+                            + "to at least a few times the world size, and the backups volume with it.",
+                    newestBackup.getFileName(), newestSizeMb, maxBackupSizeMb);
+            log.warn(message);
+            sendAlert("Backup Retention Limit Too Small", message, "WARNING", alertsBackupFailure);
         }
 
         log.info("Cleanup completed. New backup directory size: {} MB", 
