@@ -153,7 +153,18 @@ services:
       - NGINX_MAX_BODY_SIZE=${NGINX_MAX_BODY_SIZE:-100M}
       # Applied to the upload routes only; the rest of the dashboard keeps 60s.
       - NGINX_UPLOAD_TIMEOUT=${NGINX_UPLOAD_TIMEOUT:-3600s}
+      # Serve BlueMap's webapp through this proxy at NGINX_BLUEMAP_PATH, so the
+      # map is reachable over HTTPS alongside the dashboard rather than only on
+      # the wrapper's plain-HTTP HOST_BLUEMAP_PORT. Off by default: nothing
+      # listens on the wrapper's 8100 until the BlueMap plugin is installed, and
+      # a route to a dead upstream is a 502 waiting to happen. Equivalent to
+      # nginx.bluemap.{enabled,path} in helm/omcsi/values.yaml.
+      - NGINX_BLUEMAP_ENABLED=${NGINX_BLUEMAP_ENABLED:-false}
+      - NGINX_BLUEMAP_PATH=${NGINX_BLUEMAP_PATH:-/map/}
     depends_on:
+      # nginx resolves the webapp and minecraft-wrapper hostnames when it loads
+      # its config, and webapp itself depends on minecraft-wrapper, so this also
+      # orders nginx after the BlueMap upstream exists.
       - webapp
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:80/"]

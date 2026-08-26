@@ -822,6 +822,29 @@ docker compose --env-file .env.dev2 up -d --build
 
 **Note**: The RCON password must match between the server and web application for admin commands to work. Change the admin username and password from defaults in production for security. All connections to the web dashboard are encrypted using HTTPS to protect your credentials.
 
+#### Serving BlueMap Through the Proxy
+
+The BlueMap plugin serves its own webapp from inside the wrapper container on port 8100. There are two ways to reach it, and they are not exclusive:
+
+| | Address | Transport |
+|---|---|---|
+| Published port (always on) | `http://your-host:8100/` — `HOST_BLUEMAP_PORT` | Plain HTTP, separate port |
+| Proxy route (opt-in) | `https://your-host:8443/map/` — `NGINX_BLUEMAP_PATH` | HTTPS, alongside the dashboard |
+
+Setting `NGINX_BLUEMAP_ENABLED=true` adds the second: nginx proxies `NGINX_BLUEMAP_PATH` (default `/map/`) to the wrapper's BlueMap port, so the map is served over the same TLS connection as the dashboard.
+
+```bash
+NGINX_BLUEMAP_ENABLED=true
+NGINX_BLUEMAP_PATH=/map/
+BLUEMAP_URL=https://your-host:8443/map/   # what the dashboard links to
+```
+
+It is off by default because nothing listens on port 8100 until the BlueMap plugin is actually installed in the server's `plugins/` directory — a route pointed at a dead upstream is a 502 waiting to happen. Install BlueMap first, then enable it.
+
+`BLUEMAP_URL` is a separate setting and is not derived from these: it is whatever address you want the dashboard's map link to point at, so set it to match whichever of the two routes you intend players to use.
+
+On Kubernetes the equivalents are `nginx.bluemap.enabled` and `nginx.bluemap.path` in `helm/omcsi/values.yaml`, with the same `/map/` default. There is no published-port equivalent there — the wrapper's BlueMap port is only reachable through the proxy, so the route is the only way in.
+
 #### Upload Size Limits
 
 Plugin JARs and world archives are uploaded through the nginx reverse proxy, so the proxy limit is the effective cap — a larger request is rejected with a bare `413 Request Entity Too Large` before the dashboard's own error handling runs.
