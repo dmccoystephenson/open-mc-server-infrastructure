@@ -17,6 +17,11 @@ COPY --chown=1000:1000 nginx.conf /etc/nginx/nginx.conf
 # Create SSL directory owned by UID 1000 so entrypoint can write certs without root
 RUN mkdir -p /etc/nginx/ssl && chown 1000:1000 /etc/nginx/ssl
 
+# Directory for the optional route fragments entrypoint.sh generates (BlueMap).
+# Owned by UID 1000 for the same reason as nginx.conf above: /etc/nginx itself is
+# root-owned, so the container user needs its own writable directory here.
+RUN mkdir -p /etc/nginx/omcsi.d && chown 1000:1000 /etc/nginx/omcsi.d
+
 # Copy entrypoint script
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
