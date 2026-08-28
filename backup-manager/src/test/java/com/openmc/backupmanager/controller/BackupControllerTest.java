@@ -34,8 +34,7 @@ class BackupControllerTest {
     @DisplayName("Should trigger backup successfully")
     void shouldTriggerBackupSuccessfully() throws Exception {
         String expectedBackupPath = "/backups/backup-20241211-120000";
-        when(backupService.createBackup()).thenReturn(expectedBackupPath);
-        doNothing().when(backupService).cleanupOldBackups();
+        when(backupService.createBackupAndCleanup()).thenReturn(expectedBackupPath);
 
         mockMvc.perform(post("/api/backups/trigger")
                 .contentType(MediaType.APPLICATION_JSON))
@@ -45,23 +44,25 @@ class BackupControllerTest {
                 .andExpect(jsonPath("$.message").value("Backup completed successfully"))
                 .andExpect(jsonPath("$.backupPath").value(expectedBackupPath));
 
-        verify(backupService, times(1)).createBackup();
-        verify(backupService, times(1)).cleanupOldBackups();
+        verify(backupService, times(1)).createBackupAndCleanup();
     }
 
     @Test
     @DisplayName("Should return error when backup fails")
     void shouldReturnErrorWhenBackupFails() throws Exception {
         String errorMessage = "Backup volume not found";
-        when(backupService.createBackup()).thenThrow(new BackupException(errorMessage));
+        when(backupService.createBackupAndCleanup()).thenThrow(new BackupException(errorMessage));
 
         mockMvc.perform(post("/api/backups/trigger")
                 .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isInternalServerError())
                 .andExpect(jsonPath("$.message").value(errorMessage));
 
-        verify(backupService, times(1)).createBackup();
-        verify(backupService, never()).cleanupOldBackups();
+        verify(backupService, times(1)).createBackupAndCleanup();
+        // Retention is guaranteed inside createBackupAndCleanup rather than sequenced here, so the
+        // controller can no longer skip the prune when a backup fails. Asserting never() on
+        // cleanupOldBackups would re-encode exactly that bug.
+        verify(backupService, never()).createBackup();
     }
 
     @Test

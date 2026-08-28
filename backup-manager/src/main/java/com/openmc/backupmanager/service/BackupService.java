@@ -79,12 +79,55 @@ public class BackupService {
         log.info("Starting scheduled backup at {}", LocalDateTime.now());
         log.info("Backup configuration: directory={}, maxSizeMb={}", backupDirectory, maxBackupSizeMb);
         try {
-            String backupPath = createBackup();
+            String backupPath = createBackupAndCleanup();
             log.info("Backup created at: {}", backupPath);
-            cleanupOldBackups();
             log.info("Scheduled backup completed successfully");
         } catch (Exception e) {
             log.error("Error during scheduled backup", e);
+        }
+    }
+
+    /**
+     * Create a backup, then prune old backups — pruning even when the backup itself failed.
+     *
+     * <p>Retention deliberately runs in a {@code finally}. A failed backup still leaves whatever
+     * {@code tar} managed to write on disk, so skipping the prune lets the backup directory grow
+     * past its cap for as long as the failure goes unnoticed, and the volume is shared with the
+     * server data it is supposed to protect. A single unreadable file under the source directory
+     * is enough to trip this: {@code tar} exits 2, the backup is reported failed, and retention
+     * silently stops running.
+     *
+     * <p>Both the schedule and the manual trigger go through here so neither can drift back to
+     * ordering the two steps so that one skips the other.
+     *
+     * @return the directory the backup was written to
+     * @throws BackupException if the backup fails; a retention failure never masks it
+     */
+    public String createBackupAndCleanup() throws BackupException {
+        try {
+            return createBackup();
+        } finally {
+            runCleanup();
+        }
+    }
+
+    /**
+     * Run retention without letting its failure escape.
+     *
+     * <p>Called from a {@code finally}, so a thrown exception here would replace the backup
+     * exception that is the more useful diagnosis. It is reported through the alert path instead
+     * of being swallowed.
+     */
+    private void runCleanup() {
+        try {
+            cleanupOldBackups();
+        } catch (Exception e) {
+            log.error("Failed to clean up old backups", e);
+            String message = String.format(
+                    "Old backups could not be pruned: %s. The backup directory is no longer being "
+                            + "kept under its %d MB limit and may fill the volume.",
+                    e.getMessage(), maxBackupSizeMb);
+            sendAlert("Backup Cleanup Failed", message, "ERROR", alertsBackupFailure);
         }
     }
 
