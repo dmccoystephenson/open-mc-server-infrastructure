@@ -289,6 +289,18 @@ The workflow:
 - Test the shutdown sequence manually with
   `scripts/test-docker-graceful-shutdown.sh`
 
+### nginx Route Changes (not covered by CI)
+No workflow builds or runs the nginx image: `Validate Code and Configuration`
+runs ShellCheck and `docker compose config` only, and `Test Server Run` starts
+`alert-manager` and `minecraft-wrapper` alone. A broken `include`, a fragment
+that fails to render, or a route that survives being disabled therefore passes
+CI unnoticed.
+- After touching `nginx/nginx.conf`, `nginx/entrypoint.sh` or `nginx/Dockerfile`,
+  run `scripts/test-nginx-bluemap-route.sh` by hand — it builds the image and
+  asserts the resolved configuration in each state
+- The Kubernetes side of the same routes is covered by
+  `helm/omcsi/tests/nginx_test.yaml` under `helm unittest`
+
 ## Performance
 
 The CI pipeline includes multiple workflows:
