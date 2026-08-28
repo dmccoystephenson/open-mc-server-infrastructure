@@ -31,8 +31,7 @@ public class BackupController {
     public ResponseEntity<BackupTriggerResponse> triggerBackup() throws BackupException {
         log.info("Manual backup triggered via API");
 
-        String backupPath = backupService.createBackup();
-        backupService.cleanupOldBackups();
+        String backupPath = backupService.createBackupAndCleanup();
 
         BackupTriggerResponse response = BackupTriggerResponse.builder()
                 .success(true)

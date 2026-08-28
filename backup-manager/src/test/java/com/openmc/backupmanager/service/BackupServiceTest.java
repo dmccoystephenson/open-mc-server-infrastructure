@@ -159,6 +159,52 @@ class BackupServiceTest {
     }
 
     @Test
+    @DisplayName("Prunes old backups even when the backup itself fails")
+    void shouldCleanupWhenBackupFails() throws IOException, InterruptedException {
+        // The regression this guards: retention used to run only after a successful backup, so a
+        // single unreadable file under the source directory (tar exits 2) stopped the prune for as
+        // long as the failure went unnoticed, and the backup directory grew past its cap unchecked.
+        ReflectionTestUtils.setField(backupService, "maxBackupSizeMb", 0L);
+        ReflectionTestUtils.setField(backupService, "sourceDirectory",
+                tempDir.resolve("no-mcserver").toString());
+
+        Path older = tempDir.resolve("backup-20240101-120000");
+        Files.createDirectories(older);
+        Files.writeString(older.resolve("mcserver-backup.tar.gz"), "older backup payload");
+        Thread.sleep(100); // Ensure different timestamps
+        Path newer = tempDir.resolve("backup-20240102-120000");
+        Files.createDirectories(newer);
+        Files.writeString(newer.resolve("mcserver-backup.tar.gz"), "newer backup payload");
+
+        assertThrows(BackupException.class, () -> backupService.createBackupAndCleanup(),
+                "The backup failure must still surface to the caller");
+
+        assertFalse(Files.exists(older),
+                "Retention must run even when the backup fails, or the directory grows past its cap");
+    }
+
+    @Test
+    @DisplayName("Prunes old backups after a successful backup")
+    void shouldCleanupAfterSuccessfulBackup() throws IOException, InterruptedException, BackupException {
+        ReflectionTestUtils.setField(backupService, "maxBackupSizeMb", 0L);
+        Path source = tempDir.resolve("mcserver");
+        Files.createDirectories(source);
+        Files.writeString(source.resolve("server.properties"), "level-name=world");
+        ReflectionTestUtils.setField(backupService, "sourceDirectory", source.toString());
+
+        Path older = tempDir.resolve("backup-20240101-120000");
+        Files.createDirectories(older);
+        Files.writeString(older.resolve("mcserver-backup.tar.gz"), "older backup payload");
+        Thread.sleep(100); // Ensure different timestamps
+
+        String backupPath = backupService.createBackupAndCleanup();
+
+        assertTrue(Files.exists(Path.of(backupPath).resolve("mcserver-backup.tar.gz")),
+                "The new backup archive should exist");
+        assertFalse(Files.exists(older), "The older backup should have been pruned");
+    }
+
+    @Test
     @DisplayName("Should format file size correctly")
     void shouldFormatFileSize() {
         assertEquals("500B", ReflectionTestUtils.invokeMethod(backupService, "formatFileSize", 500L));
