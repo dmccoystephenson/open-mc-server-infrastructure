@@ -94,7 +94,22 @@ Performs security vulnerability scanning using Trivy:
 - **GitHub Security Integration**: Uploads results to GitHub Security tab for review
 - **Non-blocking**: Continues pipeline execution even if vulnerabilities are found (informational)
 
-### 6. End-to-End Server Run (`test-server-run.yml`)
+### 6. nginx Configuration Test (`nginx-config-test`)
+
+Builds the `nginx/` image and runs `scripts/test-nginx-bluemap-route.sh`
+against it. The script asks nginx for the configuration it actually resolves
+(`nginx -T`, includes and all) in four states — BlueMap disabled, enabled at the
+default path, enabled at a custom path, and disabled again after having been
+enabled — and asserts the resulting routes.
+
+This is the only job that builds or runs the nginx image, so it is what catches
+a `location` block that does not parse, an `include` pointing at a path the
+Dockerfile does not create, a fragment whose nginx variables were expanded away
+during generation, and a route that survives its feature flag being turned back
+off. The Kubernetes side of the same routes is covered separately by
+`helm/omcsi/tests/nginx_test.yaml` in the Helm Unit Tests job.
+
+### 7. End-to-End Server Run (`test-server-run.yml`)
 
 A separate workflow that performs end-to-end testing by actually running
 the Minecraft server in a containerized environment.
@@ -130,13 +145,14 @@ It validates the compose file against a `mktemp` copy of `sample.env` rather tha
 `.env`, so your real credentials are left untouched. Because it now runs the test suite
 for all five Gradle modules, expect it to take several minutes on a cold Gradle cache.
 
-Alongside those, it runs ShellCheck, `helm lint`, `helm unittest`, and
+Alongside those, it runs ShellCheck, `helm lint`, `helm unittest`,
+`scripts/test-nginx-bluemap-route.sh`, and
 `terraform fmt -check`/`init -backend=false`/`validate` for the `linode`, `aws`,
 `existing-cluster`, and `hetzner` targets. ShellCheck, Helm, the helm-unittest
-plugin, and Terraform are optional: a check whose tool is not installed is
-skipped with a warning and repeated in the summary printed at the end of the
-run. Skipped checks are still enforced by CI, so a local run with skips is a
-weaker signal than a green pipeline.
+plugin, Terraform, and a reachable Docker daemon are all optional: a check whose
+tool is unavailable is skipped with a warning and repeated in the summary
+printed at the end of the run. Skipped checks are still enforced by CI, so a
+local run with skips is a weaker signal than a green pipeline.
 
 ## What Gets Checked
 
@@ -151,6 +167,8 @@ weaker signal than a green pipeline.
 - `docker compose config` resolves the full stack
 - `sample.env` declares all required keys
 - Terraform stacks pass `terraform validate`
+- The nginx image builds and the routes it resolves match the ones its
+  environment variables ask for
 
 ### ✅ Kubernetes / Helm
 - `helm lint` against `helm/omcsi`
@@ -289,17 +307,21 @@ The workflow:
 - Test the shutdown sequence manually with
   `scripts/test-docker-graceful-shutdown.sh`
 
-### nginx Route Changes (not covered by CI)
-No workflow builds or runs the nginx image: `Validate Code and Configuration`
-runs ShellCheck and `docker compose config` only, and `Test Server Run` starts
-`alert-manager` and `minecraft-wrapper` alone. A broken `include`, a fragment
-that fails to render, or a route that survives being disabled therefore passes
-CI unnoticed.
-- After touching `nginx/nginx.conf`, `nginx/entrypoint.sh` or `nginx/Dockerfile`,
-  run `scripts/test-nginx-bluemap-route.sh` by hand — it builds the image and
-  asserts the resolved configuration in each state
+### nginx Configuration Test Failures
+The job builds the nginx image and asserts the configuration nginx resolves,
+so a failure is either a build failure or a route assertion.
+- An empty render ("nginx rejected its configuration") means `nginx -T` refused
+  the configuration outright — reproduce with
+  `docker run --rm --user 0 <image> nginx -T` and read the error it prints
+- A failed route assertion names the string it expected; check
+  `nginx/entrypoint.sh`'s fragment generation and `nginx/nginx.conf`'s
+  `include /etc/nginx/omcsi.d/*.conf;` line
+- Reproduce the whole job locally with `scripts/test-nginx-bluemap-route.sh`
+  (also run by `scripts/ci-local.sh` when a Docker daemon is reachable)
 - The Kubernetes side of the same routes is covered by
-  `helm/omcsi/tests/nginx_test.yaml` under `helm unittest`
+  `helm/omcsi/tests/nginx_test.yaml` under `helm unittest`, so a route that
+  fails here but passes there points at the Compose-only generation path in
+  `nginx/entrypoint.sh`
 
 ## Performance
 

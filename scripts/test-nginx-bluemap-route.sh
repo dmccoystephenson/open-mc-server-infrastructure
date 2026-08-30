@@ -1,12 +1,14 @@
 #!/bin/bash
 # Test script to verify the optional BlueMap proxy route on Docker Compose.
 #
-# CI never builds or runs the nginx image — "Validate Code and Configuration"
-# only runs shellcheck and `docker compose config`, and "Test Server Run" starts
-# alert-manager and minecraft-wrapper alone — so nothing there catches a broken
-# include, a fragment that fails to render, or a route that survives being
-# turned off. This script covers that gap and is meant to be run by hand after
-# touching nginx/nginx.conf, nginx/entrypoint.sh or nginx/Dockerfile.
+# No other check builds or runs the nginx image — "Validate Code and
+# Configuration" only runs shellcheck and `docker compose config`, and "Test
+# Server Run" starts alert-manager and minecraft-wrapper alone — so nothing else
+# catches a broken include, a fragment that fails to render, or a route that
+# survives being turned off. This script covers that gap. It is run in CI by the
+# "nginx Configuration Test" job (.github/workflows/ci.yml) and locally by
+# scripts/ci-local.sh whenever a Docker daemon is reachable; run it directly
+# after touching nginx/nginx.conf, nginx/entrypoint.sh or nginx/Dockerfile.
 #
 # The Kubernetes equivalent of these assertions lives in
 # helm/omcsi/tests/nginx_test.yaml and runs under `helm unittest`.

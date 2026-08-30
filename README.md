@@ -1196,6 +1196,7 @@ This repository includes a comprehensive CI pipeline that automatically validate
 - **Shell Script Validation**: Syntax checking and ShellCheck linting for all bash scripts
 - **Docker Configuration**: Validates Dockerfile and Docker Compose configurations
 - **Environment Configuration**: Ensures all required environment variables are properly defined
+- **nginx Configuration**: Builds the nginx image and asserts the routes it actually resolves
 - **Security Scanning**: Trivy security scanning for vulnerabilities
 - **Server Run Testing**: Actually runs the Minecraft server to verify it starts, operates, and stops correctly
 - **Integration Testing**: End-to-end validation of the complete setup
@@ -1209,11 +1210,12 @@ Before submitting changes, you can run the same validation checks locally:
 ```
 
 This mirrors the CI pipeline to catch issues early: shell script syntax and
-ShellCheck linting, Docker Compose configuration, environment and documentation
-checks, `helm lint`, `helm unittest`, Terraform formatting and validation for
-all four targets, and the Gradle test suite for every module. Checks whose tool
-(ShellCheck, Helm, the helm-unittest plugin, Terraform) is not installed locally
-are skipped with a warning and listed in the summary at the end of the run.
+ShellCheck linting, Docker Compose configuration, the nginx route configuration
+test, environment and documentation checks, `helm lint`, `helm unittest`,
+Terraform formatting and validation for all four targets, and the Gradle test
+suite for every module. Checks whose tool (ShellCheck, Helm, the helm-unittest
+plugin, Terraform, a reachable Docker daemon) is unavailable locally are skipped
+with a warning and listed in the summary at the end of the run.
 
 ### CI Pipeline Status
 
