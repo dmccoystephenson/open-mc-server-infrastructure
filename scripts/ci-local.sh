@@ -20,9 +20,20 @@ have() {
 
 # The docker CLI being on PATH is not enough for the checks that build or run a
 # container — a reachable daemon is required too, which is a separate failure on
-# a machine where the CLI is installed but the engine is not running.
+# a machine where the CLI is installed but the engine is not running. The result
+# is cached because `docker info` blocks until its connection attempt times out
+# when there is no daemon, and more than one check asks.
+DOCKER_AVAILABLE=""
+
 have_docker() {
-    have docker && docker info > /dev/null 2>&1
+    if [ -z "${DOCKER_AVAILABLE}" ]; then
+        if have docker && docker info > /dev/null 2>&1; then
+            DOCKER_AVAILABLE="yes"
+        else
+            DOCKER_AVAILABLE="no"
+        fi
+    fi
+    [ "${DOCKER_AVAILABLE}" = "yes" ]
 }
 
 skip() {
