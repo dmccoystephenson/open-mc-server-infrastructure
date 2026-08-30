@@ -417,6 +417,29 @@ jobs:
         terraform -chdir=terraform/hetzner validate
         echo "✓ Hetzner Terraform configuration is valid"
 
+  nginx-config-test:
+    name: nginx Configuration Test
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    # Builds the nginx image and asserts the configuration nginx actually
+    # resolves (`nginx -T`, includes and all). No other job builds or runs the
+    # nginx image, so without this a broken include, a fragment that fails to
+    # render, or a route that survives being disabled would pass CI unnoticed.
+    # The Kubernetes side of the same routes is covered by
+    # helm/omcsi/tests/nginx_test.yaml in the Helm Unit Tests job.
+    - name: Test nginx BlueMap route
+      run: |
+        echo "🔀 Testing nginx route configuration..."
+        ./scripts/test-nginx-bluemap-route.sh
+        echo "✓ nginx route configuration verified"
+
   security-scan:
     name: Security Scanning
     runs-on: ubuntu-latest

@@ -40,15 +40,15 @@ Before submitting a pull request, run the local CI validation script:
 ```
 
 It covers shell script syntax and ShellCheck linting, Docker Compose
-configuration, environment and documentation checks, `helm lint`,
-`helm unittest`, `terraform fmt`/`validate` for all four Terraform targets, and
-the Gradle test suite for every module.
+configuration, the nginx route configuration test, environment and documentation
+checks, `helm lint`, `helm unittest`, `terraform fmt`/`validate` for all four
+Terraform targets, and the Gradle test suite for every module.
 
 ShellCheck, Helm, the [helm-unittest](https://github.com/helm-unittest/helm-unittest)
-plugin, and Terraform are optional locally: any check whose tool is missing is
-skipped with a warning and listed again in the summary the script prints at the
-end. Those checks are still enforced by CI, so installing the tools is the only
-way to catch those failures before pushing:
+plugin, Terraform, and a reachable Docker daemon are optional locally: any check
+whose tool is unavailable is skipped with a warning and listed again in the
+summary the script prints at the end. Those checks are still enforced by CI, so
+installing the tools is the only way to catch those failures before pushing:
 
 ```bash
 helm plugin install https://github.com/helm-unittest/helm-unittest --version v1.1.0

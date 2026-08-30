@@ -18,6 +18,13 @@ have() {
     command -v "$1" > /dev/null 2>&1
 }
 
+# The docker CLI being on PATH is not enough for the checks that build or run a
+# container — a reachable daemon is required too, which is a separate failure on
+# a machine where the CLI is installed but the engine is not running.
+have_docker() {
+    have docker && docker info > /dev/null 2>&1
+}
+
 skip() {
     SKIPPED_CHECKS+=("$1")
     echo "⚠️  Skipping $1"
@@ -45,16 +52,32 @@ else
 fi
 
 echo "🐳 Checking Docker configuration..."
-# Validate against a throwaway env file rather than the repo's .env — that file
-# is gitignored and holds real credentials (RCON/admin passwords, Discord
-# webhook, Anthropic API key), so it must never be overwritten or deleted here.
-CI_ENV_FILE="$(mktemp)"
-trap 'rm -f "${CI_ENV_FILE}"' EXIT
-sed -e 's/YOUR_UUID_HERE/test-uuid/g' \
-    -e 's/YOUR_USERNAME_HERE/testuser/g' \
-    sample.env > "${CI_ENV_FILE}"
-docker compose --env-file "${CI_ENV_FILE}" config > /dev/null
-echo "✅ Docker Compose validation passed"
+if have_docker; then
+    # Validate against a throwaway env file rather than the repo's .env — that
+    # file is gitignored and holds real credentials (RCON/admin passwords,
+    # Discord webhook, Anthropic API key), so it must never be overwritten or
+    # deleted here.
+    CI_ENV_FILE="$(mktemp)"
+    trap 'rm -f "${CI_ENV_FILE}"' EXIT
+    sed -e 's/YOUR_UUID_HERE/test-uuid/g' \
+        -e 's/YOUR_USERNAME_HERE/testuser/g' \
+        sample.env > "${CI_ENV_FILE}"
+    docker compose --env-file "${CI_ENV_FILE}" config > /dev/null
+    echo "✅ Docker Compose validation passed"
+else
+    skip "docker compose config (no reachable Docker daemon)"
+fi
+
+echo "🔀 Checking nginx route configuration..."
+# Mirrors the nginx-config-test job in .github/workflows/ci.yml. It builds the
+# nginx image and asserts the configuration nginx actually resolves, which no
+# other check covers on the Docker Compose target.
+if have_docker; then
+    ./scripts/test-nginx-bluemap-route.sh
+    echo "✅ nginx route configuration passed"
+else
+    skip "nginx route configuration test (no reachable Docker daemon)"
+fi
 
 echo "⚙️ Checking environment configuration..."
 test -f sample.env
