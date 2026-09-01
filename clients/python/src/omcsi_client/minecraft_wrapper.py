@@ -11,7 +11,11 @@ Two things about its API are worth knowing before using this client.
 else on the wrapper — including ``stop`` and ``command`` — is unauthenticated.
 The wrapper is meant to sit on an internal network behind the web app, never
 exposed directly. Sending a token to the other endpoints is harmless but does
-nothing.
+nothing. Note that OMCSI's nginx proxy fronts the *web app*, not this service,
+with one deployment-specific exception: the Helm chart's nginx proxies
+``/api/plugins/`` straight to the wrapper, while the Docker Compose nginx does
+not. Point this client at the wrapper's own address unless you have checked
+otherwise.
 
 **The lifecycle endpoints are asynchronous.** ``start``, ``stop``,
 ``restart`` and ``shutdown`` answer ``202 Accepted`` as soon as the work is

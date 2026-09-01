@@ -35,14 +35,27 @@ One client per service, because OMCSI is several services rather than one API:
 | `BackupManagerClient` | `backup-manager` | 8091 | takes and reports on backups |
 | `AlertManagerClient` | `alert-manager` | 8090 | fans alerts out to Discord and in-game |
 
-A caveat that has caught people out: **OMCSI's nginx proxy does not front these
-services.** It forwards `/` to the web app, whose admin API is a different,
-username/password-authenticated surface that proxies *through* to the wrapper.
-Point this client at the wrapper itself — `http://minecraft-wrapper:8092` from
-inside the compose network or the cluster, or a published/port-forwarded port
-from outside. The one exception is `/api/plugins/deploy` and
-`/api/world/upload`, which several deployments expose through the proxy; if
-yours does, give the client that base URL instead.
+A caveat that has caught people out: **OMCSI's nginx proxy mostly does not
+front these services.** Its catch-all `location /` forwards to the *web app*,
+whose admin API is a separate surface — an admin username and password in a
+JSON body — that proxies through to the wrapper. Point this client at the
+wrapper itself: `http://minecraft-wrapper:8092` inside the compose network,
+`http://<release>-minecraft-wrapper-internal:8092` inside the cluster, or a
+published or port-forwarded port from outside.
+
+One route is proxied straight through to the wrapper — and which one differs
+between deployments:
+
+- On **Kubernetes**, the chart's nginx sends `/api/plugins/` to the wrapper, so
+  `https://<host>/api/plugins/deploy` reaches `deploy_plugin()` unchanged.
+- On **Docker Compose**, nginx has no such rule. `/api/plugins/deploy` lands on
+  the web app, which has no route of that name, and answers 404.
+
+`/api/world/upload` is the other way round on both: nginx routes `/api/world/`
+to the web app, whose *own* upload endpoint takes an admin username and
+password and forwards to the wrapper using the deploy token. So a proxy base
+URL will not work for `replace_world()` on either deployment — give that the
+wrapper's address.
 
 ## Example
 
