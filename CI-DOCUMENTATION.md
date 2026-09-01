@@ -109,7 +109,28 @@ during generation, and a route that survives its feature flag being turned back
 off. The Kubernetes side of the same routes is covered separately by
 `helm/omcsi/tests/nginx_test.yaml` in the Helm Unit Tests job.
 
-### 7. End-to-End Server Run (`test-server-run.yml`)
+### 7. Python Client Tests (`python-client-test`)
+
+Installs `clients/python` with `pip install -e` and runs its `unittest` suite
+on a matrix of Python 3.9 and 3.13 — the floor and the ceiling of the
+`requires-python` range the package advertises.
+
+Two details are deliberate:
+
+- The package is **installed** rather than run off the source tree, so a broken
+  `pyproject.toml`, a missing `py.typed`, or a package that does not actually
+  ship its modules fails here rather than at release time.
+- A final step asserts the installed distribution declares **no runtime
+  dependencies**. That is the client's whole selling point, and CI installs
+  into a fresh environment where an accidental dependency would resolve
+  silently.
+
+The tests themselves need no OMCSI deployment: they stand up a real
+`http.server` on localhost and point the client at it, so the transport —
+headers, multipart framing, status handling, timeouts — is exercised for real
+rather than mocked.
+
+### 8. End-to-End Server Run (`test-server-run.yml`)
 
 A separate workflow that performs end-to-end testing by actually running
 the Minecraft server in a containerized environment.
@@ -144,6 +165,8 @@ This script mirrors the CI pipeline checks and helps catch issues before submitt
 It validates the compose file against a `mktemp` copy of `sample.env` rather than your
 `.env`, so your real credentials are left untouched. Because it now runs the test suite
 for all five Gradle modules, expect it to take several minutes on a cold Gradle cache.
+It also runs the Python client's test suite, off `PYTHONPATH=src` rather than
+installing the package, so a local run never writes to your Python environment.
 
 Alongside those, it runs ShellCheck, `helm lint`, `helm unittest`,
 `scripts/test-nginx-bluemap-route.sh`, and
@@ -161,6 +184,8 @@ local run with skips is a weaker signal than a green pipeline.
 - ShellCheck linting compliance
 - Java module compilation and unit tests for `web-app`,
   `minecraft-wrapper`, `agent-manager`, `alert-manager`, and `backup-manager`
+- Python client installs from `clients/python` and passes its unit tests on
+  Python 3.9 and 3.13, with no runtime dependencies
 
 ### ✅ Configuration Integrity
 - Dockerfile parses and the `base` stage builds
@@ -322,6 +347,34 @@ so a failure is either a build failure or a route assertion.
   `helm/omcsi/tests/nginx_test.yaml` under `helm unittest`, so a route that
   fails here but passes there points at the Compose-only generation path in
   `nginx/entrypoint.sh`
+
+### Python Client Test Failures
+- Reproduce with `cd clients/python && PYTHONPATH=src python3 -m unittest discover -s tests -t tests -v`
+- A failure on only one matrix entry is a version-compatibility problem, not a
+  logic one; check what the newer or older stdlib does differently before
+  changing the test
+- A failure in the "no runtime dependencies" step means something was added to
+  `dependencies` in `clients/python/pyproject.toml`. That list is meant to stay
+  empty — the client is standard library only by design
+- A failure importing `omcsi_client` after a green install usually means a new
+  module was added under `src/omcsi_client/` but the package was not
+  reinstalled locally; CI installs fresh every run
+
+## Releasing the Python client (`python-client-publish.yml`)
+
+A separate `workflow_dispatch`-only workflow builds `clients/python` and
+uploads it to PyPI (or TestPyPI, via a choice input). It never runs on push: the
+version lives in `clients/python/pyproject.toml` and cutting a release is a
+decision, not a side effect of merging.
+
+Before uploading it re-runs the test suite, checks the artifacts with
+`twine check`, and asserts that `pyproject.toml`'s version matches
+`omcsi_client.__version__` — a mismatch would ship a package that misreports
+itself.
+
+It needs a `PYPI_API_TOKEN` repository secret (`TEST_PYPI_API_TOKEN` for the
+TestPyPI target). The job declares `environment: pypi`, so attaching a
+repository environment of that name adds a required approval before the upload.
 
 ## Performance
 

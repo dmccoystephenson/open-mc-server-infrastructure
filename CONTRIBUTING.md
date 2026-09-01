@@ -42,7 +42,8 @@ Before submitting a pull request, run the local CI validation script:
 It covers shell script syntax and ShellCheck linting, Docker Compose
 configuration, the nginx route configuration test, environment and documentation
 checks, `helm lint`, `helm unittest`, `terraform fmt`/`validate` for all four
-Terraform targets, and the Gradle test suite for every module.
+Terraform targets, the Gradle test suite for every module, and the Python
+client's unit tests.
 
 ShellCheck, Helm, the [helm-unittest](https://github.com/helm-unittest/helm-unittest)
 plugin, Terraform, and a reachable Docker daemon are optional locally: any check

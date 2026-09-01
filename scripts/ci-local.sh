@@ -156,6 +156,18 @@ for module in web-app minecraft-wrapper agent-manager alert-manager backup-manag
     echo "✅ ${module} tests passed"
 done
 
+echo "🐍 Running Python client tests..."
+if have python3; then
+    # Run against src/ on PYTHONPATH rather than pip-installing, so a local run
+    # never writes to the developer's environment. CI installs the package
+    # instead, which additionally proves pyproject.toml is correct — see the
+    # python-client-test job in .github/workflows/ci.yml.
+    (cd clients/python && PYTHONPATH=src python3 -m unittest discover -s tests -t tests)
+    echo "✅ Python client tests passed"
+else
+    skip "Python client tests (python3 is not installed)"
+fi
+
 if [ ${#SKIPPED_CHECKS[@]} -eq 0 ]; then
     echo "🎉 All local CI checks passed!"
 else

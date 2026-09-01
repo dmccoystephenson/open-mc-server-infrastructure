@@ -463,3 +463,57 @@ jobs:
         echo "🔀 Testing nginx route configuration..."
         ./scripts/test-nginx-bluemap-route.sh
         echo "✓ nginx route configuration verified"
+  python-client-test:
+    name: Python Client Tests
+    runs-on: ubuntu-latest
+
+    # The matrix is the floor and the ceiling of what clients/python/pyproject.toml
+    # claims to support. Anything in between is interpolation; the two ends are
+    # where a stdlib behaviour change actually breaks the client.
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.9', '3.13']
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    # Installed rather than run off the source tree, so a broken pyproject.toml
+    # or a package that does not actually ship its modules fails here instead of
+    # at release time.
+    - name: Install the client
+      run: |
+        echo "🐍 Installing omcsi-client..."
+        python -m pip install --upgrade pip
+        python -m pip install -e ./clients/python
+        python -c "import omcsi_client; print('omcsi-client', omcsi_client.__version__)"
+
+    - name: Run Python client tests
+      working-directory: clients/python
+      run: |
+        echo "🧪 Running Python client tests..."
+        python -m unittest discover -s tests -t tests -v
+        echo "✓ All tests passed"
+
+    - name: Verify the client has no runtime dependencies
+      run: |
+        echo "📦 Checking omcsi-client declares no runtime dependencies..."
+        # The package's selling point is that it installs anywhere Python does.
+        # A dependency added by accident would go unnoticed otherwise, because
+        # CI installs into a fresh environment where anything resolves.
+        deps=$(python -c "
+        from importlib.metadata import requires
+        print('\n'.join(requires('omcsi-client') or []))
+        ")
+        if [ -n "${deps}" ]; then
+          echo "FAIL: omcsi-client declares runtime dependencies:"
+          echo "${deps}"
+          exit 1
+        fi
+        echo "✓ No runtime dependencies"

@@ -15,6 +15,7 @@ An open, community-agnostic, Docker-based Minecraft server infrastructure runnin
 - **Persistent Data**: Server data persists across container restarts
 - **Easy Management**: Simple scripts for starting and stopping the server
 - **RCON Support**: Send commands to the server remotely via web interface
+- **Python Client**: A dependency-free client library for the REST APIs (`clients/python/`)
 
 ## Prerequisites
 
@@ -970,6 +971,39 @@ configuration toggles — then synthesising a natural language summary.
 This differs from a simple `/status` command because the agent **reasons** over the combined data rather than just returning a single API response. If any upstream source is unavailable the agent acknowledges the gap explicitly (e.g. "I wasn't able to reach the backup manager, but based on server status and recent alerts…"). Operators can control whether recent logs are included in diagnostics (and how they are anonymised) using the `diagnostics.logs.*` privacy toggles.
 
 
+## Client Libraries
+
+The services expose REST APIs, and `clients/` holds official client libraries
+for them so callers do not have to hand-roll `curl`.
+
+### Python
+
+[`clients/python/`](clients/python/README.md) — `omcsi-client`, a client for the
+minecraft-wrapper, backup-manager and alert-manager APIs. Standard library
+only, no runtime dependencies, type hints throughout.
+
+```bash
+pip install omcsi-client
+```
+
+```python
+from omcsi_client import Omcsi
+
+omcsi = Omcsi(wrapper_url="http://localhost:8092", deploy_token="...")
+
+print(omcsi.wrapper.status().running)
+omcsi.wrapper.deploy_plugin("target/MyPlugin-1.2.3.jar", plugin_name="MyPlugin.jar")
+omcsi.backups.trigger()
+
+# Anything that interrupts a live game is behind `.disruptive`
+# and will not run without confirm=True:
+omcsi.wrapper.disruptive.restart(confirm=True)
+```
+
+See [clients/python/README.md](clients/python/README.md) for the full endpoint
+coverage, the timeout defaults for each class of call, the error model, and
+when to use the deposit box instead of an HTTP upload.
+
 ## Management
 
 ### Starting the Server
@@ -1172,6 +1206,17 @@ Spring Boot service providing testable, REST-accessible wrapper functionality fo
   - Alert integration
   - Process management for Minecraft server
 
+#### Python Client
+Client library for the REST APIs above, published to PyPI as `omcsi-client`.
+- **Location**: `clients/python/`
+- **Documentation**: [clients/python/README.md](clients/python/README.md)
+- **Features**:
+  - One client per service, plus an `Omcsi` facade over all three
+  - Standard library only; no runtime dependencies
+  - Distinguishes a refusal by the service from an unreachable service
+  - Disruptive calls (stop, restart, shutdown, console command, world replace)
+    require an explicit `confirm=True`
+
 #### Web App
 Spring Boot web dashboard for server management and monitoring.
 - **Port**: 8080 (behind nginx proxy on 8443)
@@ -1197,6 +1242,7 @@ This repository includes a comprehensive CI pipeline that automatically validate
 - **Docker Configuration**: Validates Dockerfile and Docker Compose configurations
 - **Environment Configuration**: Ensures all required environment variables are properly defined
 - **nginx Configuration**: Builds the nginx image and asserts the routes it actually resolves
+- **Python Client**: Installs and tests `clients/python` on the oldest and newest supported Python versions
 - **Security Scanning**: Trivy security scanning for vulnerabilities
 - **Server Run Testing**: Actually runs the Minecraft server to verify it starts, operates, and stops correctly
 - **Integration Testing**: End-to-end validation of the complete setup
@@ -1212,8 +1258,8 @@ Before submitting changes, you can run the same validation checks locally:
 This mirrors the CI pipeline to catch issues early: shell script syntax and
 ShellCheck linting, Docker Compose configuration, the nginx route configuration
 test, environment and documentation checks, `helm lint`, `helm unittest`,
-Terraform formatting and validation for all four targets, and the Gradle test
-suite for every module. Checks whose tool (ShellCheck, Helm, the helm-unittest
+Terraform formatting and validation for all four targets, the Gradle test
+suite for every module, and the Python client's test suite. Checks whose tool (ShellCheck, Helm, the helm-unittest
 plugin, Terraform, a reachable Docker daemon) is unavailable locally are skipped
 with a warning and listed in the summary at the end of the run.
 
