@@ -1,0 +1,82 @@
+name: Publish Python Client
+
+# Manual only, and deliberately so: the client's version lives in
+# clients/python/pyproject.toml and a release is a decision, not a side effect
+# of merging. Nothing here runs on push.
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: 'Package index to publish to'
+        type: choice
+        options:
+          - pypi
+          - testpypi
+        default: pypi
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    name: Build and publish omcsi-client
+    runs-on: ubuntu-latest
+    # Attach a repository environment named 'pypi' to require an approval
+    # before the upload step runs. The job works without one.
+    environment: pypi
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Install build tooling
+        run: python -m pip install --upgrade pip build twine
+
+      - name: Check the version is consistent
+        working-directory: clients/python
+        run: |
+          # pyproject.toml is what PyPI sees; __version__ is what callers see.
+          # A mismatch ships a package that misreports itself, so fail here
+          # rather than after the upload.
+          project_version=$(grep -m1 '^version = ' pyproject.toml | cut -d'"' -f2)
+          module_version=$(grep -m1 '^__version__ = ' src/omcsi_client/__init__.py | cut -d'"' -f2)
+          echo "pyproject.toml: ${project_version}"
+          echo "__init__.py:    ${module_version}"
+          [ "${project_version}" = "${module_version}" ] || {
+            echo "FAIL: version mismatch between pyproject.toml and omcsi_client.__version__"
+            exit 1
+          }
+
+      - name: Run the test suite before publishing
+        working-directory: clients/python
+        run: |
+          python -m pip install -e .
+          python -m unittest discover -s tests -t tests
+
+      - name: Build sdist and wheel
+        working-directory: clients/python
+        run: python -m build
+
+      - name: Check the artifacts
+        working-directory: clients/python
+        run: python -m twine check dist/*
+
+      - name: Publish to PyPI
+        if: inputs.target == 'pypi'
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: clients/python/dist
+          password: ${{ secrets.PYPI_API_TOKEN }}
+
+      - name: Publish to TestPyPI
+        if: inputs.target == 'testpypi'
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: clients/python/dist
+          password: ${{ secrets.TEST_PYPI_API_TOKEN }}
+          repository-url: https://test.pypi.org/legacy/

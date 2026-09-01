@@ -43,3 +43,11 @@ terraform/**/*.tfstate.backup
 terraform/**/terraform.tfvars
 terraform/linode/kubeconfig.yaml
 terraform/hetzner/kubeconfig.yaml
+
+# Python client build artifacts (clients/python)
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+clients/python/build/
+clients/python/dist/
