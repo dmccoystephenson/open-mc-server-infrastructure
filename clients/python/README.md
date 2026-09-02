@@ -149,7 +149,7 @@ override.
 | Field | Default | Covers |
 |---|---|---|
 | `status` | 8s | `status`, `metrics`, `logs`, `latest`, health checks |
-| `control` | 30s | `start`/`stop`/`restart`/`shutdown`/`command`/`messages` — all `202`-and-return |
+| `control` | 30s | `start`/`stop`/`restart`/`shutdown`/`command` (`202`-and-return) and `messages` (forwarded synchronously) |
 | `deploy` | 300s | plugin JAR upload |
 | `upload` | 3600s | world archive upload: transfer *plus* validate, extract, swap, restart |
 | `backup` | 1800s | backup trigger, which copies the whole server directory synchronously |

@@ -38,8 +38,9 @@ class AlertDestination(str, Enum):
     """Where an alert or message is delivered.
 
     Also the destination vocabulary for the wrapper's ``/api/messages``, which
-    upper-cases whatever it is given and forwards it to the alert manager as a
-    one-element destination list.
+    upper-cases what it is given and forwards it to the alert manager as a
+    one-element destination list. A value outside this enum is rejected by the
+    wrapper with a 400 rather than forwarded.
     """
 
     DISCORD = "DISCORD"

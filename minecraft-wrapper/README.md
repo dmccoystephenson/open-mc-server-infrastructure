@@ -82,6 +82,22 @@ The Spring Boot wrapper is built as part of the main Minecraft server Docker ima
     -d '{"text": "Server maintenance in 5 minutes", "destination": "MINECRAFT"}'
   ```
 
+  The wrapper does not deliver messages itself: it forwards them to the
+  alert manager (`alert.manager.url`), which fans them out to Discord and to
+  the game console over RCON. That forward is synchronous, and its outcome is
+  what the response reports:
+
+  | Status | Meaning |
+  |---|---|
+  | `200` | the alert manager accepted the message |
+  | `400` | `text` was blank, or `destination` was not `MINECRAFT` or `DISCORD` |
+  | `502` | the alert manager refused the message, or could not be reached — **nothing was delivered** |
+
+  A `200` means the alert manager took responsibility for the message, not
+  that a player saw it. Delivery to each destination is best-effort inside the
+  alert manager: it logs an RCON or Discord failure and moves on to the next
+  destination. `GET /api/alerts` on the alert manager shows what it received.
+
 ### Plugin Deployment
 
 - `POST /api/plugins/deploy` - Deploy a plugin JAR to the server's `plugins/` directory.

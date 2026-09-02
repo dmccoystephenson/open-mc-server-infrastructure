@@ -175,9 +175,20 @@ class MinecraftWrapperClient:
     ) -> str:
         """``POST /api/messages`` — broadcast a message via the alert manager.
 
-        Fire-and-forget by design: the wrapper hands the message to the alert
-        manager and swallows any failure there, so a 200 means the wrapper
-        accepted the message, not that it was delivered.
+        The wrapper does not deliver messages itself; it forwards them to the
+        alert manager, synchronously, and reports what happened. A 200 means
+        the alert manager accepted the message. A failed forward raises
+        :class:`~omcsi_client.errors.OmcsiResponseError` with status 502, and
+        nothing was delivered.
+
+        What a 200 still does *not* promise is that a player saw it. Once the
+        alert manager has the message, delivery to Discord and to the game
+        console over RCON is best-effort there: a failure on one destination
+        is logged and the next is tried. ``AlertManagerClient.recent()`` shows
+        what the alert manager received.
+
+        ``destination`` must be one the alert manager knows — ``MINECRAFT`` or
+        ``DISCORD``; anything else is a 400.
         """
         if not text or not text.strip():
             raise ValueError("message text must not be blank")
