@@ -60,6 +60,16 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
     }
 
+    @ExceptionHandler(MessageDeliveryException.class)
+    public ResponseEntity<Map<String, Object>> handleMessageDelivery(MessageDeliveryException ex) {
+        // 502 rather than 500: the wrapper itself is fine, the service it depends
+        // on to deliver the message is not. Answering 200 here would tell the
+        // caller a message was broadcast when it never left the wrapper.
+        log.error("Message delivery failed: {}", ex.getMessage(), ex);
+        Map<String, Object> body = buildErrorBody(HttpStatus.BAD_GATEWAY, ex.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(body);
+    }
+
     @ExceptionHandler(java.io.IOException.class)
     public ResponseEntity<Map<String, Object>> handleIOException(java.io.IOException ex) {
         log.error("I/O error: {}", ex.getMessage(), ex);
