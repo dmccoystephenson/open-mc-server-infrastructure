@@ -132,13 +132,24 @@ variable "image_registry" {
 }
 
 variable "image_tag" {
-  description = "Container image tag for the OMCSI images. Defaults to 'latest'. Pin this to a released tag (e.g. '1.4.0') for reproducible deployments — the Spigot jar is compiled into the image at build time, so a moving 'latest' also moves the Minecraft version."
+  description = "Image tag for the Minecraft server image (open-mc-server) only. Defaults to 'latest'. Pin it to a published tag (e.g. '26.2') for reproducible deployments: the Spigot jar is compiled into this image at build time, so a moving 'latest' also moves the Minecraft version. CI publishes this image as both 'latest' and the Minecraft version it was built with. Keep it consistent with minecraft_version — the entrypoint selects the jar by that name and exits if the image does not contain it."
   type        = string
   default     = "latest"
 
   validation {
     condition     = length(trimspace(var.image_tag)) > 0 && length(regexall("\\s", var.image_tag)) == 0
     error_message = "image_tag must be a non-empty tag with no whitespace."
+  }
+}
+
+variable "supporting_image_tag" {
+  description = "Image tag for the five supporting images (webapp, nginx, backup-manager, alert-manager, agent-manager). Defaults to 'latest' and should normally stay there: CI publishes these images with the 'latest' tag ONLY, so pointing this at a version tag yields ImagePullBackOff. It is exposed separately from image_tag so the Minecraft image can be pinned without dragging the others to a tag that does not exist."
+  type        = string
+  default     = "latest"
+
+  validation {
+    condition     = length(trimspace(var.supporting_image_tag)) > 0 && length(regexall("\\s", var.supporting_image_tag)) == 0
+    error_message = "supporting_image_tag must be a non-empty tag with no whitespace."
   }
 }
 

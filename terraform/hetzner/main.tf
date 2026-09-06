@@ -30,6 +30,7 @@ locals {
     admin_password           = var.admin_password
     image_registry           = var.image_registry
     image_tag                = var.image_tag
+    supporting_image_tag     = var.supporting_image_tag
     minecraft_nodeport       = var.minecraft_node_port
     http_nodeport            = var.http_node_port
     https_nodeport           = var.https_node_port

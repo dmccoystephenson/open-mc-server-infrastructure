@@ -48,10 +48,17 @@ admin_password = "strongpassword"
 # The default images are multi-arch (amd64 + arm64), so they run on CAX (ARM).
 # image_registry = "dmccoystephenson"
 
-# Image tag — defaults to "latest", which floats. The Spigot jar is compiled
-# into the image at build time, so a moving "latest" also moves the Minecraft
-# version; pin a released tag for a reproducible deployment.
-# image_tag = "latest"
+# Image tag for the Minecraft server image (open-mc-server) only. Defaults to
+# "latest", which floats. The Spigot jar is compiled into the image at build
+# time, so a moving "latest" also moves the Minecraft version; pin a published
+# tag for a reproducible deployment, and keep it consistent with
+# minecraft_version.
+# image_tag = "26.2"
+
+# Image tag for the five supporting images (webapp, nginx, backup-manager,
+# alert-manager, agent-manager). Leave this at "latest": CI publishes those
+# images under the "latest" tag ONLY, so a version tag here fails to pull.
+# supporting_image_tag = "latest"
 
 # Optional: plugins installed on server setup — a comma-separated list of
 # direct download URLs to plugin JARs, no spaces. A plugin already present in

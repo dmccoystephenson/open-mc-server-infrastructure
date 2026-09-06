@@ -11,6 +11,9 @@
 minecraftWrapper:
   image:
     repository: ${image_registry}/open-mc-server
+    # Pinned separately from the supporting images: this is the only image CI
+    # publishes under a version tag, and it is the one whose baked Spigot jar
+    # has to match MINECRAFT_VERSION below.
     tag: "${image_tag}"
   service:
     type: NodePort
@@ -45,7 +48,7 @@ minecraftWrapper:
 webapp:
   image:
     repository: ${image_registry}/open-mc-server-webapp
-    tag: "${image_tag}"
+    tag: "${supporting_image_tag}"
   env:
     MAX_FILE_UPLOAD_SIZE: "${world_upload_max_size_mb}MB"
     MAX_REQUEST_UPLOAD_SIZE: "${world_upload_max_size_mb}MB"
@@ -57,7 +60,7 @@ webapp:
 nginx:
   image:
     repository: ${image_registry}/open-mc-server-nginx
-    tag: "${image_tag}"
+    tag: "${supporting_image_tag}"
   service:
     type: NodePort
     httpNodePort: ${http_nodeport}
@@ -74,14 +77,14 @@ nginx:
 backupManager:
   image:
     repository: ${image_registry}/open-mc-server-backup-manager
-    tag: "${image_tag}"
+    tag: "${supporting_image_tag}"
   env:
     BACKUP_MAX_SIZE_MB: "${backup_max_size_mb}"
 
 alertManager:
   image:
     repository: ${image_registry}/open-mc-server-alert-manager
-    tag: "${image_tag}"
+    tag: "${supporting_image_tag}"
   env:
     DISCORD_ENABLED: "${discord_enabled}"
 
@@ -89,7 +92,7 @@ agentManager:
   enabled: ${agent_manager_enabled}
   image:
     repository: ${image_registry}/open-mc-server-agent-manager
-    tag: "${image_tag}"
+    tag: "${supporting_image_tag}"
 
 # Single-node: a PodDisruptionBudget with minAvailable: 1 would block node
 # drains, so disable PDBs here.
