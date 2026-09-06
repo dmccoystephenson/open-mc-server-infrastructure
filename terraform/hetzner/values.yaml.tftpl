@@ -27,6 +27,11 @@ minecraftWrapper:
     OPERATOR_NAME: "${operator_name}"
     SERVER_MOTD: "${server_motd}"
     MAX_PLAYERS: "${max_players}"
+    # Only players in whitelist.json may join when WHITELIST_ENABLED is true.
+    # ENFORCE_WHITELIST also kicks already-connected players who are not on the
+    # list when it reloads.
+    WHITELIST_ENABLED: "${whitelist_enabled}"
+    ENFORCE_WHITELIST: "${enforce_whitelist}"
     DIFFICULTY: "${difficulty}"
     GAMEMODE: "${gamemode}"
     PVP_ENABLED: "${pvp_enabled}"

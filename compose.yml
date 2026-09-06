@@ -41,6 +41,8 @@ services:
       - GAMEMODE=${GAMEMODE}
       - PVP_ENABLED=${PVP_ENABLED}
       - ONLINE_MODE=${ONLINE_MODE}
+      - WHITELIST_ENABLED=${WHITELIST_ENABLED:-false}
+      - ENFORCE_WHITELIST=${ENFORCE_WHITELIST:-false}
       - JAVA_OPTS=${JAVA_OPTS}
       - RCON_PASSWORD=${RCON_PASSWORD:-minecraft}
       # Alert configuration

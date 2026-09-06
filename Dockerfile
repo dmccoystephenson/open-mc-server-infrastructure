@@ -25,7 +25,7 @@ RUN apt-get update && \
 FROM eclipse-temurin:25.0.3_9-jdk-noble as java25-runtime
 
 # Intentionally using the JDK image: Eclipse Temurin 25 does not publish a separate JRE
-# image for this tag, and the full JDK is required to run Spigot 26.1 at runtime.
+# image for this tag, and the full JDK is required to run Spigot 26.2 at runtime.
 # openjdk-21-jre-headless is added because Spring Boot 3.2.0 has runtime compatibility issues
 # with Java 25 (embedded Tomcat and Spring internals rely on APIs removed/restricted in Java 25).
 RUN apt-get update && \
@@ -38,7 +38,7 @@ RUN apt-get update && \
 FROM java25-base as builder
 
 # Accept Minecraft version as build argument
-ARG MINECRAFT_VERSION=26.1
+ARG MINECRAFT_VERSION=26.2
 
 # Build server
 WORKDIR /mcserver-build
@@ -69,7 +69,7 @@ RUN ./gradlew build --no-daemon
 FROM java25-runtime as final
 
 # Accept Minecraft version as build argument
-ARG MINECRAFT_VERSION=26.1
+ARG MINECRAFT_VERSION=26.2
 
 # Copy built server from builder stage
 COPY --from=builder /mcserver-build/spigot-${MINECRAFT_VERSION}.jar /mcserver-build/spigot-${MINECRAFT_VERSION}.jar

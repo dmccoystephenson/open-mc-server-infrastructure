@@ -174,7 +174,7 @@ variable "helm_namespace" {
 variable "minecraft_version" {
   description = "Minecraft version tag for the server image."
   type        = string
-  default     = "26.1"
+  default     = "26.2"
 }
 
 variable "operator_uuid" {
@@ -199,6 +199,18 @@ variable "max_players" {
   description = "Maximum number of concurrent players."
   type        = number
   default     = 20
+}
+
+variable "whitelist_enabled" {
+  description = "Turn the whitelist on, so only players listed in whitelist.json may join. Defaults to false (open server)."
+  type        = bool
+  default     = false
+}
+
+variable "enforce_whitelist" {
+  description = "Also kick already-connected players who are not on the whitelist whenever the list is reloaded. No effect unless whitelist_enabled is true."
+  type        = bool
+  default     = false
 }
 
 variable "java_opts" {

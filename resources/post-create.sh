@@ -189,6 +189,17 @@ accept_eula() {
 }
 
 # Function: Create server properties
+#
+# NOTE: this OVERWRITES $SERVER_DIR/server.properties in full on every container
+# start, not just on first setup. Every line below is managed by OMCSI, so any
+# hand edit to server.properties -- whether made with an editor or by an
+# in-game/console command that persists to the file, such as `/whitelist on` --
+# is reverted the next time the container starts. To make a setting stick, set
+# the corresponding environment variable (see sample.env / values.yaml) instead
+# of editing the file. Settings not listed here are left to the server's own
+# defaults and are likewise reset. Data files that live alongside it on the
+# persistent volume (whitelist.json, ops.json, banned-players.json, the world)
+# are untouched.
 create_server_properties() {
     log "Creating server.properties file..."
     cat <<EOF > "$SERVER_DIR"/server.properties
@@ -237,7 +248,7 @@ debug=false
 force-gamemode=false
 rate-limit=0
 hardcore=false
-white-list=false
+white-list=${WHITELIST_ENABLED:-false}
 broadcast-console-to-ops=true
 spawn-npcs=true
 spawn-animals=true
@@ -246,7 +257,7 @@ initial-enabled-packs=vanilla
 level-type=minecraft\:normal
 text-filtering-config=
 spawn-monsters=true
-enforce-whitelist=false
+enforce-whitelist=${ENFORCE_WHITELIST:-false}
 spawn-protection=16
 resource-pack-sha1=
 max-world-size=29999984

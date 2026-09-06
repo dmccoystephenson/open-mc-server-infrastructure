@@ -22,7 +22,7 @@ from stub_server import StubService
 STATUS_PAYLOAD = {
     "running": True,
     "pid": 4242,
-    "serverJar": "/mcserver/spigot-26.1.jar",
+    "serverJar": "/mcserver/spigot-26.2.jar",
     "serverDirectory": "/mcserver",
     "uptimeSeconds": 900,
     "startedAt": "2026-09-01T00:00:00Z",
@@ -53,7 +53,7 @@ class TestReads(WrapperTestCase):
         status = self.client.status()
         self.assertTrue(status.running)
         self.assertEqual(status.pid, 4242)
-        self.assertEqual(status.server_jar, "/mcserver/spigot-26.1.jar")
+        self.assertEqual(status.server_jar, "/mcserver/spigot-26.2.jar")
         self.assertEqual(status.uptime_seconds, 900)
         self.assertEqual(status.raw, STATUS_PAYLOAD)
 

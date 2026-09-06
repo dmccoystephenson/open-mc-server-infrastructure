@@ -40,6 +40,8 @@ locals {
     operator_name            = var.operator_name
     server_motd              = var.server_motd
     max_players              = var.max_players
+    whitelist_enabled        = var.whitelist_enabled
+    enforce_whitelist        = var.enforce_whitelist
     difficulty               = var.difficulty
     gamemode                 = var.gamemode
     pvp_enabled              = var.pvp_enabled

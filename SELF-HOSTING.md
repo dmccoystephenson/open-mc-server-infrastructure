@@ -96,6 +96,19 @@ ONLINE_MODE=true
 
 Prevents joining with unauthenticated accounts.
 
+### Whitelist (private servers)
+
+```bash
+WHITELIST_ENABLED=true
+ENFORCE_WHITELIST=true
+```
+
+Only players in `whitelist.json` may join; `ENFORCE_WHITELIST` also kicks
+already-connected players who are not on the list when it reloads. Manage the
+list with `/whitelist add <player>` — `whitelist.json` persists across restarts.
+Note that `/whitelist on` alone does not, because `server.properties` is
+regenerated from these variables on every start.
+
 ### SSL Certificates
 
 Replace the self-signed certificate with one from [Let's Encrypt](https://letsencrypt.org/) for public access:

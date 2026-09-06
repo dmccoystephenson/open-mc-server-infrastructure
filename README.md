@@ -2,11 +2,11 @@
 
 [![CI Pipeline](https://github.com/dmccoystephenson/open-mc-server-infrastructure/workflows/CI%20Pipeline/badge.svg?branch=main)](https://github.com/dmccoystephenson/open-mc-server-infrastructure/actions)
 
-An open, community-agnostic, Docker-based Minecraft server infrastructure running the latest version of Minecraft (26.1) with Spigot for enhanced plugin support and performance. Highly configurable and customizable for any use case.
+An open, community-agnostic, Docker-based Minecraft server infrastructure running the latest version of Minecraft (26.2) with Spigot for enhanced plugin support and performance. Highly configurable and customizable for any use case.
 
 ## Features
 
-- **Latest Minecraft Version**: Running Minecraft 26.1 with Spigot
+- **Latest Minecraft Version**: Running Minecraft 26.2 with Spigot
 - **Docker Containerized**: Easy deployment and management
 - **Web Dashboard**: Built-in Spring Boot web application for server management
 - **Automated Backups**: Scheduled backups with automatic cleanup and size management
@@ -440,6 +440,8 @@ terraform output kubectl_hint        # export KUBECONFIG=... && kubectl get pods
 | `allowed_ssh_cidr` | CIDR allowed to reach SSH (22) and the K8s API (6443) | `0.0.0.0/0` *(restrict this)* |
 | `kubernetes_version` | Kubernetes minor version | `1.34` |
 | `java_opts` | Minecraft JVM heap (sized for 16 GB) | `-Xmx6G -Xms4G` |
+| `whitelist_enabled` | Only players in `whitelist.json` may join | `false` |
+| `enforce_whitelist` | Also kick connected players who are not whitelisted when the list reloads | `false` |
 | `image_registry` | Container image registry prefix | `dmccoystephenson` |
 | `image_tag` | Tag for the **Minecraft server** image — pin it for reproducible deploys | `latest` |
 | `supporting_image_tag` | Tag for the five supporting images — leave at `latest` (see below) | `latest` |
@@ -800,7 +802,52 @@ Copy `sample.env` to `.env` and modify the following settings:
 - `GAMEMODE`: Default game mode (survival, creative, adventure, spectator)
 - `PVP_ENABLED`: Enable/disable player vs player combat
 - `ONLINE_MODE`: Enable Mojang authentication (set to false for offline/cracked servers)
+- `WHITELIST_ENABLED`: Turn the whitelist on so only players listed in `whitelist.json` may join (default: `false`)
+- `ENFORCE_WHITELIST`: Also kick already-connected players who are not on the whitelist whenever the list is reloaded. No effect unless `WHITELIST_ENABLED` is `true` (default: `false`)
 - `DEFAULT_PLUGINS`: Comma-separated list of direct download URLs to plugin JARs, installed automatically into `PLUGINS_DIRECTORY` on server setup. A plugin already present there (matched by filename) is left untouched, so it's safe to leave alongside manually or CI-deployed plugins. Leave empty to skip (default).
+
+### Whitelisting
+
+To run a private or invite-only server, set both of these and restart:
+
+```bash
+WHITELIST_ENABLED=true
+ENFORCE_WHITELIST=true
+```
+
+They map to `white-list` and `enforce-whitelist` in `server.properties`. They are
+kept separate because they do different things: `WHITELIST_ENABLED` blocks new
+logins from players who are not on the list, while `ENFORCE_WHITELIST`
+additionally kicks players who are *already connected* and not on the list the
+next time the list is reloaded (for example after `/whitelist reload`). Leaving
+enforcement off is the usual choice while curating the list on a live server.
+
+On Kubernetes the equivalent chart values are `WHITELIST_ENABLED` and
+`ENFORCE_WHITELIST` under `minecraftWrapper.env` in `helm/omcsi/values.yaml`; the
+Hetzner Terraform module exposes them as `whitelist_enabled` and
+`enforce_whitelist`.
+
+The list itself is managed the usual way — `/whitelist add <player>` in the
+console, or by editing `whitelist.json`. `whitelist.json` lives on the persistent
+volume and survives restarts.
+
+> **Why an environment variable and not `/whitelist on`:** the container
+> regenerates `server.properties` from these settings on **every** start (see
+> below), so `/whitelist on` typed in the console is silently reverted the next
+> time the server restarts.
+
+### Managed `server.properties`
+
+`resources/post-create.sh` rewrites `/mcserver/server.properties` **in full on
+every container start**, not just on first setup. Any hand edit to that file —
+made with an editor, or by a console command that persists to it — is lost on the
+next restart. Configure the server through the environment variables above
+instead; settings that OMCSI does not expose fall back to the server's own
+defaults and are likewise reset each start.
+
+Data files next to it on the persistent volume — `whitelist.json`, `ops.json`,
+`banned-players.json`, and the world — are **not** touched by this and persist
+normally.
 
 ### Docker Configuration (for Parallel Servers)
 

@@ -40,6 +40,11 @@ admin_password = "strongpassword"
 # pvp_enabled   = true
 # online_mode   = true          # off lets anyone join under any username
 
+# Whitelist — only players in whitelist.json may join. enforce_whitelist also
+# kicks already-connected players who are not on the list when it reloads.
+# whitelist_enabled = true
+# enforce_whitelist = true
+
 # JVM heap — defaults suit cax31's 16 GB. Lower for smaller types:
 #   cax21 (8 GB):  java_opts = "-Xmx4G -Xms2G"
 # java_opts = "-Xmx6G -Xms4G"
