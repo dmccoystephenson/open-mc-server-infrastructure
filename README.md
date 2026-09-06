@@ -443,8 +443,21 @@ terraform output kubectl_hint        # export KUBECONFIG=... && kubectl get pods
 | `whitelist_enabled` | Only players in `whitelist.json` may join | `false` |
 | `enforce_whitelist` | Also kick connected players who are not whitelisted when the list reloads | `false` |
 | `image_registry` | Container image registry prefix | `dmccoystephenson` |
+| `image_tag` | Tag for the **Minecraft server** image — pin it for reproducible deploys | `latest` |
+| `supporting_image_tag` | Tag for the five supporting images — leave at `latest` (see below) | `latest` |
+| `difficulty` | World difficulty (`peaceful`/`easy`/`normal`/`hard`) | `normal` |
+| `gamemode` | Default gamemode (`survival`/`creative`/`adventure`/`spectator`) | `survival` |
+| `pvp_enabled` | Allow players to damage each other | `true` |
+| `online_mode` | Verify players against Mojang auth | `true` |
+| `default_plugins` | Comma-separated plugin JAR download URLs, installed on setup | `""` |
 
 See [`terraform/hetzner/variables.tf`](terraform/hetzner/variables.tf) for the full list (operator identity, MOTD, Discord, agent-manager, NodePort overrides, etc.).
+
+> **Pin `image_tag` for anything long-lived.** It defaults to `latest`, and the chart pulls with `imagePullPolicy: Always`. Because the Spigot jar is compiled into the image at build time, a moving `latest` moves the Minecraft version along with it. Set `image_tag` to a published tag — and keep it consistent with `minecraft_version`, since the entrypoint selects the jar by that name and exits if the image does not contain it.
+
+> **Only the Minecraft image has version tags.** `.github/workflows/docker-publish.yml` publishes `open-mc-server` as both `latest` and the Minecraft version it was built with, but publishes the five supporting images (`webapp`, `nginx`, `backup-manager`, `alert-manager`, `agent-manager`) as `latest` **only**. That is why the tag is split across two variables: setting `supporting_image_tag` to a version tag produces `ImagePullBackOff` on those services. Leave it at `latest` unless the publish workflow starts tagging them too.
+
+> **`default_plugins` format:** a comma-separated list of direct download URLs to plugin JARs, with no spaces — e.g. `default_plugins = "https://example.com/A.jar,https://example.com/B.jar"`. Each is downloaded into the plugins directory on server setup; a plugin already present there (matched by filename) is left untouched.
 
 > **ARM images:** `cax31` is ARM64. The default `dmccoystephenson` images are published multi-arch (amd64 + arm64), so they run as-is. For an x86 server, set `server_type = "cpx31"` and `location` to any region.
 

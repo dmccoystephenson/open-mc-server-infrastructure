@@ -131,6 +131,28 @@ variable "image_registry" {
   }
 }
 
+variable "image_tag" {
+  description = "Image tag for the Minecraft server image (open-mc-server) only. Defaults to 'latest'. Pin it to a published tag (e.g. '26.2') for reproducible deployments: the Spigot jar is compiled into this image at build time, so a moving 'latest' also moves the Minecraft version. CI publishes this image as both 'latest' and the Minecraft version it was built with. Keep it consistent with minecraft_version — the entrypoint selects the jar by that name and exits if the image does not contain it."
+  type        = string
+  default     = "latest"
+
+  validation {
+    condition     = length(trimspace(var.image_tag)) > 0 && length(regexall("\\s", var.image_tag)) == 0
+    error_message = "image_tag must be a non-empty tag with no whitespace."
+  }
+}
+
+variable "supporting_image_tag" {
+  description = "Image tag for the five supporting images (webapp, nginx, backup-manager, alert-manager, agent-manager). Defaults to 'latest' and should normally stay there: CI publishes these images with the 'latest' tag ONLY, so pointing this at a version tag yields ImagePullBackOff. It is exposed separately from image_tag so the Minecraft image can be pinned without dragging the others to a tag that does not exist."
+  type        = string
+  default     = "latest"
+
+  validation {
+    condition     = length(trimspace(var.supporting_image_tag)) > 0 && length(regexall("\\s", var.supporting_image_tag)) == 0
+    error_message = "supporting_image_tag must be a non-empty tag with no whitespace."
+  }
+}
+
 variable "storage_class" {
   description = "StorageClass for PVCs. Defaults to 'local-path' (installed by the bootstrap and marked default)."
   type        = string
@@ -195,6 +217,54 @@ variable "java_opts" {
   description = "JVM options for the Minecraft server. Defaults size the heap for a 16 GB node (cax31). Reduce for smaller server types (e.g. '-Xmx2G -Xms1G' on cax21)."
   type        = string
   default     = "-Xmx6G -Xms4G"
+}
+
+variable "difficulty" {
+  description = "Minecraft world difficulty (server.properties `difficulty`)."
+  type        = string
+  default     = "normal"
+
+  validation {
+    condition     = contains(["peaceful", "easy", "normal", "hard"], var.difficulty)
+    error_message = "difficulty must be one of: peaceful, easy, normal, hard."
+  }
+}
+
+variable "gamemode" {
+  description = "Default gamemode for joining players (server.properties `gamemode`)."
+  type        = string
+  default     = "survival"
+
+  validation {
+    condition     = contains(["survival", "creative", "adventure", "spectator"], var.gamemode)
+    error_message = "gamemode must be one of: survival, creative, adventure, spectator."
+  }
+}
+
+variable "pvp_enabled" {
+  description = "Allow players to damage each other (server.properties `pvp`)."
+  type        = bool
+  default     = true
+}
+
+variable "online_mode" {
+  description = "Verify players against Mojang's authentication servers (server.properties `online-mode`). Leave enabled: with it off, anyone can join under any username."
+  type        = bool
+  default     = true
+}
+
+variable "default_plugins" {
+  description = "Comma-separated list of direct download URLs to plugin JARs, installed automatically on server setup (e.g. \"https://example.com/A.jar,https://example.com/B.jar\"). A plugin already present in the plugins directory (matched by filename) is left untouched. Empty by default."
+  type        = string
+  default     = ""
+
+  validation {
+    condition = var.default_plugins == "" || alltrue([
+      for url in split(",", var.default_plugins) :
+      length(regexall("^https?://[^\\s\"]+$", trimspace(url))) == 1
+    ])
+    error_message = "default_plugins must be a comma-separated list of http(s) URLs, with no whitespace or double quotes inside a URL."
+  }
 }
 
 # =============================================================================

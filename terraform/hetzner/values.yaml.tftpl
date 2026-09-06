@@ -11,6 +11,10 @@
 minecraftWrapper:
   image:
     repository: ${image_registry}/open-mc-server
+    # Pinned separately from the supporting images: this is the only image CI
+    # publishes under a version tag, and it is the one whose baked Spigot jar
+    # has to match MINECRAFT_VERSION below.
+    tag: "${image_tag}"
   service:
     type: NodePort
     minecraftPort: 25565
@@ -28,7 +32,15 @@ minecraftWrapper:
     # list when it reloads.
     WHITELIST_ENABLED: "${whitelist_enabled}"
     ENFORCE_WHITELIST: "${enforce_whitelist}"
+    DIFFICULTY: "${difficulty}"
+    GAMEMODE: "${gamemode}"
+    PVP_ENABLED: "${pvp_enabled}"
+    ONLINE_MODE: "${online_mode}"
     JAVA_OPTS: "${java_opts}"
+    # Comma-separated list of direct download URLs to plugin JARs, fetched on
+    # server setup. Quoted so the URLs' ":" and "," survive as one YAML scalar;
+    # var validation rejects embedded whitespace and double quotes.
+    DEFAULT_PLUGINS: "${default_plugins}"
     # All four upload limits are derived from world_upload_max_size_mb so they
     # cannot drift apart; the smallest of them is what a client actually hits.
     MAX_FILE_UPLOAD_SIZE: "${world_upload_max_size_mb}MB"
@@ -41,6 +53,7 @@ minecraftWrapper:
 webapp:
   image:
     repository: ${image_registry}/open-mc-server-webapp
+    tag: "${supporting_image_tag}"
   env:
     MAX_FILE_UPLOAD_SIZE: "${world_upload_max_size_mb}MB"
     MAX_REQUEST_UPLOAD_SIZE: "${world_upload_max_size_mb}MB"
@@ -52,6 +65,7 @@ webapp:
 nginx:
   image:
     repository: ${image_registry}/open-mc-server-nginx
+    tag: "${supporting_image_tag}"
   service:
     type: NodePort
     httpNodePort: ${http_nodeport}
@@ -68,12 +82,14 @@ nginx:
 backupManager:
   image:
     repository: ${image_registry}/open-mc-server-backup-manager
+    tag: "${supporting_image_tag}"
   env:
     BACKUP_MAX_SIZE_MB: "${backup_max_size_mb}"
 
 alertManager:
   image:
     repository: ${image_registry}/open-mc-server-alert-manager
+    tag: "${supporting_image_tag}"
   env:
     DISCORD_ENABLED: "${discord_enabled}"
 
@@ -81,6 +97,7 @@ agentManager:
   enabled: ${agent_manager_enabled}
   image:
     repository: ${image_registry}/open-mc-server-agent-manager
+    tag: "${supporting_image_tag}"
 
 # Single-node: a PodDisruptionBudget with minAvailable: 1 would block node
 # drains, so disable PDBs here.
