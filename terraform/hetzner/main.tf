@@ -29,6 +29,7 @@ locals {
     rcon_password            = var.rcon_password
     admin_password           = var.admin_password
     image_registry           = var.image_registry
+    image_tag                = var.image_tag
     minecraft_nodeport       = var.minecraft_node_port
     http_nodeport            = var.http_node_port
     https_nodeport           = var.https_node_port
@@ -38,6 +39,11 @@ locals {
     operator_name            = var.operator_name
     server_motd              = var.server_motd
     max_players              = var.max_players
+    difficulty               = var.difficulty
+    gamemode                 = var.gamemode
+    pvp_enabled              = var.pvp_enabled
+    online_mode              = var.online_mode
+    default_plugins          = var.default_plugins
     java_opts                = var.java_opts
     discord_enabled          = local.discord_enabled
     discord_webhook_url      = var.discord_webhook_url

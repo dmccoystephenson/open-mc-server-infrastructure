@@ -35,6 +35,10 @@ admin_password = "strongpassword"
 # operator_name = "YourMinecraftName"
 # server_motd   = "An Open Minecraft Server"
 # max_players   = 20
+# difficulty    = "normal"      # peaceful | easy | normal | hard
+# gamemode      = "survival"    # survival | creative | adventure | spectator
+# pvp_enabled   = true
+# online_mode   = true          # off lets anyone join under any username
 
 # JVM heap — defaults suit cax31's 16 GB. Lower for smaller types:
 #   cax21 (8 GB):  java_opts = "-Xmx4G -Xms2G"
@@ -43,6 +47,16 @@ admin_password = "strongpassword"
 # Container image registry — defaults to "dmccoystephenson" (Docker Hub).
 # The default images are multi-arch (amd64 + arm64), so they run on CAX (ARM).
 # image_registry = "dmccoystephenson"
+
+# Image tag — defaults to "latest", which floats. The Spigot jar is compiled
+# into the image at build time, so a moving "latest" also moves the Minecraft
+# version; pin a released tag for a reproducible deployment.
+# image_tag = "latest"
+
+# Optional: plugins installed on server setup — a comma-separated list of
+# direct download URLs to plugin JARs, no spaces. A plugin already present in
+# the plugins directory (matched by filename) is left untouched.
+# default_plugins = "https://example.com/PluginA.jar,https://example.com/PluginB.jar"
 
 # Optional: Discord alerts (enables Discord automatically when set)
 # discord_webhook_url = "https://discord.com/api/webhooks/..."

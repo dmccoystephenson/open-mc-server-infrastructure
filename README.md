@@ -441,8 +441,18 @@ terraform output kubectl_hint        # export KUBECONFIG=... && kubectl get pods
 | `kubernetes_version` | Kubernetes minor version | `1.34` |
 | `java_opts` | Minecraft JVM heap (sized for 16 GB) | `-Xmx6G -Xms4G` |
 | `image_registry` | Container image registry prefix | `dmccoystephenson` |
+| `image_tag` | Tag for every OMCSI image — pin it for reproducible deploys | `latest` |
+| `difficulty` | World difficulty (`peaceful`/`easy`/`normal`/`hard`) | `normal` |
+| `gamemode` | Default gamemode (`survival`/`creative`/`adventure`/`spectator`) | `survival` |
+| `pvp_enabled` | Allow players to damage each other | `true` |
+| `online_mode` | Verify players against Mojang auth | `true` |
+| `default_plugins` | Comma-separated plugin JAR download URLs, installed on setup | `""` |
 
 See [`terraform/hetzner/variables.tf`](terraform/hetzner/variables.tf) for the full list (operator identity, MOTD, Discord, agent-manager, NodePort overrides, etc.).
+
+> **Pin `image_tag` for anything long-lived.** It defaults to `latest`, and the chart pulls with `imagePullPolicy: Always`. Because the Spigot jar is compiled into the image at build time, a moving `latest` moves the Minecraft version along with it. Set `image_tag` to a released tag to keep a deployment reproducible.
+
+> **`default_plugins` format:** a comma-separated list of direct download URLs to plugin JARs, with no spaces — e.g. `default_plugins = "https://example.com/A.jar,https://example.com/B.jar"`. Each is downloaded into the plugins directory on server setup; a plugin already present there (matched by filename) is left untouched.
 
 > **ARM images:** `cax31` is ARM64. The default `dmccoystephenson` images are published multi-arch (amd64 + arm64), so they run as-is. For an x86 server, set `server_type = "cpx31"` and `location` to any region.
 
