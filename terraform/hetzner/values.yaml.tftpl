@@ -23,6 +23,11 @@ minecraftWrapper:
     OPERATOR_NAME: "${operator_name}"
     SERVER_MOTD: "${server_motd}"
     MAX_PLAYERS: "${max_players}"
+    # Only players in whitelist.json may join when WHITELIST_ENABLED is true.
+    # ENFORCE_WHITELIST also kicks already-connected players who are not on the
+    # list when it reloads.
+    WHITELIST_ENABLED: "${whitelist_enabled}"
+    ENFORCE_WHITELIST: "${enforce_whitelist}"
     JAVA_OPTS: "${java_opts}"
     # All four upload limits are derived from world_upload_max_size_mb so they
     # cannot drift apart; the smallest of them is what a client actually hits.

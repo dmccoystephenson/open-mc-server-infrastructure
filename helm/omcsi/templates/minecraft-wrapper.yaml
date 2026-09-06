@@ -73,6 +73,10 @@ spec:
               value: {{ .Values.minecraftWrapper.env.PVP_ENABLED | quote }}
             - name: ONLINE_MODE
               value: {{ .Values.minecraftWrapper.env.ONLINE_MODE | quote }}
+            - name: WHITELIST_ENABLED
+              value: {{ .Values.minecraftWrapper.env.WHITELIST_ENABLED | quote }}
+            - name: ENFORCE_WHITELIST
+              value: {{ .Values.minecraftWrapper.env.ENFORCE_WHITELIST | quote }}
             - name: JAVA_OPTS
               value: {{ .Values.minecraftWrapper.env.JAVA_OPTS | quote }}
             - name: RCON_PASSWORD

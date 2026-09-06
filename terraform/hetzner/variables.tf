@@ -179,6 +179,18 @@ variable "max_players" {
   default     = 20
 }
 
+variable "whitelist_enabled" {
+  description = "Turn the whitelist on, so only players listed in whitelist.json may join. Defaults to false (open server)."
+  type        = bool
+  default     = false
+}
+
+variable "enforce_whitelist" {
+  description = "Also kick already-connected players who are not on the whitelist whenever the list is reloaded. No effect unless whitelist_enabled is true."
+  type        = bool
+  default     = false
+}
+
 variable "java_opts" {
   description = "JVM options for the Minecraft server. Defaults size the heap for a 16 GB node (cax31). Reduce for smaller server types (e.g. '-Xmx2G -Xms1G' on cax21)."
   type        = string

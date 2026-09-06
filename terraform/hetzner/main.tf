@@ -38,6 +38,8 @@ locals {
     operator_name            = var.operator_name
     server_motd              = var.server_motd
     max_players              = var.max_players
+    whitelist_enabled        = var.whitelist_enabled
+    enforce_whitelist        = var.enforce_whitelist
     java_opts                = var.java_opts
     discord_enabled          = local.discord_enabled
     discord_webhook_url      = var.discord_webhook_url

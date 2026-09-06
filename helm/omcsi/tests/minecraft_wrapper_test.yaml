@@ -272,6 +272,42 @@ tests:
             value: "https://example.com/a.jar,https://example.com/b.jar"
         documentIndex: 0
 
+  # The whitelist toggles are the only way to persist white-list/enforce-whitelist:
+  # post-create.sh rewrites server.properties from them on every pod start, so
+  # `/whitelist on` in the console does not survive a restart.
+  - it: leaves the whitelist off by default
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: WHITELIST_ENABLED
+            value: "false"
+        documentIndex: 0
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: ENFORCE_WHITELIST
+            value: "false"
+        documentIndex: 0
+
+  - it: honours the whitelist toggles when enabled
+    set:
+      minecraftWrapper.env.WHITELIST_ENABLED: "true"
+      minecraftWrapper.env.ENFORCE_WHITELIST: "true"
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: WHITELIST_ENABLED
+            value: "true"
+        documentIndex: 0
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: ENFORCE_WHITELIST
+            value: "true"
+        documentIndex: 0
+
   # Every consumer of ALERT_MANAGER_URL POSTs to it verbatim, so all four services must
   # render the identical full-endpoint form. See the matching assertion in webapp_test.yaml.
   - it: renders ALERT_MANAGER_URL as the full alerts endpoint
