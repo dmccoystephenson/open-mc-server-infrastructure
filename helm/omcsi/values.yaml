@@ -69,6 +69,15 @@ minecraftWrapper:
     GAMEMODE: "survival"
     PVP_ENABLED: "true"
     ONLINE_MODE: "true"
+    # Whitelist. WHITELIST_ENABLED turns the whitelist on, so only players listed
+    # in whitelist.json may join. ENFORCE_WHITELIST additionally kicks players who
+    # are already connected but not on the list whenever the list is reloaded; it
+    # has no effect unless WHITELIST_ENABLED is true. server.properties is
+    # regenerated on every pod start, so `/whitelist on` in the console does not
+    # survive a restart -- set these instead. whitelist.json itself lives on the
+    # mcserver PVC and is preserved.
+    WHITELIST_ENABLED: "false"
+    ENFORCE_WHITELIST: "false"
     JAVA_OPTS: "-Xmx6G -Xms4G"
     PLUGINS_DIRECTORY: "/mcserver/plugins"
     # Comma-separated list of direct download URLs to plugin JARs, installed
