@@ -152,7 +152,7 @@ variable "helm_namespace" {
 variable "minecraft_version" {
   description = "Minecraft version tag for the server image."
   type        = string
-  default     = "26.1"
+  default     = "26.2"
 }
 
 variable "operator_uuid" {
